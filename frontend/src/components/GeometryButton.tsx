@@ -20,7 +20,7 @@ export default function GeometryButton({
     setGeometry: React.Dispatch<React.SetStateAction<GeometryItem[]>>
 }) {
     const backend_url = import.meta.env.VITE_BACKEND_URL
-    const handleExcelUpload = async (e) => {
+    const handleExcelUpload = async (e:any) => {
         const filesArray = Array.from(e.target.files)
         const config = {
             headers: {
