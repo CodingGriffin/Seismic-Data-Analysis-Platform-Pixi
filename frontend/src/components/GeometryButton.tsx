@@ -8,6 +8,11 @@ export interface GeometryItem {
     z: number,
 }
 
+export interface GeometryArray {
+    units: string,
+    data: GeometryItem[]
+}
+
 export default function GeometryButton({
                                            geometry, setGeometry
                                        }: {
