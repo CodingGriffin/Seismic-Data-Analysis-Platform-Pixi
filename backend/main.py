@@ -8,6 +8,7 @@ import aiofiles
 import aiofiles.os as aios
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -17,6 +18,18 @@ from utils import get_geometry_from_excel
 app = FastAPI()
 CHUNK_SIZE = 1024 * 1024  # adjust the chunk size as desired
 
+origins = [
+    "http://localhost:*",
+    # Adjust the port if your frontend runs on a different one
+    # "https://yourfrontenddomain.com",
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # origins,  # Allows all origins from the list
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
