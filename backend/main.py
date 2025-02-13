@@ -13,7 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from backend.utils import close_and_remove_file, get_sheets_from_excel
-from utils import get_geometry_from_excel
+from backend.utils import get_geometry_from_excel
 
 app = FastAPI()
 CHUNK_SIZE = 1024 * 1024  # adjust the chunk size as desired
