@@ -26,6 +26,12 @@ def get_data_from_excel(excel_path):
     return x_points, y_points, z_points
 
 
+def get_sheets_from_excel(excel_path):
+    xf = pd.ExcelFile(excel_path)
+    sheet_names = xf.sheet_names
+    return sheet_names
+
+
 def get_geometry_from_excel(excel_path):
     # Get raw points
     x_points, y_points, z_points = get_data_from_excel(excel_path)
