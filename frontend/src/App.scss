@@ -40,3 +40,25 @@
 .read-the-docs {
   color: #888;
 }
+
+// Add these styles to center the modal
+.modal {
+  &.show {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-dialog {
+    margin: 0;
+    width: 100%;
+    max-width: 500px; // Adjust this value based on your needs
+  }
+}
+
+// Optional: Add some responsive adjustments
+@media (max-width: 576px) {
+  .modal .modal-dialog {
+    margin: 1rem;
+  }
+}
