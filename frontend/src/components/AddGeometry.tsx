@@ -12,6 +12,11 @@ interface SheetData {
   data: any[][];
 }
 
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
 export default function AddGeometry({
   onSetGeometry,
   onClose,
@@ -25,6 +30,15 @@ export default function AddGeometry({
   const [selectedSheet, setSelectedSheet] = useState<string>("");
   const [previewData, setPreviewData] = useState<GeometryItem[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [matrix, setMatrix] = useState<number[][]>([
+    [1, 0, 1, 1748.2],
+    [2, 8, 1, 1746.9],
+    [3, 16, 1, 1745.6],
+    [4, 24, 1, 1744.2],
+    [5, 32, 1, 1742.7]
+  ]);
+  const [text, setText] = useState<string>(() => matrixToText(matrix));
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (selectedSheet && sheets.length > 0) {
@@ -46,6 +60,107 @@ export default function AddGeometry({
       setPreviewData(null);
     }
   }, [inputMethod]);
+
+  function matrixToText(matrix: number[][]) {
+    return matrix
+      .map(row => 
+        row.map(num => 
+          num.toString().padEnd(6)
+        ).join(" ")
+      )
+      .join("\n");
+  }
+
+  function validateMatrix(matrix: number[][]): ValidationResult {
+    const errors: string[] = [];
+    
+    // Check if matrix is empty
+    if (matrix.length === 0) {
+      errors.push("Matrix cannot be empty");
+      return { isValid: false, errors };
+    }
+
+    // Check if all rows have the same number of columns
+    const expectedColumns = geometryFormat === "NXYZ" ? 4 : 4; // Adjust based on format
+    const hasInvalidRows = matrix.some(row => row.length !== expectedColumns);
+    if (hasInvalidRows) {
+      errors.push(`Each row must have exactly ${expectedColumns} columns`);
+    }
+
+    // Check if first column (N) is sequential
+    for (let i = 1; i < matrix.length; i++) {
+      if (matrix[i][0] !== matrix[i-1][0] + 1) {
+        errors.push("First column (N) must be sequential");
+        break;
+      }
+    }
+
+    // Validate number ranges based on units
+    const maxElevation = units === "Meters" ? 10000 : 30000; // Example limits
+    const maxCoordinate = units === "Meters" ? 100000 : 300000;
+
+    for (const row of matrix) {
+      // Check X coordinate (or Z for NZYX format)
+      if (Math.abs(row[1]) > maxCoordinate) {
+        errors.push(`Coordinate values must be within ±${maxCoordinate} ${units}`);
+        break;
+      }
+
+      // Check Y coordinate
+      if (Math.abs(row[2]) > maxCoordinate) {
+        errors.push(`Coordinate values must be within ±${maxCoordinate} ${units}`);
+        break;
+      }
+
+      // Check elevation (Z or X depending on format)
+      if (row[3] < 0 || row[3] > maxElevation) {
+        errors.push(`Elevation must be between 0 and ${maxElevation} ${units}`);
+        break;
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  const handleBlur = () => {
+    const validation = validateMatrix(matrix);
+    setValidationErrors(validation.errors);
+    
+    if (validation.isValid) {
+      setText(matrixToText(matrix));
+    }
+  };
+
+  const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newText = event.target.value;
+    setText(newText);
+    
+    try {
+      const newMatrix = newText
+        .trim()
+        .split("\n")
+        .map((row) => 
+          row
+            .trim()
+            .split(/[\s,]+/)
+            .map((num) => parseFloat(num)) 
+            .filter((num) => !isNaN(num))
+        )
+        .filter(row => row.length > 0);
+
+      const validation = validateMatrix(newMatrix);
+      setValidationErrors(validation.errors);
+      
+      if (validation.isValid) {
+        setMatrix(newMatrix);
+      }
+    } catch (error) {
+      setValidationErrors(['Invalid data format']);
+    }
+  };
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -72,12 +187,31 @@ export default function AddGeometry({
   };
 
   const handleLoadData = () => {
-    const selectedData = sheets.find((sheet) => sheet.name === selectedSheet);
-    if (selectedData) {
-      const parsedData = getDataFromExcel(selectedData.data);
-      if (!parsedData) return;
-      onSetGeometry(parsedData);
+    if (inputMethod === "Text") {
+      const validation = validateMatrix(matrix);
+      if (!validation.isValid) {
+        setValidationErrors(validation.errors);
+        return;
+      }
+
+      // Transform matrix data to match GeometryItem interface
+      const geometryData: GeometryItem[] = matrix.map((row, index) => ({
+        index: index + 1,  // Add required index field
+        x: geometryFormat === "NXYZ" ? row[1] : row[3],
+        y: row[2],
+        z: geometryFormat === "NXYZ" ? row[3] : row[1]
+      }));
+
+      onSetGeometry({ units, data: geometryData }); // Match GeometryArray interface
       onClose();
+    } else {
+      const selectedData = sheets.find((sheet) => sheet.name === selectedSheet);
+      if (selectedData) {
+        const parsedData = getDataFromExcel(selectedData.data);
+        if (!parsedData) return;
+        onSetGeometry({ units, data: parsedData }); // Match GeometryArray interface
+        onClose();
+      }
     }
   };
 
@@ -177,7 +311,7 @@ export default function AddGeometry({
 
             {inputMethod === "Spreadsheet" ? (
               <div
-                className="border rounded p-3 mb-3 overflow-auto"
+                className="border rounded p-3 mb-3 mt-3 overflow-auto"
                 style={{ minHeight: "200px", maxHeight: "200px" }}
               >
                 {previewData && previewData.length > 0 ? (
@@ -199,19 +333,37 @@ export default function AddGeometry({
                 )}
               </div>
             ) : (
-              <textarea
-                className="form-control border rounded p-3 mb-3 overflow-auto"
-                style={{ minHeight: "200px", maxHeight: "200px" }}
-                rows={10}
-                placeholder="Enter geometry data here..."
-              ></textarea>
+              <>
+                <textarea
+                  className={`form-control border rounded p-3 mb-3 mt-3 overflow-auto ${
+                    validationErrors.length > 0 ? 'is-invalid' : ''
+                  }`}
+                  style={{
+                    minHeight: "200px",
+                    maxHeight: "200px",
+                    fontFamily: "monospace",
+                    whiteSpace: "pre"
+                  }}
+                  value={text}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Enter geometry data here..."
+                />
+                {validationErrors.length > 0 && (
+                  <div className="invalid-feedback d-block">
+                    {validationErrors.map((error, index) => (
+                      <div key={index}>{error}</div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
           <div className="modal-footer">
             <button
               className="btn btn-primary w-100"
               onClick={handleLoadData}
-              disabled={previewData === null}
+              disabled={validationErrors.length > 0 || (inputMethod === "Spreadsheet" && previewData === null)}
             >
               Load Data
             </button>
