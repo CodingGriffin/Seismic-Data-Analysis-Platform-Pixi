@@ -30,13 +30,7 @@ export default function AddGeometry({
   const [selectedSheet, setSelectedSheet] = useState<string>("");
   const [previewData, setPreviewData] = useState<GeometryItem[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [matrix, setMatrix] = useState<number[][]>([
-    [1, 0, 1, 1748.2],
-    [2, 8, 1, 1746.9],
-    [3, 16, 1, 1745.6],
-    [4, 24, 1, 1744.2],
-    [5, 32, 1, 1742.7]
-  ]);
+  const [matrix, setMatrix] = useState<number[][]>([]);
   const [text, setText] = useState<string>(() => matrixToText(matrix));
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
