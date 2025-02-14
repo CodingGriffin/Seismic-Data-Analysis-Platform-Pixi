@@ -341,7 +341,7 @@ export default function AddGeometry({
                   value={text}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder="Enter geometry data here..."
+                  placeholder="Paste Geometry here..."
                 />
                 {validationErrors.length > 0 && (
                   <div className="invalid-feedback d-block">
