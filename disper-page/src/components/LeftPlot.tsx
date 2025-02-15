@@ -14,7 +14,7 @@ export const LeftPlot = ({
   const [points, setPoints] = useState<Point[]>([]);
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
   const [axisLimits, setAxisLimits] = useState({
-    xmin: 0.016, // Period min
+    xmin: 0.001, // Period min
     xmax: 0.6, // Period max
     ymin: 30, // Velocity min
     ymax: 500, // Velocity max
