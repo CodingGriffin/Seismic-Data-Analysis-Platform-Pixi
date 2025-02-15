@@ -107,6 +107,7 @@ export default function GeometryEditor({
   const [points, setPoints] = useState<GeometryItem[]>(initialPoints);
   const [units, setUnits] = useState<"Meters" | "Feet">("Meters");
   const [inputAsDepth, setInputAsDepth] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const peakElevation = points.length > 0 ? Math.max(...points.map((p) => p.z)) : 0;
 
@@ -163,6 +164,7 @@ export default function GeometryEditor({
   const deleteAll = () => {
     setPoints([]);
     onPointsChange?.([]);
+    setShowConfirmation(false);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -182,121 +184,161 @@ export default function GeometryEditor({
   };
 
   return (
-    <div className="modal-content">
-      <div className="modal-header">
-        <h5 className="modal-title">View / Edit Geometry</h5>
-        <button
-          type="button"
-          className="btn-close"
-          onClick={onClose}
-          aria-label="Close"
-        ></button>
-      </div>
-      <div className="modal-body">
-        <div className="d-flex justify-content-between mb-3">
-          <div>
-            <div className="d-flex align-items-center gap-2">
-              <label htmlFor="peakElevation" className="form-label mb-0">
-                Peak Elevation ({units}):
-              </label>
-              <input
-                id="peakElevation"
-                type="number"
-                className="form-control"
-                value={peakElevation.toFixed(2)}
-                disabled
-                style={{ width: '120px' }}
-              />
-            </div>
-            <div className="form-check form-switch mt-2">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="inputAsDepth"
-                checked={inputAsDepth}
-                onChange={(e) => setInputAsDepth(e.target.checked)}
-              />
-              <label className="form-check-label" htmlFor="inputAsDepth">
-                Input Z as Depth from Peak
-              </label>
-            </div>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <label htmlFor="units" className="form-label mb-0">
-              Units:
-            </label>
-            <select
-              id="units"
-              className="form-select"
-              value={units}
-              onChange={(e) => setUnits(e.target.value as "Meters" | "Feet")}
-            >
-              <option value="Meters">Meters</option>
-              <option value="Feet">Feet</option>
-            </select>
-          </div>
-        </div>
-
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          {points.length > 0 ? (
-            <div className="table-responsive">
-              <table className="table table-striped table-bordered">
-                <thead className="table-light">
-                  <tr>
-                    <th>Index</th>
-                    <th>X</th>
-                    <th>Y</th>
-                    <th>Z</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <SortableContext
-                    items={points.map((point) => point.index)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {points.map((point, idx) => (
-                      <SortableRow
-                        key={point.index}
-                        point={point}
-                        index={idx}
-                        onDelete={deletePoint}
-                        onPointChange={handlePointChange}
-                      />
-                    ))}
-                  </SortableContext>
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center p-5">
-              <p className="text-muted mb-3">No geometry points available.</p>
-              <p className="text-muted">Click "Add Point" to start adding geometry points.</p>
-            </div>
-          )}
-        </DndContext>
-      </div>
-      <div className="modal-footer">
-        <div className="d-flex gap-2">
-          <button className="btn btn-primary" onClick={addPoint}>
-            Add Point
-          </button>
+    <>
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">View / Edit Geometry</h5>
           <button
-            className="btn btn-danger"
-            onClick={deleteAll}
-            disabled={points.length === 0}
+            type="button"
+            className="btn-close"
+            onClick={onClose}
+            aria-label="Close"
+          ></button>
+        </div>
+        <div className="modal-body">
+          <div className="d-flex justify-content-between mb-3">
+            <div>
+              <div className="d-flex align-items-center gap-2">
+                <label htmlFor="peakElevation" className="form-label mb-0">
+                  Peak Elevation ({units}):
+                </label>
+                <input
+                  id="peakElevation"
+                  type="number"
+                  className="form-control"
+                  value={peakElevation.toFixed(2)}
+                  disabled
+                  style={{ width: '120px' }}
+                />
+              </div>
+              <div className="form-check form-switch mt-2">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="inputAsDepth"
+                  checked={inputAsDepth}
+                  onChange={(e) => setInputAsDepth(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="inputAsDepth">
+                  Input Z as Depth from Peak
+                </label>
+              </div>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <label htmlFor="units" className="form-label mb-0">
+                Units:
+              </label>
+              <select
+                id="units"
+                className="form-select"
+                value={units}
+                onChange={(e) => setUnits(e.target.value as "Meters" | "Feet")}
+              >
+                <option value="Meters">Meters</option>
+                <option value="Feet">Feet</option>
+              </select>
+            </div>
+          </div>
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            Delete All
-          </button>
-          <button className="btn btn-secondary" onClick={onClose}>
-            Close
-          </button>
+            {points.length > 0 ? (
+              <div className="table-responsive">
+                <table className="table table-striped table-bordered">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Index</th>
+                      <th>X</th>
+                      <th>Y</th>
+                      <th>Z</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <SortableContext
+                      items={points.map((point) => point.index)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {points.map((point, idx) => (
+                        <SortableRow
+                          key={point.index}
+                          point={point}
+                          index={idx}
+                          onDelete={deletePoint}
+                          onPointChange={handlePointChange}
+                        />
+                      ))}
+                    </SortableContext>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center p-5">
+                <p className="text-muted mb-3">No geometry points available.</p>
+                <p className="text-muted">Click "Add Point" to start adding geometry points.</p>
+              </div>
+            )}
+          </DndContext>
+        </div>
+        <div className="modal-footer">
+          <div className="d-flex gap-2">
+            <button className="btn btn-primary" onClick={addPoint}>
+              Add Point
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={() => setShowConfirmation(true)}
+              disabled={points.length === 0}
+            >
+              Delete All
+            </button>
+            <button className="btn btn-secondary" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmation && (
+        <div className="modal show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Deletion</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowConfirmation(false)}
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>Are you sure you want to delete all {points.length} points? This action cannot be undone.</p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowConfirmation(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={deleteAll}
+                >
+                  Delete All
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
