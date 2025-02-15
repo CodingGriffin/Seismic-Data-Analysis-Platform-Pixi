@@ -2,6 +2,7 @@ import { Container, Sprite, Graphics, Text } from "pixi.js";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Application, extend } from "@pixi/react";
 extend({ Container, Sprite, Graphics, Text });
+import { Window } from "../types";
 
 interface Layer {
   startDepth: number;
@@ -414,7 +415,7 @@ export const RightPlot = ({
         velocity: current.velocity,
       });
     }
-    console.log("Output:", OutputData);
+
     const outTXT = OutputData.sort((a, b) => a.depth - b.depth)
       .map(
         (output: any) =>
@@ -424,20 +425,35 @@ export const RightPlot = ({
       )
       .join("\n");
 
-    console.log("Output:", outTXT);
+    // Create blob
     const blob = new Blob([outTXT], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "output_models.txt";
 
-    // // Trigger download
-    document.body.appendChild(link);
-    link.click();
-
-    // // Cleanup
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Use showSaveFilePicker API for native file save dialog
+    try {
+      ((window as unknown) as Window).showSaveFilePicker({
+        suggestedName: 'velocity_model.txt',
+        types: [{
+          description: 'Text Files',
+          accept: {
+            'text/plain': ['.txt'],
+          },
+        }],
+      }).then(async (handle:any) => {
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      });
+    } catch (err) {
+      // Fallback for browsers that don't support showSaveFilePicker
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "velocity_model.txt";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   }, [layers]);
 
   // Add click handler for the plot area
