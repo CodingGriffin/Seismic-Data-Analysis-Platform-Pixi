@@ -5,6 +5,16 @@ import { Point } from "../types";
 import { CalcCurve } from "../utils";
 extend({ Graphics, Container });
 
+interface PickData extends Point {
+  d1: number;
+  d2: number;
+  frequency: number;
+  d3: number;
+  slowness: number;
+  d4: number;
+  d5: number;
+}
+
 export const LeftPlot = ({
   updatedLayers,
   phase_vel_min,
@@ -42,12 +52,7 @@ export const LeftPlot = ({
         (_, index) =>
           axisLimits.xmin + (index * (axisLimits.xmax - axisLimits.xmin)) / 20
       );
-    //         period_vals Array of periods to calculate velocity for
-    //  * @param num_layers Number of layers
-    //  * @param layer_thicknesses Thicknesses of each layer. Calculate using end_depth - start_depth
-    //  * @param vels_shear Shear Wave velocity
-    //  * @param phase_vel_min Minimum velocity - use min value from window
-    //  * @param phase_vel_max
+
     if (updatedLayers.length) {
       const num_layers: number = updatedLayers.length;
       console.log(num_layers);
@@ -85,29 +90,60 @@ export const LeftPlot = ({
     axisLimits.xmax,
   ]);
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const text = await file.text();
-    const newPoints = text
+    const newPoints: PickData[] = text
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
       .map((line) => {
-        const [x, y] = line.split(",").map((num) => parseFloat(num.trim()));
-        return { x, y }; // x is period (second value), y is velocity (first value)
+        const [
+          d1,
+          d2,
+          frequency,
+          d3,
+          slowness,
+          d4,
+          d5
+        ] = line.split(/\s+/).map(num => parseFloat(num.trim()));
+        
+        // Calculate period from frequency (T = 1/f)
+        const period = 1 / frequency;
+        // Calculate velocity from slowness (v = 1/s)
+        // Convert slowness from s/km to km/s
+        const velocity = 1 / slowness;
+
+        return {
+          // Original data
+          d1,
+          d2,
+          frequency,
+          d3,
+          slowness,
+          d4,
+          d5,
+          // Calculated x,y for plotting
+          x: period,
+          y: velocity
+        };
       })
-      .filter((point) => !isNaN(point.x) && !isNaN(point.y));
+      .filter(point => 
+        !isNaN(point.x) && 
+        !isNaN(point.y) && 
+        point.x > 0 && 
+        point.y > 0
+      );
+
     console.log("Parsed data:", newPoints);
     if (newPoints.length > 0) {
       const xValues = newPoints.map((p) => p.x);
       const yValues = newPoints.map((p) => p.y);
 
       setAxisLimits({
-        xmin: Math.max(0.001, Math.min(...xValues)), // Ensure xmin is > 0
+        xmin: Math.max(0.001, Math.min(...xValues)),
         xmax: Math.max(...xValues),
         ymin: Math.min(...yValues),
         ymax: Math.max(...yValues),
@@ -201,7 +237,7 @@ export const LeftPlot = ({
 
         <input
           type="file"
-          accept=".txt"
+          accept=".pck"
           onChange={handleFileUpload}
           className="block w-full text-sm text-gray-500 mb-4
                         file:mr-4 file:py-2 file:px-4
