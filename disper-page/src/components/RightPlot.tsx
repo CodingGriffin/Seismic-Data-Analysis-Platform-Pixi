@@ -98,11 +98,7 @@ export const RightPlot = ({
         });
         g.beginPath();
 
-        // First layer's start depth
-        const firstY = coordinateHelpers.toScreenY(layers[0].startDepth);
-        g.moveTo(0, firstY);
-        g.lineTo(plotDimensions.width, firstY);
-
+        // Skip drawing the first layer's start depth (0)
         // Draw all layer end depths
         layers.forEach((layer) => {
           const y = coordinateHelpers.toScreenY(layer.endDepth);
@@ -152,19 +148,17 @@ export const RightPlot = ({
           })
           .filter((item) => !isNaN(item.depth) && !isNaN(item.velocity));
 
-        console.log("Parsed data:", data); // Debug log
-
         if (data.length > 0) {
           // Create layers from consecutive points
           const newLayers: Layer[] = [];
           for (let i = 0; i < data.length - 1; i += 2) {
-            newLayers.push({
-              startDepth: data[i].depth,
+            const layer: Layer = {
+              startDepth: i === 0 ? 0 : data[i].depth, // Force first layer to start at 0
               endDepth: data[i + 1].depth,
               velocity: data[i].velocity,
-            });
+            };
+            newLayers.push(layer);
           }
-          console.log("Created layers:", newLayers); // Debug log
 
           // Update axis limits based on data
           const depthValues = data.map((d) => d.depth);
@@ -173,11 +167,9 @@ export const RightPlot = ({
           const newAxisLimits = {
             xmin: Math.min(...velocityValues) * 0.9,
             xmax: Math.max(...velocityValues) * 1.1,
-            ymin: Math.max(0, Math.min(...depthValues) * 0.9),
+            ymin: 0, // Force ymin to 0
             ymax: Math.max(...depthValues) * 1.1,
           };
-
-          console.log("New axis limits:", newAxisLimits); // Debug log
 
           setLayers(newLayers);
           setAxisLimits(newAxisLimits);
@@ -193,6 +185,11 @@ export const RightPlot = ({
     type: "boundary" | "velocity"
   ) => {
     event.stopPropagation();
+
+    // Skip if trying to interact with first layer's start boundary
+    if (type === "boundary" && layerIndex === 0) {
+      return;
+    }
 
     // Handle shift+click to add new layer
     if (event.shiftKey && type === "velocity") {
@@ -631,26 +628,6 @@ export const RightPlot = ({
 
                 {/* Separate container for hit areas */}
                 <pixiContainer>
-                  {/* Hit area for first boundary */}
-                  {layers.length > 0 && (
-                    <pixiGraphics
-                      draw={(g: Graphics) => {
-                        g.clear();
-                        g.setFillStyle({ color: 0xffffff, alpha: 0 });
-                        const y = coordinateHelpers.toScreenY(
-                          layers[0].startDepth
-                        );
-                        g.rect(0, y - 10, plotDimensions.width, 20);
-                        g.fill();
-                      }}
-                      eventMode="static"
-                      cursor="ns-resize"
-                      onpointerdown={(e: any) =>
-                        handlePointerDown(e, 0, "boundary")
-                      }
-                    />
-                  )}
-
                   {/* Hit areas for middle boundaries */}
                   {layers.map((layer, index) => (
                     <pixiGraphics
@@ -676,12 +653,8 @@ export const RightPlot = ({
                         g.clear();
                         g.setFillStyle({ color: 0xffffff, alpha: 0 });
                         const x = coordinateHelpers.toScreenX(layer.velocity);
-                        const startY = coordinateHelpers.toScreenY(
-                          layer.startDepth
-                        );
-                        const endY = coordinateHelpers.toScreenY(
-                          layer.endDepth
-                        );
+                        const startY = coordinateHelpers.toScreenY(layer.startDepth);
+                        const endY = coordinateHelpers.toScreenY(layer.endDepth);
                         g.rect(x - 10, startY, 20, endY - startY);
                         g.fill();
                       }}
