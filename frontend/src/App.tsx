@@ -1,60 +1,56 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import "./App.scss";
-import GeometryButton from "./components/GeometryButton.tsx";
-import { GeometryItem } from "./components/GeometryButton.tsx";
-import AddGeometry from "./components/AddGeometry.tsx";
-import GeometryEditor from "./components/EditGeometry.tsx";
+import GeometryButton from "./components/GeometryButton";
+import { GeometryItem } from "./types";
+import AddGeometry from "./components/AddGeometry";
+import GeometryEditor from "./components/EditGeometry";
 function App() {
   const [geometry, setGeometry] = useState<GeometryItem[]>([]);
   const [showAddGeometry, setShowAddGeometry] = useState(false);
-  
+  const [showEditGeometry, setShowEditGeometry] = useState(false);
+
   const handleGeometryAdd = (data: { units: string; data: GeometryItem[] }) => {
     setGeometry(data.data);
     setShowAddGeometry(false);
   };
 
-  useEffect(() => {
-    console.log("geometry", geometry);
-  }, [geometry]);
+  const handleGeometryEdit = (data: GeometryItem[]) => {
+    setGeometry(data);
+  };
 
   return (
-    // <>
-    //   <div className="container mt-5">
-    //     <GeometryButton 
-    //       geometry={geometry} 
-    //       addGeometry={() => setShowAddGeometry(true)} 
-    //       editGeometry={() => {}}
-    //     />
-    //   </div>
+    <>
+      <div className="container mt-5">
+        <GeometryButton 
+          geometry={geometry} 
+          addGeometry={() => setShowAddGeometry(true)} 
+          editGeometry={() => setShowEditGeometry(true)}
+        />
+      </div>
 
-    //   <div 
-    //     className={`modal-backdrop fade ${showAddGeometry ? 'show' : ''}`} 
-    //     style={{ display: showAddGeometry ? 'block' : 'none' }}
-    //   />
-
-    //   <div 
-    //     className={`modal fade ${showAddGeometry ? 'show' : ''}`} 
-    //     style={{ display: showAddGeometry ? 'block' : 'none' }}
-    //     onClick={(e) => {
-    //       if (e.target === e.currentTarget) {
-    //         setShowAddGeometry(false);
-    //       }
-    //     }}
-    //     tabIndex={-1}
-    //     role="dialog"
-    //     aria-modal="true"
-    //   >
-    //     <div className="modal-dialog">
-    //       {showAddGeometry && (
-    //         <AddGeometry
-    //           onSetGeometry={handleGeometryAdd}
-    //           onClose={() => setShowAddGeometry(false)}
-    //         />
-    //       )}
-    //     </div>
-    //   </div>
-    // </>
-    <GeometryEditor initialPoints={geometry} onPointsChange={(points) => setGeometry(points)} />
+      {(showAddGeometry || showEditGeometry) && (
+        <>
+          <div className="modal-backdrop show" />
+          <div className="modal show d-block">
+            <div className="modal-dialog geometry-modal">
+              {showAddGeometry && (
+                <AddGeometry
+                  onSetGeometry={handleGeometryAdd}
+                  onClose={() => setShowAddGeometry(false)}
+                />
+              )}
+              {showEditGeometry && (
+                <GeometryEditor 
+                  initialPoints={geometry} 
+                  onPointsChange={handleGeometryEdit}
+                  onClose={() => setShowEditGeometry(false)}
+                />
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 }
 

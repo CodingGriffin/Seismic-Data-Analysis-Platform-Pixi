@@ -1,6 +1,3 @@
-import * as React from "react";
-import axios from "axios";
-
 export interface GeometryItem {
     index: number,
     x: number,

@@ -23,6 +23,7 @@ import { CSS } from "@dnd-kit/utilities";
 interface GeometryEditorProps {
   initialPoints?: GeometryItem[];
   onPointsChange?: (points: GeometryItem[]) => void;
+  onClose: () => void;
 }
 
 function SortableRow({
@@ -101,12 +102,13 @@ function SortableRow({
 export default function GeometryEditor({
   initialPoints = [],
   onPointsChange,
+  onClose,
 }: GeometryEditorProps) {
   const [points, setPoints] = useState<GeometryItem[]>(initialPoints);
   const [units, setUnits] = useState<"Meters" | "Feet">("Meters");
   const [inputAsDepth, setInputAsDepth] = useState(false);
 
-  const peakElevation = Math.max(...points.map((p) => p.z));
+  const peakElevation = points.length > 0 ? Math.max(...points.map((p) => p.z)) : 0;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -180,11 +182,17 @@ export default function GeometryEditor({
   };
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <h5 className="card-title mb-0">View / Edit Geometry</h5>
+    <div className="modal-content">
+      <div className="modal-header">
+        <h5 className="modal-title">View / Edit Geometry</h5>
+        <button
+          type="button"
+          className="btn-close"
+          onClick={onClose}
+          aria-label="Close"
+        ></button>
       </div>
-      <div className="card-body">
+      <div className="modal-body">
         <div className="d-flex justify-content-between mb-3">
           <div>
             <div className="d-flex align-items-center gap-2">
@@ -234,38 +242,46 @@ export default function GeometryEditor({
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <div className="table-responsive">
-            <table className="table table-striped table-bordered">
-              <thead className="table-light">
-                <tr>
-                  <th>Index</th>
-                  <th>X</th>
-                  <th>Y</th>
-                  <th>Z</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <SortableContext
-                  items={points.map((point) => point.index)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {points.map((point, idx) => (
-                    <SortableRow
-                      key={point.index}
-                      point={point}
-                      index={idx}
-                      onDelete={deletePoint}
-                      onPointChange={handlePointChange}
-                    />
-                  ))}
-                </SortableContext>
-              </tbody>
-            </table>
-          </div>
+          {points.length > 0 ? (
+            <div className="table-responsive">
+              <table className="table table-striped table-bordered">
+                <thead className="table-light">
+                  <tr>
+                    <th>Index</th>
+                    <th>X</th>
+                    <th>Y</th>
+                    <th>Z</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <SortableContext
+                    items={points.map((point) => point.index)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {points.map((point, idx) => (
+                      <SortableRow
+                        key={point.index}
+                        point={point}
+                        index={idx}
+                        onDelete={deletePoint}
+                        onPointChange={handlePointChange}
+                      />
+                    ))}
+                  </SortableContext>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center p-5">
+              <p className="text-muted mb-3">No geometry points available.</p>
+              <p className="text-muted">Click "Add Point" to start adding geometry points.</p>
+            </div>
+          )}
         </DndContext>
-
-        <div className="d-flex gap-2 mt-3">
+      </div>
+      <div className="modal-footer">
+        <div className="d-flex gap-2">
           <button className="btn btn-primary" onClick={addPoint}>
             Add Point
           </button>
@@ -275,6 +291,9 @@ export default function GeometryEditor({
             disabled={points.length === 0}
           >
             Delete All
+          </button>
+          <button className="btn btn-secondary" onClick={onClose}>
+            Close
           </button>
         </div>
       </div>

@@ -357,7 +357,10 @@ export default function AddGeometry({
             <button
               className="btn btn-primary w-100"
               onClick={handleLoadData}
-              disabled={validationErrors.length > 0 || (inputMethod === "Spreadsheet" && previewData === null)}
+              disabled={
+                (inputMethod === "Text" && (!matrix.length || validationErrors.length > 0)) ||
+                (inputMethod === "Spreadsheet" && !previewData)
+              }
             >
               Load Data
             </button>
