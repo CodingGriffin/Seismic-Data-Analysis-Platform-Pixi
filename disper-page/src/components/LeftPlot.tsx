@@ -24,7 +24,7 @@ export const LeftPlot = ({
   const [points, setPoints] = useState<Point[]>([]);
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
   const [axisLimits, setAxisLimits] = useState({
-    xmin: 0.016, // Period min
+    xmin: 0.001, // Period min
     xmax: 0.6, // Period max
     ymin: 30, // Velocity min
     ymax: 500, // Velocity max
@@ -217,7 +217,7 @@ export const LeftPlot = ({
                 value={axisLimits.xmax}
                 onChange={(e) => handleAxisLimitChange("xmax", e.target.value)}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="0.1"
+                step="0.05"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -229,7 +229,7 @@ export const LeftPlot = ({
                 value={axisLimits.xmin}
                 onChange={(e) => handleAxisLimitChange("xmin", e.target.value)}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="0.1"
+                step="0.05"
               />
             </div>
           </div>
