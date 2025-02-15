@@ -143,10 +143,10 @@ export const LeftPlot = ({
       const yValues = newPoints.map((p) => p.y);
 
       setAxisLimits({
-        xmin: Math.max(0.001, Math.min(...xValues)),
-        xmax: Math.max(...xValues),
-        ymin: Math.min(...yValues),
-        ymax: Math.max(...yValues),
+        xmin: Math.max(0.001, Math.round(Math.min(...xValues) * 1000) / 1000), 
+        xmax: Math.round(Math.max(...xValues) * 1000) / 1000, 
+        ymin: 0, 
+        ymax: Math.ceil(Math.max(...yValues)), 
       });
 
       setPoints(newPoints);

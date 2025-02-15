@@ -166,10 +166,10 @@ export const RightPlot = ({
           const velocityValues = data.map((d) => d.velocity);
 
           const newAxisLimits = {
-            xmin: Math.min(...velocityValues) * 0.9,
-            xmax: Math.max(...velocityValues) * 1.1,
-            ymin: 0, // Force ymin to 0
-            ymax: Math.max(...depthValues) * 1.1,
+            xmin: 0,
+            xmax: Math.ceil(Math.max(...velocityValues)),
+            ymin: 0,
+            ymax: Math.ceil(Math.max(...depthValues)),
           };
 
           setLayers(newLayers);
