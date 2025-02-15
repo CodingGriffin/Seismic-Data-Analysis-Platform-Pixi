@@ -21,6 +21,7 @@ export default class VelModel {
     private c1: number;
     private c2: number;
     private c3: number;
+    private vs30: number;
 
     constructor(
         num_layers: number,
@@ -59,6 +60,11 @@ export default class VelModel {
         this.c3 = 0;
         //   this.ek = 0;
         this.tol1 = 0;
+        this.vs30 = this.calc_vsx(30)
+    }
+
+    public get_vs30() {
+        return this.vs30;
     }
 
     /* return rayleigh phase velocity given frequency in Hertz */
@@ -68,6 +74,73 @@ export default class VelModel {
 
     public getc_period(period: number): number | null {
         return this.raydsp(period);
+    }
+
+    /**
+     * Calculates the average shear velocity to the given depth in meters.
+     *
+     * @param calcDepth Depth to calculate to.
+     */
+    public calc_vsx(calcDepth: number): number {
+        let currentDepth = 0.0;
+        let numer = 0.0;
+        let denom = 0.0;
+        let i = 0;
+        let thickness, velShear;
+
+        do {
+            thickness = this.layer_thicknesses[i]
+            if ((currentDepth + thickness) > calcDepth) {
+                // Adjust thickness so we only account for the portion of the layer that is within our ROI
+                thickness = calcDepth - currentDepth;
+                currentDepth = calcDepth + 0.0001;
+            }
+            velShear = this.vels_shear[i]
+            numer += thickness;
+            denom += thickness / velShear;
+            i++;
+        } while (currentDepth < calcDepth && i < this.num_layers)
+        return numer / denom;
+    }
+
+    public static calc_site_class(asceVersion: string, vs30: number): string | null {
+        const velFeetPerSec = vs30 * 3.28084;
+        asceVersion = asceVersion.toLowerCase()
+        let siteClass;
+        if (asceVersion === "asce_7_16") {
+            if (velFeetPerSec > 5000) {
+                siteClass = "A"; // 5000 < A
+            } else if (velFeetPerSec > 2500) {
+                siteClass = "B"; // 2500 < B <= 5000
+            } else if (velFeetPerSec > 1200) {
+                siteClass = "C"; // 1200 < C <= 2500
+            } else if (velFeetPerSec > 600) {
+                siteClass = "D"; // 600 < D <= 1200
+            } else {
+                siteClass = "E"; // E <= 600
+            }
+        } else if (asceVersion === "asce_7_22") {
+            if (velFeetPerSec > 5000) {
+                siteClass = "A"; // 5000 < A
+            } else if (velFeetPerSec > 3000) {
+                siteClass = "B"; // 3000 < B <= 5000
+            } else if (velFeetPerSec > 2100) {
+                siteClass = "BC"; // 2100 < C <= 3000
+            } else if (velFeetPerSec > 1450) {
+                siteClass = "C"; // 1450 < C <= 2100
+            } else if (velFeetPerSec > 1000) {
+                siteClass = "CD"; // 1000 < C <= 1450
+            } else if (velFeetPerSec > 700) {
+                siteClass = "D"; // 700 < C <= 1000
+            } else if (velFeetPerSec > 500) {
+                siteClass = "DE"; // 500 < D <= 700
+            } else {
+                siteClass = "E"; // E <= 500
+            }
+        } else {
+            siteClass = null;
+        }
+        return siteClass;
     }
 
     raydsp(period: number) {
