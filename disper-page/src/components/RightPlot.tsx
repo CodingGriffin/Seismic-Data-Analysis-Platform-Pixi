@@ -564,7 +564,7 @@ export const RightPlot = ({
                   }))
                 }
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="0.001"
+                step="1.0"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -581,7 +581,7 @@ export const RightPlot = ({
                   }))
                 }
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="0.001"
+                step="1.0"
               />
             </div>
           </div>
