@@ -106,16 +106,11 @@ export const LeftPlot = ({
       const xValues = newPoints.map((p) => p.x);
       const yValues = newPoints.map((p) => p.y);
 
-      const xmin = Math.min(...xValues);
-      const xmax = Math.max(...xValues);
-      const ymin = Math.min(...yValues);
-      const ymax = Math.max(...yValues);
-
       setAxisLimits({
-        xmin: xmin,
-        xmax: xmax,
-        ymin: ymin,
-        ymax: ymax,
+        xmin: Math.max(0.001, Math.min(...xValues)), // Ensure xmin is > 0
+        xmax: Math.max(...xValues),
+        ymin: Math.min(...yValues),
+        ymax: Math.max(...yValues),
       });
 
       setPoints(newPoints);
@@ -129,6 +124,11 @@ export const LeftPlot = ({
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       setAxisLimits((prev) => {
+        // Ensure xmin is always greater than 0
+        if (axis === "xmin" && numValue <= 0) {
+          return prev;
+        }
+        
         const newLimits = { ...prev, [axis]: numValue };
         if (
           newLimits.xmin >= newLimits.xmax ||

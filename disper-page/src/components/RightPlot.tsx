@@ -173,9 +173,10 @@ export const RightPlot = ({
           const newAxisLimits = {
             xmin: Math.min(...velocityValues) * 0.9,
             xmax: Math.max(...velocityValues) * 1.1,
-            ymin: Math.min(...depthValues) * 0.9,
+            ymin: Math.max(0, Math.min(...depthValues) * 0.9),
             ymax: Math.max(...depthValues) * 1.1,
           };
+
           console.log("New axis limits:", newAxisLimits); // Debug log
 
           setLayers(newLayers);
@@ -399,32 +400,39 @@ export const RightPlot = ({
   };
 
   const handleDownloadLayers = useCallback(() => {
-    const OutputData = [];    
+    const OutputData = [];
     for (let i = 0; i < layers.length; i++) {
-        const current = layers[i];
-        OutputData.push({
-            depth: current.startDepth,
-            density: 2, 
-            ignore: 0,  
-            velocity: current.velocity
-        });
-    
-        OutputData.push({
-            depth: current.endDepth,
-            density: 2, 
-            ignore: 0,
-            velocity: current.velocity
-        });
+      const current = layers[i];
+      OutputData.push({
+        depth: current.startDepth,
+        density: 2,
+        ignore: 0,
+        velocity: current.velocity,
+      });
+
+      OutputData.push({
+        depth: current.endDepth,
+        density: 2,
+        ignore: 0,
+        velocity: current.velocity,
+      });
     }
     console.log("Output:", OutputData);
-    const outTXT = OutputData.sort((a, b) => a.depth - b.depth).map((output:any) => `${output.depth.toFixed(3)} ${output.density.toFixed(3)} ${output.ignore.toFixed(3)} ${output.velocity.toFixed(3)}`).join('\n');
-   
+    const outTXT = OutputData.sort((a, b) => a.depth - b.depth)
+      .map(
+        (output: any) =>
+          `${output.depth.toFixed(3)} ${output.density.toFixed(
+            3
+          )} ${output.ignore.toFixed(3)} ${output.velocity.toFixed(3)}`
+      )
+      .join("\n");
+
     console.log("Output:", outTXT);
-    const blob = new Blob([outTXT], { type: 'text/plain' });
+    const blob = new Blob([outTXT], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = 'output_models.txt';
+    link.download = "output_models.txt";
 
     // // Trigger download
     document.body.appendChild(link);
@@ -516,12 +524,13 @@ export const RightPlot = ({
               <input
                 type="number"
                 value={axisLimits.ymin}
-                onChange={(e) =>
+                onChange={(e) => {
+                  if (parseFloat(e.target.value) < 0) return;
                   setAxisLimits((prev) => ({
                     ...prev,
                     ymin: parseFloat(e.target.value),
-                  }))
-                }
+                  }));
+                }}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
                 step="1"
               />
