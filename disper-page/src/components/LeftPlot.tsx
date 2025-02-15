@@ -181,7 +181,7 @@ export const LeftPlot = ({
                 value={axisLimits.xmax}
                 onChange={(e) => handleAxisLimitChange("xmax", e.target.value)}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="0.1"
+                step="0.05"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -193,7 +193,7 @@ export const LeftPlot = ({
                 value={axisLimits.xmin}
                 onChange={(e) => handleAxisLimitChange("xmin", e.target.value)}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="0.1"
+                step="0.05"
               />
             </div>
           </div>
