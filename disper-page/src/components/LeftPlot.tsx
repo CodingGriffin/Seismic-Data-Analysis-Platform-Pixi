@@ -106,16 +106,11 @@ export const LeftPlot = ({
       const xValues = newPoints.map((p) => p.x);
       const yValues = newPoints.map((p) => p.y);
 
-      const xmin = Math.min(...xValues);
-      const xmax = Math.max(...xValues);
-      const ymin = Math.min(...yValues);
-      const ymax = Math.max(...yValues);
-
       setAxisLimits({
-        xmin: xmin,
-        xmax: xmax,
-        ymin: ymin,
-        ymax: ymax,
+        xmin: Math.max(0.001, Math.min(...xValues)), // Ensure xmin is > 0
+        xmax: Math.max(...xValues),
+        ymin: Math.min(...yValues),
+        ymax: Math.max(...yValues),
       });
 
       setPoints(newPoints);
@@ -129,6 +124,11 @@ export const LeftPlot = ({
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       setAxisLimits((prev) => {
+        // Ensure xmin is always greater than 0
+        if (axis === "xmin" && numValue <= 0) {
+          return prev;
+        }
+        
         const newLimits = { ...prev, [axis]: numValue };
         if (
           newLimits.xmin >= newLimits.xmax ||
@@ -215,16 +215,17 @@ export const LeftPlot = ({
           className="relative border border-gray-200 rounded-lg bg-white shadow-sm w-full aspect-[4/3] min-h-[300px]"
           ref={plotRef}
         >
-          {/* Y-axis labels (left side) */}
+          <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-sm">
+            Velocity (m/s)
+          </div>
+
+          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm">
+            Period (s)
+          </div>
+
           <div className="absolute -left-8 top-0 h-full flex flex-col justify-between">
             <div className="text-xs">{axisLimits.ymax.toFixed(3)}</div>
             <div className="text-xs">{axisLimits.ymin.toFixed(3)}</div>
-          </div>
-
-          {/* X-axis labels (bottom) */}
-          <div className="absolute -bottom-6 left-0 w-full flex justify-between">
-            <div className="text-xs">{axisLimits.xmin.toFixed(3)}</div>
-            <div className="text-xs">{axisLimits.xmax.toFixed(3)}</div>
           </div>
 
           {plotRef.current && (

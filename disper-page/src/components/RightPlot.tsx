@@ -2,6 +2,7 @@ import { Container, Sprite, Graphics, Text } from "pixi.js";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Application, extend } from "@pixi/react";
 extend({ Container, Sprite, Graphics, Text });
+import { Window } from "../types";
 
 interface Layer {
   startDepth: number;
@@ -98,11 +99,7 @@ export const RightPlot = ({
         });
         g.beginPath();
 
-        // First layer's start depth
-        const firstY = coordinateHelpers.toScreenY(layers[0].startDepth);
-        g.moveTo(0, firstY);
-        g.lineTo(plotDimensions.width, firstY);
-
+        // Skip drawing the first layer's start depth (0)
         // Draw all layer end depths
         layers.forEach((layer) => {
           const y = coordinateHelpers.toScreenY(layer.endDepth);
@@ -152,19 +149,17 @@ export const RightPlot = ({
           })
           .filter((item) => !isNaN(item.depth) && !isNaN(item.velocity));
 
-        console.log("Parsed data:", data); // Debug log
-
         if (data.length > 0) {
           // Create layers from consecutive points
           const newLayers: Layer[] = [];
           for (let i = 0; i < data.length - 1; i += 2) {
-            newLayers.push({
-              startDepth: data[i].depth,
+            const layer: Layer = {
+              startDepth: i === 0 ? 0 : data[i].depth, // Force first layer to start at 0
               endDepth: data[i + 1].depth,
               velocity: data[i].velocity,
-            });
+            };
+            newLayers.push(layer);
           }
-          console.log("Created layers:", newLayers); // Debug log
 
           // Update axis limits based on data
           const depthValues = data.map((d) => d.depth);
@@ -173,10 +168,9 @@ export const RightPlot = ({
           const newAxisLimits = {
             xmin: Math.min(...velocityValues) * 0.9,
             xmax: Math.max(...velocityValues) * 1.1,
-            ymin: Math.min(...depthValues) * 0.9,
+            ymin: 0, // Force ymin to 0
             ymax: Math.max(...depthValues) * 1.1,
           };
-          console.log("New axis limits:", newAxisLimits); // Debug log
 
           setLayers(newLayers);
           setAxisLimits(newAxisLimits);
@@ -192,6 +186,11 @@ export const RightPlot = ({
     type: "boundary" | "velocity"
   ) => {
     event.stopPropagation();
+
+    // Skip if trying to interact with first layer's start boundary
+    if (type === "boundary" && layerIndex === 0) {
+      return;
+    }
 
     // Handle shift+click to add new layer
     if (event.shiftKey && type === "velocity") {
@@ -399,40 +398,62 @@ export const RightPlot = ({
   };
 
   const handleDownloadLayers = useCallback(() => {
-    const OutputData = [];    
+    const OutputData = [];
     for (let i = 0; i < layers.length; i++) {
-        const current = layers[i];
-        OutputData.push({
-            depth: current.startDepth,
-            density: 2, 
-            ignore: 0,  
-            velocity: current.velocity
-        });
-    
-        OutputData.push({
-            depth: current.endDepth,
-            density: 2, 
-            ignore: 0,
-            velocity: current.velocity
-        });
+      const current = layers[i];
+      OutputData.push({
+        depth: current.startDepth,
+        density: 2,
+        ignore: 0,
+        velocity: current.velocity,
+      });
+
+      OutputData.push({
+        depth: current.endDepth,
+        density: 2,
+        ignore: 0,
+        velocity: current.velocity,
+      });
     }
-    console.log("Output:", OutputData);
-    const outTXT = OutputData.sort((a, b) => a.depth - b.depth).map((output:any) => `${output.depth.toFixed(3)} ${output.density.toFixed(3)} ${output.ignore.toFixed(3)} ${output.velocity.toFixed(3)}`).join('\n');
-   
-    console.log("Output:", outTXT);
-    const blob = new Blob([outTXT], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'output_models.txt';
 
-    // // Trigger download
-    document.body.appendChild(link);
-    link.click();
+    const outTXT = OutputData.sort((a, b) => a.depth - b.depth)
+      .map(
+        (output: any) =>
+          `${output.depth.toFixed(3)} ${output.density.toFixed(
+            3
+          )} ${output.ignore.toFixed(3)} ${output.velocity.toFixed(3)}`
+      )
+      .join("\n");
 
-    // // Cleanup
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Create blob
+    const blob = new Blob([outTXT], { type: "text/plain" });
+
+    // Use showSaveFilePicker API for native file save dialog
+    try {
+      ((window as unknown) as Window).showSaveFilePicker({
+        suggestedName: 'velocity_model.txt',
+        types: [{
+          description: 'Text Files',
+          accept: {
+            'text/plain': ['.txt'],
+          },
+        }],
+      }).then(async (handle:any) => {
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      });
+    } catch (err) {
+      // Fallback for browsers that don't support showSaveFilePicker
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "velocity_model.txt";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   }, [layers]);
 
   // Add click handler for the plot area
@@ -516,12 +537,13 @@ export const RightPlot = ({
               <input
                 type="number"
                 value={axisLimits.ymin}
-                onChange={(e) =>
+                onChange={(e) => {
+                  if (parseFloat(e.target.value) < 0) return;
                   setAxisLimits((prev) => ({
                     ...prev,
                     ymin: parseFloat(e.target.value),
-                  }))
-                }
+                  }));
+                }}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
                 step="1"
               />
@@ -593,13 +615,17 @@ export const RightPlot = ({
           onPointerUp={() => setDragState(null)}
           onPointerDown={handlePlotClick}
         >
-          {/* Y-axis labels (left side) */}
+          <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-sm">
+            Depth (m)
+          </div>
           <div className="absolute -left-8 top-0 h-full flex flex-col justify-between">
             <div className="text-xs">{axisLimits.ymin.toFixed(3)}</div>
             <div className="text-xs">{axisLimits.ymax.toFixed(3)}</div>
           </div>
 
-          {/* X-axis labels (bottom) */}
+          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm">
+            Velocity (m/s)
+          </div>
           <div className="absolute -bottom-6 left-0 w-full flex justify-between">
             <div className="text-xs">{axisLimits.xmin.toFixed(3)}</div>
             <div className="text-xs">{axisLimits.xmax.toFixed(3)}</div>
@@ -618,26 +644,6 @@ export const RightPlot = ({
 
                 {/* Separate container for hit areas */}
                 <pixiContainer>
-                  {/* Hit area for first boundary */}
-                  {layers.length > 0 && (
-                    <pixiGraphics
-                      draw={(g: Graphics) => {
-                        g.clear();
-                        g.setFillStyle({ color: 0xffffff, alpha: 0 });
-                        const y = coordinateHelpers.toScreenY(
-                          layers[0].startDepth
-                        );
-                        g.rect(0, y - 10, plotDimensions.width, 20);
-                        g.fill();
-                      }}
-                      eventMode="static"
-                      cursor="ns-resize"
-                      onpointerdown={(e: any) =>
-                        handlePointerDown(e, 0, "boundary")
-                      }
-                    />
-                  )}
-
                   {/* Hit areas for middle boundaries */}
                   {layers.map((layer, index) => (
                     <pixiGraphics
@@ -663,12 +669,8 @@ export const RightPlot = ({
                         g.clear();
                         g.setFillStyle({ color: 0xffffff, alpha: 0 });
                         const x = coordinateHelpers.toScreenX(layer.velocity);
-                        const startY = coordinateHelpers.toScreenY(
-                          layer.startDepth
-                        );
-                        const endY = coordinateHelpers.toScreenY(
-                          layer.endDepth
-                        );
+                        const startY = coordinateHelpers.toScreenY(layer.startDepth);
+                        const endY = coordinateHelpers.toScreenY(layer.endDepth);
                         g.rect(x - 10, startY, 20, endY - startY);
                         g.fill();
                       }}
