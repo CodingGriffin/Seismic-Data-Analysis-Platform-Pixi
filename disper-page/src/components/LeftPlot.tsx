@@ -215,16 +215,17 @@ export const LeftPlot = ({
           className="relative border border-gray-200 rounded-lg bg-white shadow-sm w-full aspect-[4/3] min-h-[300px]"
           ref={plotRef}
         >
-          {/* Y-axis labels (left side) */}
+          <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-sm">
+            Velocity (m/s)
+          </div>
+
+          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm">
+            Period (s)
+          </div>
+
           <div className="absolute -left-8 top-0 h-full flex flex-col justify-between">
             <div className="text-xs">{axisLimits.ymax.toFixed(3)}</div>
             <div className="text-xs">{axisLimits.ymin.toFixed(3)}</div>
-          </div>
-
-          {/* X-axis labels (bottom) */}
-          <div className="absolute -bottom-6 left-0 w-full flex justify-between">
-            <div className="text-xs">{axisLimits.xmin.toFixed(3)}</div>
-            <div className="text-xs">{axisLimits.xmax.toFixed(3)}</div>
           </div>
 
           {plotRef.current && (
