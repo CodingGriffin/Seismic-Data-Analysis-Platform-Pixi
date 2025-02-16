@@ -150,8 +150,8 @@ export const LeftPlot = ({
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       setAxisLimits((prev) => {
-        // Ensure xmin is always greater than 0
-        if (axis === "xmin" && numValue <= 0) {
+        // Ensure xmin and ymin are never negative
+        if ((axis === "xmin" || axis === "ymin") && numValue < 0) {
           return prev;
         }
 

@@ -574,13 +574,16 @@ export const RightPlot = ({
               <input
                 type="number"
                 value={axisLimits.xmin}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (value < 0) return;
                   setAxisLimits((prev) => ({
                     ...prev,
-                    xmin: parseFloat(e.target.value),
-                  }))
-                }
+                    xmin: value,
+                  }));
+                }}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
+                min="0"
                 step="1.0"
               />
             </div>
