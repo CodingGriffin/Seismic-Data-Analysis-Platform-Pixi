@@ -23,6 +23,7 @@ export const LeftPlot = ({
   const [vels, setVels] = useState<(number | null)[]>([]);
   const [points, setPoints] = useState<Point[]>([]);
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
+  const [numPoints, setNumPoints] = useState<number>(20);
   const [axisLimits, setAxisLimits] = useState({
     xmin: 0.001, // Period min
     xmax: 0.6, // Period max
@@ -45,13 +46,13 @@ export const LeftPlot = ({
   }, []);
   useEffect(() => {
     console.log("updatedLayers", updatedLayers);
-    // const periods = points.map((point) => point.x).sort((a, b) => a - b);
-    const periods = Array(61)
+    // Generate periods array to always fill from xmin to xmax
+    const periods = Array(numPoints + 1)  // +1 to include both start and end points
       .fill(null)
-      .map(
-        (_, index) =>
-          axisLimits.xmin + (index * (axisLimits.xmax - axisLimits.xmin)) / 20
-      );
+      .map((_, index) => {
+        // Use linear interpolation to ensure we include both xmin and xmax
+        return axisLimits.xmin + (index * (axisLimits.xmax - axisLimits.xmin)) / numPoints;
+      });
 
     if (updatedLayers.length) {
       const num_layers: number = updatedLayers.length;
@@ -68,19 +69,13 @@ export const LeftPlot = ({
         num_layers,
         layer_thicknesses,
         vels_shear,
-        Math.max(axisLimits.ymin-50, 10),
-        axisLimits.ymax+10
+        Math.max(axisLimits.ymin - 50, 10),
+        axisLimits.ymax + 10
       );
       console.log("Periods", periods);
       console.log("Vels:", vels);
       setVels(vels);
       setPeriods(periods);
-      // if (vels.length > 0 && vels.every((v) => v !== null))
-      //   setAxisLimits((prev) => ({
-      //     ...prev,
-      //     ymin: Math.min(...vels),
-      //     ymax: Math.max(...vels),
-      //   }));
     }
   }, [
     updatedLayers,
@@ -88,9 +83,12 @@ export const LeftPlot = ({
     phase_vel_max,
     axisLimits.xmin,
     axisLimits.xmax,
+    numPoints,
   ]);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -100,16 +98,10 @@ export const LeftPlot = ({
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
       .map((line) => {
-        const [
-          d1,
-          d2,
-          frequency,
-          d3,
-          slowness,
-          d4,
-          d5
-        ] = line.split(/\s+/).map(num => parseFloat(num.trim()));
-        
+        const [d1, d2, frequency, d3, slowness, d4, d5] = line
+          .split(/\s+/)
+          .map((num) => parseFloat(num.trim()));
+
         // Calculate period from frequency (T = 1/f)
         const period = 1 / frequency;
         // Calculate velocity from slowness (v = 1/s)
@@ -127,14 +119,12 @@ export const LeftPlot = ({
           d5,
           // Calculated x,y for plotting
           x: period,
-          y: velocity
+          y: velocity,
         };
       })
-      .filter(point => 
-        !isNaN(point.x) && 
-        !isNaN(point.y) && 
-        point.x > 0 && 
-        point.y > 0
+      .filter(
+        (point) =>
+          !isNaN(point.x) && !isNaN(point.y) && point.x > 0 && point.y > 0
       );
 
     console.log("Parsed data:", newPoints);
@@ -143,10 +133,10 @@ export const LeftPlot = ({
       const yValues = newPoints.map((p) => p.y);
 
       setAxisLimits({
-        xmin: Math.max(0.001, Math.round(Math.min(...xValues) * 1000) / 1000), 
-        xmax: Math.round(Math.max(...xValues) * 1000) / 1000, 
-        ymin: 0, 
-        ymax: Math.ceil(Math.max(...yValues)), 
+        xmin: Math.max(0.001, Math.round(Math.min(...xValues) * 1000) / 1000),
+        xmax: Math.round(Math.max(...xValues) * 1000) / 1000,
+        ymin: 0,
+        ymax: Math.ceil(Math.max(...yValues)*1.1),
       });
 
       setPoints(newPoints);
@@ -164,7 +154,7 @@ export const LeftPlot = ({
         if (axis === "xmin" && numValue <= 0) {
           return prev;
         }
-        
+
         const newLimits = { ...prev, [axis]: numValue };
         if (
           newLimits.xmin >= newLimits.xmax ||
@@ -234,19 +224,40 @@ export const LeftPlot = ({
             </div>
           </div>
         </div>
-
-        <input
-          type="file"
-          accept=".pck"
-          onChange={handleFileUpload}
-          className="block w-full text-sm text-gray-500 mb-4
+        <div className="flex justify-center gap-4">
+          <input
+            type="file"
+            accept=".pck"
+            onChange={handleFileUpload}
+            className="block w-full text-sm text-gray-500 mb-4
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
                         file:text-sm file:font-semibold
                         file:bg-blue-50 file:text-blue-700
                         hover:file:bg-blue-100"
-        />
-
+          />
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-600">
+                Number of Points:
+              </label>
+              <input
+                type="number"
+                value={numPoints}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  if (!isNaN(value) && value > 0 && value <= 100) {
+                    setNumPoints(value);
+                  }
+                }}
+                className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
+                min="1"
+                max="100"
+                step="1"
+              />
+            </div>
+          </div>
+        </div>
         <div
           className="relative border border-gray-200 rounded-lg bg-white shadow-sm w-full aspect-[4/3] min-h-[300px]"
           ref={plotRef}
