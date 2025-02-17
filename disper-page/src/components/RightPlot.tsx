@@ -88,6 +88,10 @@ export const RightPlot = ({
   const drawAllLines = useCallback(
     (g: Graphics) => {
       g.clear();
+      // Remove all existing children (including text)
+      while (g.children[0]) {
+        g.children[0].destroy();
+      }
 
       // Draw all black lines first
       if (layers.length > 0) {
@@ -110,7 +114,6 @@ export const RightPlot = ({
         g.closePath();
       }
 
-      // Draw all red velocity lines
       if (layers.length > 0) {
         g.setStrokeStyle({
           width: 2,
@@ -124,6 +127,19 @@ export const RightPlot = ({
           const endY = coordinateHelpers.toScreenY(layer.endDepth);
           g.moveTo(x, startY);
           g.lineTo(x, endY);
+
+          // Add velocity text
+          const textY = (startY + endY) / 2;
+          const text = new Text({
+            text: `${layer.velocity.toFixed(2)}`,
+            style: {
+              fontSize: 12,
+              fill: 0xff0000,
+              align: 'right'
+            }
+          });
+          text.position.set(x - 40, textY);
+          g.addChild(text);
         });
         g.stroke();
         g.closePath();
@@ -645,21 +661,6 @@ export const RightPlot = ({
                 {/* Single graphics object for all lines */}
                 <pixiGraphics draw={drawAllLines} />
 
-                {layers.map((layer) => (
-                  <pixiText
-                    // key={`velocity-label-${index}`}
-                    text={`${layer.velocity.toFixed(2)}`}
-                    x={coordinateHelpers.toScreenX(layer.velocity) - 40}
-                    y={(coordinateHelpers.toScreenY(layer.startDepth) + coordinateHelpers.toScreenY(layer.endDepth)) / 2}
-                    style={{
-                      fill: 0xff0000,
-                      fontSize: 12,
-                      align: 'right'
-                    }}
-                  />
-                ))}
-
-                {/* Separate container for hit areas */}
                 <pixiContainer>
                   {/* Hit areas for middle boundaries */}
                   {layers.map((layer, index) => (
