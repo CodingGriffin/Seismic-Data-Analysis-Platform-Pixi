@@ -24,6 +24,8 @@ interface DragState {
   isDragging: boolean;
 }
 
+const VELOCITY_MARGIN_FACTOR = 1.1; // 110% of max velocity
+
 export const RightPlot = ({
   handleLayerChange,
   handleAxisLimitsChange,
@@ -180,10 +182,11 @@ export const RightPlot = ({
           // Update axis limits based on data
           const depthValues = data.map((d) => d.depth);
           const velocityValues = data.map((d) => d.velocity);
+          const maxVelocity = Math.max(...velocityValues);
 
           const newAxisLimits = {
             xmin: 0,
-            xmax: Math.ceil(Math.max(...velocityValues)),
+            xmax: Math.ceil(maxVelocity * VELOCITY_MARGIN_FACTOR), // Set max velocity to 110% of highest velocity
             ymin: 0,
             ymax: Math.ceil(Math.max(...depthValues)),
           };
