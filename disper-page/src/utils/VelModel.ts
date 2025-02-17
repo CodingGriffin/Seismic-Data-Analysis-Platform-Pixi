@@ -98,6 +98,7 @@ export default class VelModel {
             velShear = this.vels_shear[i]
             numer += thickness;
             denom += thickness / velShear;
+            currentDepth += thickness
             i++;
         } while (currentDepth < calcDepth && i < this.num_layers)
         return numer / denom;
