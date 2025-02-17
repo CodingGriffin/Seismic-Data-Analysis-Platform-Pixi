@@ -1,4 +1,4 @@
-import { Container, Sprite, Graphics, Text } from "pixi.js";
+import { Container, Sprite, Graphics, Text} from "pixi.js";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Application, extend } from "@pixi/react";
 extend({ Container, Sprite, Graphics, Text });
@@ -645,11 +645,26 @@ export const RightPlot = ({
                 {/* Single graphics object for all lines */}
                 <pixiGraphics draw={drawAllLines} />
 
+                {layers.map((layer) => (
+                  <pixiText
+                    // key={`velocity-label-${index}`}
+                    text={`${layer.velocity.toFixed(2)}`}
+                    x={coordinateHelpers.toScreenX(layer.velocity) - 40}
+                    y={(coordinateHelpers.toScreenY(layer.startDepth) + coordinateHelpers.toScreenY(layer.endDepth)) / 2}
+                    style={{
+                      fill: 0xff0000,
+                      fontSize: 12,
+                      align: 'right'
+                    }}
+                  />
+                ))}
+
                 {/* Separate container for hit areas */}
                 <pixiContainer>
                   {/* Hit areas for middle boundaries */}
                   {layers.map((layer, index) => (
                     <pixiGraphics
+                      // key={`boundary-${index}`}
                       draw={(g: Graphics) => {
                         g.clear();
                         g.setFillStyle({ color: 0xffffff, alpha: 0 });
@@ -668,6 +683,7 @@ export const RightPlot = ({
                   {/* Hit areas for velocity lines */}
                   {layers.map((layer, index) => (
                     <pixiGraphics
+                      // key={`velocity-${index}`}
                       draw={(g: Graphics) => {
                         g.clear();
                         g.setFillStyle({ color: 0xffffff, alpha: 0 });
