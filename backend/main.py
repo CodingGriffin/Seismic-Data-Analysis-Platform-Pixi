@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from backend.utils import close_and_remove_file, get_sheets_from_excel
+from backend.utils import close_and_remove_file, get_sheets_from_excel, get_geometry_from_sgy
 from backend.utils import get_geometry_from_excel
 
 app = FastAPI()
@@ -72,7 +72,7 @@ async def get_elevation_from_excel_endpoint(
         raise HTTPException(400, "Failed to parse excel file.")
     return geometry_list
 
-@app.post("extractExcelSheets")
+@app.post("/extractExcelSheets")
 async def get_sheets_from_excel_endpoint(
         background_tasks: BackgroundTasks,
         excel_file: UploadFile = File(...),
@@ -99,3 +99,30 @@ async def get_sheets_from_excel_endpoint(
         print(e)
         raise HTTPException(400, "Failed to parse excel file.")
     return sheets_list
+
+@app.post("/extractSgyGeom")
+async def get_geometry_from_sgy_endpoint(
+        background_tasks: BackgroundTasks,
+        sgy_file: UploadFile = File(...),
+):
+    file_name = sgy_file.filename
+    split = file_name.split('.')
+    if len(split) <= 1:
+        raise HTTPException(400, "No file extension found.")
+    extension = "." + file_name.split('.')[-1]
+    try:
+        fd, path = tempfile.mkstemp(suffix=extension)
+        async with aiofiles.open(path, 'wb') as f:
+            while chunk := await sgy_file.read(CHUNK_SIZE):
+                await f.write(chunk)
+            os.close(fd)
+            await f.flush()
+            await f.close()
+        geometry = get_geometry_from_sgy(path)
+        background_tasks.add_task(close_and_remove_file(path))
+
+    except Exception as e:
+        print("Exception")
+        print(e)
+        raise HTTPException(400, "Failed to parse sgy file.")
+    return geometry

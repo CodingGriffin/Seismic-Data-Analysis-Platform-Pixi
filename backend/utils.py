@@ -1,6 +1,9 @@
 import os
 import re
+
+import numpy as np
 import pandas as pd
+import segyio
 
 
 def get_data_from_excel(excel_path):
@@ -52,3 +55,43 @@ def close_and_remove_file(path: str):
         os.remove(path)
 
     return local_close
+
+
+def parse_trace_headers(segyfile, n_traces):
+    '''
+    Taken from https://github.com/equinor/segyio-notebooks/blob/master/notebooks/basic/02_segy_quicklook.ipynb
+
+    Parse the segy file trace headers into a pandas dataframe.
+    Column names are defined from segyio internal tracefield
+    One row per trace
+    '''
+    # Get all header keys
+    headers = segyio.tracefield.keys
+    # Initialize dataframe with trace id as index and headers as columns
+    df = pd.DataFrame(index=range(1, n_traces + 1),
+                      columns=headers.keys())
+    # Fill dataframe with all header values
+    for k, v in headers.items():
+        df[k] = segyfile.attributes(v)[:]
+    return df
+
+
+def get_geometry_from_sgy(segyfile):
+    with segyio.open(segyfile, ignore_geometry=True) as f:
+        n_traces = f.tracecount
+        trace_headers = parse_trace_headers(f, n_traces)
+        source_group_scalar = np.abs(trace_headers['SourceGroupScalar'])
+        x_points = (trace_headers['GroupX'] / source_group_scalar)
+        y_points = trace_headers['GroupY'] / source_group_scalar
+        elevation_scalar = np.abs(trace_headers['ElevationScalar'])
+        z_points = trace_headers['ReceiverGroupElevation'] / elevation_scalar
+
+    # Format as list of dicts for return
+    return [
+        {
+            "index": idx,
+            "x": float(x_points.iloc[idx]),
+            "y": float(y_points.iloc[idx]),
+            "z": float(z_points.iloc[idx]),
+        } for idx in range(len(x_points))
+    ]
