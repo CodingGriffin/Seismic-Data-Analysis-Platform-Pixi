@@ -161,6 +161,54 @@ export const RightPlot = ({
     [layers, coordinateHelpers, plotDimensions]
   );
 
+  useEffect(() => {
+    const initialData = `0.0 2.0 0000 760.0
+30.0 2.0 0000 760.0
+30.0 2.0 0000 1061.0
+44.0 2.0 0000 1061.0
+44.0 2.0 0000 1270.657
+144.0 2.0 0000 1270.657`;
+
+    const data = initialData
+      .split("\n")
+      .map((line: string) => {
+        const [depth, density, ignore, velocity] = line
+          .trim()
+          .split(/\s+/)
+          .map(Number);
+        return { depth, density, ignore, velocity };
+      })
+      .filter((item) => !isNaN(item.depth) && !isNaN(item.velocity));
+
+    if (data.length > 0) {
+      const newLayers: Layer[] = [];
+      for (let i = 0; i < data.length - 1; i += 2) {
+        const layer: Layer = {
+          startDepth: data[i].depth,
+          endDepth: data[i + 1].depth,
+          velocity: data[i].velocity,
+          density: data[i].density,
+          ignore: data[i].ignore
+        };
+        newLayers.push(layer);
+      }
+
+      const depthValues = data.map((d) => d.depth);
+      const velocityValues = data.map((d) => d.velocity);
+      const maxVelocity = Math.max(...velocityValues);
+
+      const newAxisLimits = {
+        xmin: 0,
+        xmax: Math.ceil(maxVelocity * VELOCITY_MARGIN_FACTOR),
+        ymin: 0,
+        ymax: Math.ceil(Math.max(...depthValues)),
+      };
+
+      setLayers(newLayers);
+      setAxisLimits(newAxisLimits);
+    }
+  }, []);
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event?.target.files?.[0];
     if (file) {
