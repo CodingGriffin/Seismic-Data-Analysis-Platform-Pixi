@@ -12,29 +12,31 @@ import VelModel from "./VelModel";
  *         if a value would be outside the range of phase_vel_min-phase_vel_max, then null is returned for that value instead
  */
 export function CalcCurve(
-    period_vals: any[],
-    num_layers: number,
-    layer_thicknesses: number[], //
-    vels_shear: any[], // The velocities from the model
-    phase_vel_min: number, // The min value on the left plot
-    phase_vel_max: number, // The max value on the left plot
+  period_vals: any[],
+  num_layers: number,
+  layer_thicknesses: number[], //
+  vels_shear: any[], // The velocities from the model
+  phase_vel_min: number, // The min value on the left plot
+  phase_vel_max: number, // The max value on the left plot
+  p0: number,
+  densities?: number[]
 ) {
-    // Create Array of densities the same size as the number of layers
-    const densities = Array(num_layers).fill(2.0)
-    // Calculate Vc as Vs * sqrt(3) - just using this as an estimate for modeling
-    const vels_compression = vels_shear.map((x) => {
-        return x * Math.sqrt(3)
-    })
-    // Create Vel Model object from parameters
-    const model = new VelModel(
-        num_layers,
-        layer_thicknesses,
-        densities,
-        vels_compression,
-        vels_shear,
-        phase_vel_min,
-        phase_vel_max,
-        2.0,
-    )
-    return period_vals.map((x) => model.getc_period(x))
+  const layer_densities = densities || Array(num_layers).fill(2.0);
+  
+  // Calculate Vc as Vs * sqrt(3) - just using this as an estimate for modeling
+  const vels_compression = vels_shear.map((x) => {
+    return x * Math.sqrt(3)
+  })
+  
+  const model = new VelModel(
+    num_layers,
+    layer_thicknesses,
+    layer_densities,
+    vels_compression,
+    vels_shear,
+    phase_vel_min,
+    phase_vel_max,
+    2.0,
+  )
+  return period_vals.map((x) => model.getc_period(x))
 }

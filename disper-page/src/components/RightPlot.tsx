@@ -8,6 +8,8 @@ interface Layer {
   startDepth: number;
   endDepth: number;
   velocity: number;
+  density: number;
+  ignore: number;
 }
 
 // Add new hover state types
@@ -29,6 +31,8 @@ const VELOCITY_MARGIN_FACTOR = 1.1; // 110% of max velocity
 export const RightPlot = ({
   handleLayerChange,
   handleAxisLimitsChange,
+  asceVersion,
+  setAsceVersion,
 }: any) => {
   const [layers, setLayers] = useState<Layer[]>([]);
   const [hoveredLine, setHoveredLine] = useState<HoveredLine | null>(null);
@@ -175,6 +179,8 @@ export const RightPlot = ({
               startDepth: i === 0 ? 0 : data[i].depth, // Force first layer to start at 0
               endDepth: data[i + 1].depth,
               velocity: data[i].velocity,
+              density: data[i].density,
+              ignore: data[i].ignore
             };
             newLayers.push(layer);
           }
@@ -224,17 +230,20 @@ export const RightPlot = ({
       if (newDepth > layer.startDepth && newDepth < layer.endDepth) {
         const newLayers = [...layers];
 
-        // Split the current layer into two
         const upperLayer: Layer = {
           startDepth: layer.startDepth,
           endDepth: newDepth,
           velocity: layer.velocity,
+          density: layer.density,
+          ignore: layer.ignore
         };
 
         const lowerLayer: Layer = {
           startDepth: newDepth,
           endDepth: layer.endDepth,
           velocity: layer.velocity,
+          density: layer.density,
+          ignore: layer.ignore 
         };
 
         // Replace the current layer with the two new layers
@@ -422,15 +431,15 @@ export const RightPlot = ({
       const current = layers[i];
       OutputData.push({
         depth: current.startDepth,
-        density: 2,
-        ignore: 0,
+        density: current.density,
+        ignore: current.ignore,
         velocity: current.velocity,
       });
 
       OutputData.push({
         depth: current.endDepth,
-        density: 2,
-        ignore: 0,
+        density: current.density,
+        ignore: current.ignore,
         velocity: current.velocity,
       });
     }
@@ -438,10 +447,7 @@ export const RightPlot = ({
     const outTXT = OutputData.sort((a, b) => a.depth - b.depth)
       .map(
         (output: any) =>
-          `${output.depth.toFixed(3)} ${output.density.toFixed(
-            3
-          )} ${output.ignore.toFixed(3)} ${output.velocity.toFixed(3)}`
-      )
+          `${output.depth.toFixed(3)} ${output.density.toFixed(3)} ${output.ignore.toFixed(3)} ${output.velocity.toFixed(3)}`)
       .join("\n");
 
     // Create blob
@@ -505,12 +511,16 @@ export const RightPlot = ({
             startDepth: layer.startDepth,
             endDepth: newDepth,
             velocity: layer.velocity,
+            density: layer.density,
+            ignore: layer.ignore
           };
 
           const lowerLayer: Layer = {
             startDepth: newDepth,
             endDepth: layer.endDepth,
             velocity: layer.velocity,
+            density: layer.density,
+            ignore: layer.ignore
           };
 
           // Replace the current layer with the two new layers
@@ -725,6 +735,21 @@ export const RightPlot = ({
                 : `Velocity: ${hoveredLine.value.toFixed(2)}`}
             </div>
           )}
+        </div>
+      </div>
+      <div className="mt-4 p-4 border-t border-gray-200">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-gray-600">
+            ASCE Version:
+          </label>
+          <select
+            value={asceVersion}
+            onChange={(e) => setAsceVersion(e.target.value)}
+            className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
+          >
+            <option value="ASCE 7-22">ASCE 7-22</option>
+            <option value="ASCE 7-16">ASCE 7-16</option>
+          </select>
         </div>
       </div>
     </div>

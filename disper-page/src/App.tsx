@@ -6,10 +6,11 @@ export default function App() {
 
     const [updatedLayers, setUpdatedLayers] = useState<Layer[]>([]);
     const [rightAxisLimits, setRightAxisLimits] = useState({xmin: null, xmax: null});
+    const [asceVersion, setAsceVersion] = useState<string>("ASCE 7-22");
     const handleLayerChange = (layers: Layer[]) => {
-        // console.log("Changed:",layers);
         setUpdatedLayers(layers);
     }
+
     const handleAxisLimitsChange = (axisLimits: any) => {
         setRightAxisLimits(axisLimits);
     }
@@ -19,12 +20,21 @@ export default function App() {
             <div className="flex flex-col lg:flex-row justify-center gap-8">
                 <div className="w-full lg:w-[600px]">
                     <div className="text-center mb-4 text-lg font-semibold">Curve</div>
-                    <LeftPlot updatedLayers={updatedLayers} phase_vel_min={rightAxisLimits?.xmin} phase_vel_max={rightAxisLimits?.xmax}
+                    <LeftPlot 
+                        updatedLayers={updatedLayers}
+                        phase_vel_min={rightAxisLimits.xmin}
+                        phase_vel_max={rightAxisLimits.xmax}
+                        asceVersion={asceVersion}
                     />
                 </div>
                 <div className="w-full lg:w-[600px]">
                     <div className="text-center mb-4 text-lg font-semibold">Model</div>
-                    <RightPlot handleLayerChange={handleLayerChange} handleAxisLimitsChange={handleAxisLimitsChange}/>
+                    <RightPlot 
+                        handleLayerChange={handleLayerChange}
+                        handleAxisLimitsChange={handleAxisLimitsChange}
+                        asceVersion={asceVersion}
+                        setAsceVersion={setAsceVersion}
+                    />
                 </div>
             </div>
         </div>

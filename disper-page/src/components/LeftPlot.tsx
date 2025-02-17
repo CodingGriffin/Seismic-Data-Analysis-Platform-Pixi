@@ -3,6 +3,7 @@ import { Graphics, Container } from "pixi.js";
 import { useState, useRef, useEffect } from "react";
 import { Point } from "../types";
 import { CalcCurve } from "../utils";
+import VelModel from "../utils/VelModel";
 extend({ Graphics, Container });
 
 const VELOCITY_MAX_MARGIN_FACTOR = 1.1; // 110% of max velocity
@@ -22,6 +23,7 @@ export const LeftPlot = ({
   updatedLayers,
   phase_vel_min,
   phase_vel_max,
+  asceVersion = "ASCE 7-22",
 }: any) => {
   const [vels, setVels] = useState<(number | null)[]>([]);
   const [points, setPoints] = useState<Point[]>([]);
@@ -39,6 +41,8 @@ export const LeftPlot = ({
   });
   const plotRef = useRef<HTMLDivElement>(null);
   const [periods, setPeriods] = useState<(number | null)[]>([]);
+  const [vs30, setVs30] = useState<number | null>(null);
+  const [siteClass, setSiteClass] = useState<string | null>(null);
 
   useEffect(() => {
     if (plotRef.current) {
@@ -64,16 +68,44 @@ export const LeftPlot = ({
         (layer: any) => layer.endDepth - layer.startDepth
       );
       const vels_shear = updatedLayers.map((layer: any) => layer.velocity);
+      const densities = updatedLayers.map((layer: any) => layer.density);
+      
+      const vels_compression = vels_shear.map((v: any) => v * Math.sqrt(3));
 
-      console.log("Layer thicknesses:", layer_thicknesses);
-      console.log("Velocities:", vels_shear);
+      const model = new VelModel(
+        num_layers,
+        layer_thicknesses,
+        densities,
+        vels_compression,
+        vels_shear,
+        Math.max(axisLimits.ymin - 50, 10),
+        axisLimits.ymax + 10,
+        2.0
+      );
+
+      const calculatedVs30 = model.get_vs30();
+
+      const formattedAsceVersion = asceVersion
+        .toLowerCase()
+        .replace(/[- ]/g, "_");
+
+      const calculatedSiteClass = VelModel.calc_site_class(
+        formattedAsceVersion,
+        calculatedVs30
+      );
+
+      setVs30(calculatedVs30);
+      setSiteClass(calculatedSiteClass);
+
       const vels = CalcCurve(
         periods,
         num_layers,
         layer_thicknesses,
         vels_shear,
         Math.max(axisLimits.ymin - 50, 10),
-        axisLimits.ymax + 10
+        axisLimits.ymax + 10,
+        2.0,
+        densities
       );
       console.log("Periods", periods);
       console.log("Vels:", vels);
@@ -87,6 +119,7 @@ export const LeftPlot = ({
     axisLimits.xmin,
     axisLimits.xmax,
     numPoints,
+    asceVersion,
   ]);
 
   const handleFileUpload = async (
@@ -388,6 +421,18 @@ export const LeftPlot = ({
               </div>
             </div>
           )}
+        </div>
+      </div>
+      <div className="mt-4 p-4 border-t border-gray-200">
+        <div className="flex justify-center space-x-8">
+          <div className="text-center">
+            <span className="font-semibold">Vs30:</span>{" "}
+            <span>{vs30 ? `${vs30.toFixed(1)} m/s` : "N/A"}</span>
+          </div>
+          <div className="text-center">
+            <span className="font-semibold">Site Class:</span>{" "}
+            <span className="font-bold">{siteClass || "N/A"}</span>
+          </div>
         </div>
       </div>
     </div>
