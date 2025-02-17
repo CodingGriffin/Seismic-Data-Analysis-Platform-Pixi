@@ -69,8 +69,10 @@ export const RightPlot = ({
     handleLayerChange(layers);
   }, [layers]);
   useEffect(() => {
-    handleAxisLimitsChange(axisLimits);
-  }, [axisLimits]);
+   if (!layers.length || layers[layers.length - 1].endDepth === axisLimits.ymax) {
+      handleAxisLimitsChange(axisLimits);
+    }
+  }, [axisLimits, layers]);
   // Update coordinate helpers to use dynamic dimensions
   const coordinateHelpers = useMemo(
     () => ({
@@ -109,9 +111,7 @@ export const RightPlot = ({
         });
         g.beginPath();
 
-        // Skip drawing the first layer's start depth (0)
-        // Draw all layer end depths
-        layers.forEach((layer) => {
+        layers.slice(0, -1).forEach((layer) => {
           const y = coordinateHelpers.toScreenY(layer.endDepth);
           g.moveTo(0, y);
           g.lineTo(plotDimensions.width, y);
@@ -443,8 +443,12 @@ export const RightPlot = ({
         velocity: current.velocity,
       });
 
+      const endDepth = i === layers.length - 1 
+        ? Math.max(50, axisLimits.ymax)
+        : current.endDepth;
+
       OutputData.push({
-        depth: current.endDepth,
+        depth: endDepth,
         density: current.density,
         ignore: current.ignore,
         velocity: current.velocity,
@@ -486,7 +490,7 @@ export const RightPlot = ({
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
-  }, [layers]);
+  }, [layers, axisLimits.ymax]);
 
   // Add click handler for the plot area
   const handlePlotClick = (event: React.PointerEvent) => {
@@ -543,6 +547,14 @@ export const RightPlot = ({
     window.addEventListener("pointerup", handlePointerUp);
     return () => window.removeEventListener("pointerup", handlePointerUp);
   }, []);
+
+  useEffect(() => {
+    if (layers.length > 0) {
+      const newLayers = [...layers];
+      newLayers[layers.length - 1].endDepth = axisLimits.ymax;
+      setLayers(newLayers);
+    }
+  }, [axisLimits.ymax]);
 
   return (
     <div className="flex flex-col items-center border-2 border-gray-300 rounded-lg p-4 shadow-sm w-full">
