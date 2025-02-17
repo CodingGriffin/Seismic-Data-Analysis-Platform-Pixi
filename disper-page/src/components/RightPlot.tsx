@@ -127,15 +127,21 @@ export const RightPlot = ({
           alpha: 1,
         });
         g.beginPath();
-        layers.forEach((layer) => {
+        layers.forEach((layer, index) => {
           const x = coordinateHelpers.toScreenX(layer.velocity);
           const startY = coordinateHelpers.toScreenY(layer.startDepth);
           const endY = coordinateHelpers.toScreenY(layer.endDepth);
           g.moveTo(x, startY);
           g.lineTo(x, endY);
 
-          // Add velocity text
-          const textY = (startY + endY) / 2;
+          let textY;
+          if (index === layers.length - 1) {
+            const prevLayerBottom = index > 0 ? coordinateHelpers.toScreenY(layers[index - 1].endDepth) : 0;
+            textY = (prevLayerBottom + plotDimensions.height) / 2;
+          } else {
+            textY = (startY + endY) / 2;
+          }
+
           const text = new Text({
             text: `${layer.velocity.toFixed(2)}`,
             style: {
@@ -144,7 +150,8 @@ export const RightPlot = ({
               align: 'right'
             }
           });
-          text.position.set(x - 40, textY);
+          text.position.set(x - 40, textY - 6);
+          text.zIndex = 1;
           g.addChild(text);
         });
         g.stroke();
