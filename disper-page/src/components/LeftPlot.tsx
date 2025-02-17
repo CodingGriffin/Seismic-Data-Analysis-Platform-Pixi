@@ -5,6 +5,9 @@ import { Point } from "../types";
 import { CalcCurve } from "../utils";
 extend({ Graphics, Container });
 
+const VELOCITY_MAX_MARGIN_FACTOR = 1.1; // 110% of max velocity
+const VELOCITY_MIN_MARGIN_FACTOR = 0.9; // 90% of min velocity
+
 interface PickData extends Point {
   d1: number;
   d2: number;
@@ -131,12 +134,14 @@ export const LeftPlot = ({
     if (newPoints.length > 0) {
       const xValues = newPoints.map((p) => p.x);
       const yValues = newPoints.map((p) => p.y);
+      const minVelocity = Math.min(...yValues);
+      const maxVelocity = Math.max(...yValues);
 
       setAxisLimits({
         xmin: Math.max(0.001, Math.round(Math.min(...xValues) * 1000) / 1000),
         xmax: Math.round(Math.max(...xValues) * 1000) / 1000,
-        ymin: 0,
-        ymax: Math.ceil(Math.max(...yValues)*1.1),
+        ymin: Math.max(0, Math.floor(minVelocity * VELOCITY_MIN_MARGIN_FACTOR)),
+        ymax: Math.ceil(maxVelocity * VELOCITY_MAX_MARGIN_FACTOR),
       });
 
       setPoints(newPoints);
