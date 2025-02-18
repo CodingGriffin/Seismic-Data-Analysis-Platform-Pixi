@@ -37,7 +37,8 @@ export const RightPlot = () => {
     setLayers,
     asceVersion,
     setAsceVersion,
-    splitLayer, // Add this
+    splitLayer, 
+    deleteLayer
   } = useDisper();
   
   const [hoveredLine, setHoveredLine] = useState<HoveredLine | null>(null);
@@ -168,6 +169,14 @@ export const RightPlot = () => {
     type: "boundary" | "velocity"
   ) => {
     event.stopPropagation();
+
+    // Handle Alt + Click for layer deletion
+    if (event.altKey && type === "velocity") {
+      if (deleteLayer) {
+        deleteLayer(layerIndex);
+      }
+      return;
+    }
 
     // Skip if trying to interact with first layer's start boundary
     if (type === "boundary" && layerIndex === 0) {

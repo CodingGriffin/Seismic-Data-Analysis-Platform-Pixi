@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { Layer } from '../types';
 import VelModel from '../utils/VelModel';
 
@@ -15,6 +15,7 @@ interface DisperContextType {
   updateLayer: (index: number, updatedLayer: Partial<Layer>) => void;
   removeLayer: (index: number) => void;
   splitLayer: (index: number, depth: number) => void;
+  deleteLayer?: (index: number) => void;
   
   calculateVs30: () => number;
   calculateSiteClass: (vs30: number) => string | null;
@@ -125,6 +126,26 @@ export function DisperProvider({ children }: DisperProviderProps) {
     return VelModel.calc_site_class(formattedAsceVersion, vs30);
   };
 
+  const deleteLayer = useCallback((index: number) => {
+    setLayers(prevLayers => {
+      if (prevLayers.length <= 1) return prevLayers;
+      
+      const newLayers = [...prevLayers];
+      
+      if (index === 0) {
+        newLayers[1].startDepth = newLayers[0].startDepth;
+        newLayers.splice(0, 1);
+      } else if (index === prevLayers.length - 1) {
+        newLayers.splice(index, 1);
+      } else {
+        newLayers[index - 1].endDepth = prevLayers[index].endDepth;
+        newLayers.splice(index, 1);
+      }
+      
+      return newLayers;
+    });
+  }, []);
+
   const value: DisperContextType = {
     // Layer Management
     layers,
@@ -133,6 +154,7 @@ export function DisperProvider({ children }: DisperProviderProps) {
     updateLayer,
     removeLayer,
     splitLayer,
+    deleteLayer,
     
     // Layer Calculations
     calculateVs30,
