@@ -77,7 +77,7 @@ export const RightPlot = ({
   // Initialize layers on mount
   useEffect(() => {
     if (layers.length === 0) {
-      setLayers(INITIAL_DATA);
+      setLayersAndNotify(INITIAL_DATA);
       // Notify parent component of initial layers
       handleLayerChange(INITIAL_DATA);
       // Notify parent component of initial axis limits
@@ -100,10 +100,12 @@ export const RightPlot = ({
     return () => window.removeEventListener("resize", updateDimensions);
   }, []);
 
-  useEffect(() => {
-    console.log("Layers changed:", layers);
-    handleLayerChange(layers);
-  }, [layers, handleLayerChange]);
+  const setLayersAndNotify = (newLayers: Layer[]) => {
+    console.log("newLayers", newLayers)
+    setLayers(newLayers);
+    handleLayerChange(newLayers);
+  };
+
   useEffect(() => {
     if (!layers.length) return;
     
@@ -114,7 +116,7 @@ export const RightPlot = ({
         ymin: Math.max(0, axisLimits.ymin),
       });
     }
-  }, [axisLimits, layers, handleAxisLimitsChange]);
+  }, [axisLimits, layers]);
   // Update coordinate helpers to use dynamic dimensions
   const coordinateHelpers = useMemo(
     () => ({
@@ -138,10 +140,13 @@ export const RightPlot = ({
   const drawAllLines = useCallback(
     (g: Graphics) => {
       g.clear();
-      // Remove all existing children (including text)
-      while (g.children[0]) {
-        g.removeChild(g.children[0]);
-        g.children[0].destroy({ children: true });
+      // Safely remove all existing children (including text)
+      while (g.children?.[0]) {  // Add null check with ?
+        const child = g.children[0];
+        g.removeChild(child);
+        if (child && typeof child.destroy === 'function') {  // Add safety check
+          child.destroy({ children: true });
+        }
       }
 
       // Draw all black lines first
@@ -252,7 +257,7 @@ export const RightPlot = ({
             ymax: Math.ceil(Math.max(...depthValues)),
           };
 
-          setLayers(newLayers);
+          setLayersAndNotify(newLayers);
           setAxisLimits(newAxisLimits);
         }
       };
@@ -303,7 +308,7 @@ export const RightPlot = ({
 
         // Replace the current layer with the two new layers
         newLayers.splice(layerIndex, 1, upperLayer, lowerLayer);
-        setLayers(newLayers);
+        setLayersAndNotify(newLayers);
         return;
       }
     }
@@ -388,7 +393,7 @@ export const RightPlot = ({
         Math.min(axisLimits.xmax, newVelocity)
       );
       newLayers[dragState.layerIndex].velocity = constrainedVelocity;
-      setLayers(newLayers);
+      setLayersAndNotify(newLayers);
 
       // Update tooltip for velocity
       setHoveredLine({
@@ -411,7 +416,7 @@ export const RightPlot = ({
         const maxDepth = layers[0].endDepth;
         const constrainedDepth = Math.min(maxDepth - 0.1, newDepth);
         newLayers[0].startDepth = constrainedDepth;
-        setLayers(newLayers);
+        setLayersAndNotify(newLayers);
         // Update tooltip for depth
         setHoveredLine({
           type: "depth",
@@ -428,7 +433,7 @@ export const RightPlot = ({
         const minDepth = lastLayer.startDepth;
         const constrainedDepth = Math.max(minDepth + 0.1, newDepth);
         newLayers[layers.length - 1].endDepth = constrainedDepth;
-        setLayers(newLayers);
+        setLayersAndNotify(newLayers);
         // Update tooltip for depth
         setHoveredLine({
           type: "depth",
@@ -460,7 +465,7 @@ export const RightPlot = ({
         }
         newLayers[dragState.layerIndex].startDepth = constrainedDepth;
 
-        setLayers(newLayers);
+        setLayersAndNotify(newLayers);
 
         // Update tooltip for depth
         setHoveredLine({
@@ -475,10 +480,6 @@ export const RightPlot = ({
       }
     }
   };
-
-  const handlePointerUp = useCallback(() => {
-    setDragState(null);
-  }, []);
 
   const handleDownloadLayers = useCallback(() => {
     const OutputData = [];
@@ -585,7 +586,7 @@ export const RightPlot = ({
 
           // Replace the current layer with the two new layers
           newLayers.splice(i, 1, upperLayer, lowerLayer);
-          setLayers(newLayers);
+          setLayersAndNotify(newLayers);
           break;
         }
       }
@@ -611,7 +612,7 @@ export const RightPlot = ({
     if (layers.length > 0) {
       const newLayers = [...layers];
       newLayers[layers.length - 1].endDepth = axisLimits.ymax;
-      setLayers(newLayers);
+      setLayersAndNotify(newLayers);
     }
   }, [axisLimits.ymax]);
 
