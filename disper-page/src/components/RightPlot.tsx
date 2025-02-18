@@ -111,83 +111,6 @@ export const RightPlot = () => {
     [axisLimits, plotDimensions]
   );
 
-  // Update drawing functions to use dynamic dimensions
-  const drawAllLines = useCallback(
-    (g: Graphics) => {
-      g.clear();
-      // Safely remove all existing children (including text)
-      while (g.children?.[0]) {  // Add null check with ?
-        const child = g.children[0];
-        g.removeChild(child);
-        if (child && typeof child.destroy === 'function') {  // Add safety check
-          child.destroy({ children: true });
-        }
-      }
-
-      // Draw all black lines first
-      if (layers.length > 0) {
-        // Draw black lines (boundaries) - skip the last layer's bottom line
-        g.setStrokeStyle({
-          width: 2,
-          color: 0x000000,
-          alpha: 1,
-        });
-        g.beginPath();
-
-        // Only draw boundaries up to the second-to-last layer
-        layers.slice(0, -1).forEach((layer) => {
-          const y = coordinateHelpers.toScreenY(layer.endDepth);
-          g.moveTo(0, y);
-          g.lineTo(plotDimensions.width, y);
-        });
-        g.stroke();
-        g.closePath();
-      }
-
-      // Draw velocity lines (red lines)
-      if (layers.length > 0) {
-        g.setStrokeStyle({
-          width: 2,
-          color: 0xff0000,
-          alpha: 1,
-        });
-        g.beginPath();
-        layers.forEach((layer, index) => {
-          const x = coordinateHelpers.toScreenX(layer.velocity);
-          const startY = coordinateHelpers.toScreenY(layer.startDepth);
-          // For the last layer, extend to the bottom of the plot
-          const endY = index === layers.length - 1 
-            ? plotDimensions.height 
-            : coordinateHelpers.toScreenY(layer.endDepth);
-          g.moveTo(x, startY);
-          g.lineTo(x, endY);
-
-          let textY;
-          if (index === layers.length - 1) {
-            const prevLayerBottom = index > 0 ? coordinateHelpers.toScreenY(layers[index - 1].endDepth) : 0;
-            textY = (prevLayerBottom + plotDimensions.height) / 2;
-          } else {
-            textY = (startY + endY) / 2;
-          }
-
-          const text = new Text({
-            text: `${layer.velocity.toFixed(2)}`,
-            style: {
-              fontSize: 12,
-              fill: 0xff0000,
-              align: 'right'
-            }
-          });
-          text.position.set(x - 40, textY - 6);
-          text.zIndex = 1;
-          g.addChild(text);
-        });
-        g.stroke();
-        g.closePath();
-      }
-    },
-    [layers, coordinateHelpers, plotDimensions]
-  );
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event?.target.files?.[0];
     if (file) {
@@ -280,7 +203,7 @@ export const RightPlot = () => {
       let found = false;
 
       // Check black lines (boundaries)
-      layers.forEach((layer, index) => {
+      layers.forEach((layer:any, index:number) => {
         const startY =
           index === 0
             ? ((layer.startDepth - axisLimits.ymin) /
@@ -303,7 +226,7 @@ export const RightPlot = () => {
 
       // Check red lines (velocities)
       if (!found) {
-        layers.forEach((layer) => {
+        layers.forEach((layer:any) => {
           const lineX =
             ((layer.velocity - axisLimits.xmin) /
               (axisLimits.xmax - axisLimits.xmin)) *
@@ -685,7 +608,7 @@ export const RightPlot = () => {
               background="white"
             >
               <pixiContainer>
-                {layers.slice(0, -1).map((layer, index) => (
+                {layers.slice(0, -1).map((layer:any, index:number) =>( 
                   <pixiGraphics
                     key={`boundary-${index}-${Date.now()}`}
                     draw={(g) => {
@@ -708,7 +631,7 @@ export const RightPlot = () => {
                   />
                 ))}
 
-                {layers.map((layer, index) => (
+                {layers.map((layer:any, index:number) => (
                   <pixiContainer key={`velocity-container-${index}-${Date.now()}`}>
                     <pixiGraphics
                       draw={(g) => {
