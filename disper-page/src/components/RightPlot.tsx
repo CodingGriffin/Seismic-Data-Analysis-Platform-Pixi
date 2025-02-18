@@ -28,26 +28,62 @@ interface DragState {
 
 const VELOCITY_MARGIN_FACTOR = 1.1; // 110% of max velocity
 
+interface RightPlotProps {
+  handleLayerChange: (layers: Layer[]) => void;
+  handleAxisLimitsChange: (limits: {
+    xmin: number;
+    xmax: number;
+    ymin: number;
+    ymax: number;
+  }) => void;
+  asceVersion: string;
+  setAsceVersion: (version: string) => void;
+}
+
 export const RightPlot = ({
   handleLayerChange,
   handleAxisLimitsChange,
   asceVersion,
   setAsceVersion,
-}: any) => {
+}: RightPlotProps) => {
   const [layers, setLayers] = useState<Layer[]>([]);
   const [hoveredLine, setHoveredLine] = useState<HoveredLine | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
-  const [axisLimits, setAxisLimits] = useState({
-    xmin: 50,
-    xmax: 1000,
-    ymin: 0.0,
-    ymax: 200.0,
-  });
   const [plotDimensions, setPlotDimensions] = useState({
     width: 640,
     height: 480,
   });
   const plotRef = useRef<HTMLDivElement>(null);
+
+  // Move initial data to a constant outside the component
+  const INITIAL_DATA = [
+    { startDepth: 0.0, endDepth: 30.0, velocity: 760.0, density: 2.0, ignore: 0 },
+    { startDepth: 30.0, endDepth: 44.0, velocity: 1061.0, density: 2.0, ignore: 0 },
+    { startDepth: 44.0, endDepth: 144.0, velocity: 1270.657, density: 2.0, ignore: 0 },
+  ];
+
+  // Set initial axis limits based on the data
+  const [axisLimits, setAxisLimits] = useState(() => {
+    const maxVelocity = Math.max(...INITIAL_DATA.map(layer => layer.velocity));
+    const maxDepth = Math.max(...INITIAL_DATA.map(layer => layer.endDepth));
+    return {
+      xmin: 50,
+      xmax: Math.ceil(maxVelocity * VELOCITY_MARGIN_FACTOR / 100) * 100, // Round up to nearest 100
+      ymin: 0.0,
+      ymax: Math.ceil(maxDepth / 10) * 10, // Round up to nearest 10
+    };
+  });
+
+  // Initialize layers on mount
+  useEffect(() => {
+    if (layers.length === 0) {
+      setLayers(INITIAL_DATA);
+      // Notify parent component of initial layers
+      handleLayerChange(INITIAL_DATA);
+      // Notify parent component of initial axis limits
+      handleAxisLimitsChange(axisLimits);
+    }
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   // Update dimensions when component mounts or window resizes
   useEffect(() => {
@@ -67,12 +103,18 @@ export const RightPlot = ({
   useEffect(() => {
     console.log("Layers changed:", layers);
     handleLayerChange(layers);
-  }, [layers]);
+  }, [layers, handleLayerChange]);
   useEffect(() => {
-   if (!layers.length || layers[layers.length - 1].endDepth === axisLimits.ymax) {
-      handleAxisLimitsChange(axisLimits);
+    if (!layers.length) return;
+    
+    if (layers[layers.length - 1].endDepth === axisLimits.ymax) {
+      handleAxisLimitsChange({
+        ...axisLimits,
+        xmin: Math.max(0, axisLimits.xmin),
+        ymin: Math.max(0, axisLimits.ymin),
+      });
     }
-  }, [axisLimits, layers]);
+  }, [axisLimits, layers, handleAxisLimitsChange]);
   // Update coordinate helpers to use dynamic dimensions
   const coordinateHelpers = useMemo(
     () => ({
@@ -98,12 +140,13 @@ export const RightPlot = ({
       g.clear();
       // Remove all existing children (including text)
       while (g.children[0]) {
-        g.children[0].destroy();
+        g.removeChild(g.children[0]);
+        g.children[0].destroy({ children: true });
       }
 
       // Draw all black lines first
       if (layers.length > 0) {
-        // Draw black lines
+        // Draw black lines (boundaries) - skip the last layer's bottom line
         g.setStrokeStyle({
           width: 2,
           color: 0x000000,
@@ -111,6 +154,7 @@ export const RightPlot = ({
         });
         g.beginPath();
 
+        // Only draw boundaries up to the second-to-last layer
         layers.slice(0, -1).forEach((layer) => {
           const y = coordinateHelpers.toScreenY(layer.endDepth);
           g.moveTo(0, y);
@@ -120,6 +164,7 @@ export const RightPlot = ({
         g.closePath();
       }
 
+      // Draw velocity lines (red lines)
       if (layers.length > 0) {
         g.setStrokeStyle({
           width: 2,
@@ -130,7 +175,10 @@ export const RightPlot = ({
         layers.forEach((layer, index) => {
           const x = coordinateHelpers.toScreenX(layer.velocity);
           const startY = coordinateHelpers.toScreenY(layer.startDepth);
-          const endY = coordinateHelpers.toScreenY(layer.endDepth);
+          // For the last layer, extend to the bottom of the plot
+          const endY = index === layers.length - 1 
+            ? plotDimensions.height 
+            : coordinateHelpers.toScreenY(layer.endDepth);
           g.moveTo(x, startY);
           g.lineTo(x, endY);
 
@@ -160,54 +208,6 @@ export const RightPlot = ({
     },
     [layers, coordinateHelpers, plotDimensions]
   );
-
-  useEffect(() => {
-    const initialData = `0.0 2.0 0000 760.0
-30.0 2.0 0000 760.0
-30.0 2.0 0000 1061.0
-44.0 2.0 0000 1061.0
-44.0 2.0 0000 1270.657
-144.0 2.0 0000 1270.657`;
-
-    const data = initialData
-      .split("\n")
-      .map((line: string) => {
-        const [depth, density, ignore, velocity] = line
-          .trim()
-          .split(/\s+/)
-          .map(Number);
-        return { depth, density, ignore, velocity };
-      })
-      .filter((item) => !isNaN(item.depth) && !isNaN(item.velocity));
-
-    if (data.length > 0) {
-      const newLayers: Layer[] = [];
-      for (let i = 0; i < data.length - 1; i += 2) {
-        const layer: Layer = {
-          startDepth: data[i].depth,
-          endDepth: data[i + 1].depth,
-          velocity: data[i].velocity,
-          density: data[i].density,
-          ignore: data[i].ignore
-        };
-        newLayers.push(layer);
-      }
-
-      const depthValues = data.map((d) => d.depth);
-      const velocityValues = data.map((d) => d.velocity);
-      const maxVelocity = Math.max(...velocityValues);
-
-      const newAxisLimits = {
-        xmin: 0,
-        xmax: Math.ceil(maxVelocity * VELOCITY_MARGIN_FACTOR),
-        ymin: 0,
-        ymax: Math.ceil(Math.max(...depthValues)),
-      };
-
-      setLayers(newLayers);
-      setAxisLimits(newAxisLimits);
-    }
-  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event?.target.files?.[0];
@@ -476,9 +476,9 @@ export const RightPlot = ({
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = useCallback(() => {
     setDragState(null);
-  };
+  }, []);
 
   const handleDownloadLayers = useCallback(() => {
     const OutputData = [];
@@ -491,6 +491,7 @@ export const RightPlot = ({
         velocity: current.velocity,
       });
 
+      // For the last layer, use max(50, axisLimits.ymax) as the end depth
       const endDepth = i === layers.length - 1 
         ? Math.max(50, axisLimits.ymax)
         : current.endDepth;
@@ -592,8 +593,18 @@ export const RightPlot = ({
   };
 
   useEffect(() => {
-    window.addEventListener("pointerup", handlePointerUp);
-    return () => window.removeEventListener("pointerup", handlePointerUp);
+    const handleGlobalPointerUp = () => {
+      setDragState(null);
+      setHoveredLine(null);
+    };
+
+    window.addEventListener("pointerup", handleGlobalPointerUp);
+    window.addEventListener("pointercancel", handleGlobalPointerUp);
+
+    return () => {
+      window.removeEventListener("pointerup", handleGlobalPointerUp);
+      window.removeEventListener("pointercancel", handleGlobalPointerUp);
+    };
   }, []);
 
   useEffect(() => {
@@ -743,24 +754,27 @@ export const RightPlot = ({
 
                 <pixiContainer>
                   {/* Hit areas for middle boundaries */}
-                  {layers.map((layer, index) => (
-                    <pixiGraphics
-                      // key={`boundary-${index}`}
-                      draw={(g: Graphics) => {
-                        g.clear();
-                        g.setFillStyle({ color: 0xffffff, alpha: 0 });
-                        const y = coordinateHelpers.toScreenY(layer.endDepth);
-                        g.rect(0, y - 10, plotDimensions.width, 20);
-                        g.fill();
-                      }}
-                      eventMode="static"
-                      cursor="ns-resize"
-                      onpointerdown={(e: any) =>
-                        handlePointerDown(e, index + 1, "boundary")
-                      }
-                    />
-                  ))}
-
+                  {layers.map((_, index) => {
+                    // Skip the last layer's end boundary
+                    if (index === layers.length - 1) return null;
+                    
+                    return (
+                      <pixiGraphics
+                        draw={(g: Graphics) => {
+                          g.clear();
+                          g.setFillStyle({ color: 0xffffff, alpha: 0 });
+                          const y = coordinateHelpers.toScreenY(layers[index].endDepth);
+                          g.rect(0, y - 10, plotDimensions.width, 20);
+                          g.fill();
+                        }}
+                        eventMode="static"
+                        cursor="ns-resize"
+                        onpointerdown={(e: any) =>
+                          handlePointerDown(e, index + 1, "boundary")
+                        }
+                      />
+                    );
+                  })}
                   {/* Hit areas for velocity lines */}
                   {layers.map((layer, index) => (
                     <pixiGraphics
