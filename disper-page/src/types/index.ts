@@ -12,9 +12,11 @@ export interface Point {
 } 
 
 export interface Layer {
-    startDepth: number;
-    endDepth: number;
-    velocity: number;
+  startDepth: number;
+  endDepth: number;
+  velocity: number;
+  density: number;
+  ignore: number;
 }
 
 export interface Window {

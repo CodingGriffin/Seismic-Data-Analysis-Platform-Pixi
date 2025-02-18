@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Point } from "../types";
 import { CalcCurve } from "../utils";
 import VelModel from "../utils/VelModel";
+import { useDisper } from '../context/DisperContext';
 extend({ Graphics, Container });
 
 const VELOCITY_MAX_MARGIN_FACTOR = 1.1; // 110% of max velocity
@@ -19,12 +20,12 @@ interface PickData extends Point {
   d5: number;
 }
 
-export const LeftPlot = ({
-  updatedLayers,
-  phase_vel_min,
-  phase_vel_max,
-  asceVersion = "ASCE 7-22",
-}: any) => {
+export const LeftPlot = () => {
+  const { 
+    layers, 
+    asceVersion,
+  } = useDisper();
+  
   const [vels, setVels] = useState<(number | null)[]>([]);
   const [points, setPoints] = useState<Point[]>([]);
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
@@ -52,7 +53,6 @@ export const LeftPlot = ({
     }
   }, []);
   useEffect(() => {
-    console.log("updatedLayers", updatedLayers);
     // Generate periods array to always fill from xmin to xmax
     const periods = Array(numPoints + 1)  // +1 to include both start and end points
       .fill(null)
@@ -61,16 +61,15 @@ export const LeftPlot = ({
         return axisLimits.xmin + (index * (axisLimits.xmax - axisLimits.xmin)) / numPoints;
       });
 
-    if (updatedLayers.length) {
-      const num_layers: number = updatedLayers.length;
-      console.log(num_layers);
-      const layer_thicknesses = updatedLayers.map(
-        (layer: any) => layer.endDepth - layer.startDepth
+    if (layers.length) {
+      const num_layers: number = layers.length;
+      const layer_thicknesses = layers.map(
+        layer => layer.endDepth - layer.startDepth
       );
-      const vels_shear = updatedLayers.map((layer: any) => layer.velocity);
-      const densities = updatedLayers.map((layer: any) => layer.density);
+      const vels_shear = layers.map(layer => layer.velocity);
+      const densities = layers.map(layer => layer.density);
       
-      const vels_compression = vels_shear.map((v: any) => v * Math.sqrt(3));
+      const vels_compression = vels_shear.map(v => v * Math.sqrt(3));
 
       const model = new VelModel(
         num_layers,
@@ -113,13 +112,11 @@ export const LeftPlot = ({
       setPeriods(periods);
     }
   }, [
-    updatedLayers,
-    phase_vel_min,
-    phase_vel_max,
-    axisLimits.xmin,
-    axisLimits.xmax,
+    layers,
+    axisLimits.ymin,
+    axisLimits.ymax,
     numPoints,
-    asceVersion,
+    asceVersion
   ]);
 
   const handleFileUpload = async (

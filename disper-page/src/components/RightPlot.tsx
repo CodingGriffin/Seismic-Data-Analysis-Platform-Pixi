@@ -1,8 +1,10 @@
-import { Container, Sprite, Graphics, Text} from "pixi.js";
+import { Container, Sprite, Graphics, Text, Rectangle, TextStyle } from "pixi.js";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Application, extend } from "@pixi/react";
+import '@pixi/events';
 extend({ Container, Sprite, Graphics, Text });
 import { Window } from "../types";
+import { useDisper } from '../context/DisperContext';
 
 interface Layer {
   startDepth: number;
@@ -28,25 +30,16 @@ interface DragState {
 
 const VELOCITY_MARGIN_FACTOR = 1.1; // 110% of max velocity
 
-interface RightPlotProps {
-  handleLayerChange: (layers: Layer[]) => void;
-  handleAxisLimitsChange: (limits: {
-    xmin: number;
-    xmax: number;
-    ymin: number;
-    ymax: number;
-  }) => void;
-  asceVersion: string;
-  setAsceVersion: (version: string) => void;
-}
 
-export const RightPlot = ({
-  handleLayerChange,
-  handleAxisLimitsChange,
-  asceVersion,
-  setAsceVersion,
-}: RightPlotProps) => {
-  const [layers, setLayers] = useState<Layer[]>([]);
+export const RightPlot = () => {
+  const {
+    layers,
+    setLayers,
+    asceVersion,
+    setAsceVersion,
+    splitLayer, // Add this
+  } = useDisper();
+  
   const [hoveredLine, setHoveredLine] = useState<HoveredLine | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [plotDimensions, setPlotDimensions] = useState({
@@ -77,13 +70,12 @@ export const RightPlot = ({
   // Initialize layers on mount
   useEffect(() => {
     if (layers.length === 0) {
-      setLayersAndNotify(INITIAL_DATA);
-      // Notify parent component of initial layers
-      handleLayerChange(INITIAL_DATA);
-      // Notify parent component of initial axis limits
-      handleAxisLimitsChange(axisLimits);
+      setLayers(INITIAL_DATA);
     }
   }, []); // Empty dependency array ensures this runs only once on mount
+  useEffect(() => {
+    console.log("Layers:", layers);
+  }, [layers]);
 
   // Update dimensions when component mounts or window resizes
   useEffect(() => {
@@ -100,23 +92,6 @@ export const RightPlot = ({
     return () => window.removeEventListener("resize", updateDimensions);
   }, []);
 
-  const setLayersAndNotify = (newLayers: Layer[]) => {
-    console.log("newLayers", newLayers)
-    setLayers(newLayers);
-    handleLayerChange(newLayers);
-  };
-
-  useEffect(() => {
-    if (!layers.length) return;
-    
-    if (layers[layers.length - 1].endDepth === axisLimits.ymax) {
-      handleAxisLimitsChange({
-        ...axisLimits,
-        xmin: Math.max(0, axisLimits.xmin),
-        ymin: Math.max(0, axisLimits.ymin),
-      });
-    }
-  }, [axisLimits, layers]);
   // Update coordinate helpers to use dynamic dimensions
   const coordinateHelpers = useMemo(
     () => ({
@@ -213,8 +188,7 @@ export const RightPlot = ({
     },
     [layers, coordinateHelpers, plotDimensions]
   );
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event?.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -257,7 +231,7 @@ export const RightPlot = ({
             ymax: Math.ceil(Math.max(...depthValues)),
           };
 
-          setLayersAndNotify(newLayers);
+          setLayers(newLayers);
           setAxisLimits(newAxisLimits);
         }
       };
@@ -288,27 +262,7 @@ export const RightPlot = ({
       // Only add new layer if click is within the layer's bounds
       const layer = layers[layerIndex];
       if (newDepth > layer.startDepth && newDepth < layer.endDepth) {
-        const newLayers = [...layers];
-
-        const upperLayer: Layer = {
-          startDepth: layer.startDepth,
-          endDepth: newDepth,
-          velocity: layer.velocity,
-          density: layer.density,
-          ignore: layer.ignore
-        };
-
-        const lowerLayer: Layer = {
-          startDepth: newDepth,
-          endDepth: layer.endDepth,
-          velocity: layer.velocity,
-          density: layer.density,
-          ignore: layer.ignore 
-        };
-
-        // Replace the current layer with the two new layers
-        newLayers.splice(layerIndex, 1, upperLayer, lowerLayer);
-        setLayersAndNotify(newLayers);
+        splitLayer(layerIndex, newDepth);
         return;
       }
     }
@@ -393,7 +347,7 @@ export const RightPlot = ({
         Math.min(axisLimits.xmax, newVelocity)
       );
       newLayers[dragState.layerIndex].velocity = constrainedVelocity;
-      setLayersAndNotify(newLayers);
+      setLayers(newLayers);
 
       // Update tooltip for velocity
       setHoveredLine({
@@ -416,7 +370,7 @@ export const RightPlot = ({
         const maxDepth = layers[0].endDepth;
         const constrainedDepth = Math.min(maxDepth - 0.1, newDepth);
         newLayers[0].startDepth = constrainedDepth;
-        setLayersAndNotify(newLayers);
+        setLayers(newLayers);
         // Update tooltip for depth
         setHoveredLine({
           type: "depth",
@@ -433,7 +387,7 @@ export const RightPlot = ({
         const minDepth = lastLayer.startDepth;
         const constrainedDepth = Math.max(minDepth + 0.1, newDepth);
         newLayers[layers.length - 1].endDepth = constrainedDepth;
-        setLayersAndNotify(newLayers);
+        setLayers(newLayers);
         // Update tooltip for depth
         setHoveredLine({
           type: "depth",
@@ -465,7 +419,7 @@ export const RightPlot = ({
         }
         newLayers[dragState.layerIndex].startDepth = constrainedDepth;
 
-        setLayersAndNotify(newLayers);
+        setLayers(newLayers);
 
         // Update tooltip for depth
         setHoveredLine({
@@ -546,7 +500,6 @@ export const RightPlot = ({
   const handlePlotClick = (event: React.PointerEvent) => {
     if (event.shiftKey && layers.length > 0) {
       const rect = event.currentTarget.getBoundingClientRect();
-      // const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
       // Find which layer was clicked
@@ -565,29 +518,11 @@ export const RightPlot = ({
           const newDepth =
             axisLimits.ymin +
             (y / plotDimensions.height) * (axisLimits.ymax - axisLimits.ymin);
-          const newLayers = [...layers];
-
-          // Split the current layer into two
-          const upperLayer: Layer = {
-            startDepth: layer.startDepth,
-            endDepth: newDepth,
-            velocity: layer.velocity,
-            density: layer.density,
-            ignore: layer.ignore
-          };
-
-          const lowerLayer: Layer = {
-            startDepth: newDepth,
-            endDepth: layer.endDepth,
-            velocity: layer.velocity,
-            density: layer.density,
-            ignore: layer.ignore
-          };
-
-          // Replace the current layer with the two new layers
-          newLayers.splice(i, 1, upperLayer, lowerLayer);
-          setLayersAndNotify(newLayers);
-          break;
+          
+          if (newDepth > layer.startDepth && newDepth < layer.endDepth) {
+            splitLayer(i, newDepth);
+            break;
+          }
         }
       }
     }
@@ -612,7 +547,7 @@ export const RightPlot = ({
     if (layers.length > 0) {
       const newLayers = [...layers];
       newLayers[layers.length - 1].endDepth = axisLimits.ymax;
-      setLayersAndNotify(newLayers);
+      setLayers(newLayers);
     }
   }, [axisLimits.ymax]);
 
@@ -750,53 +685,65 @@ export const RightPlot = ({
               background="white"
             >
               <pixiContainer>
-                {/* Single graphics object for all lines */}
-                <pixiGraphics draw={drawAllLines} />
+                {layers.slice(0, -1).map((layer, index) => (
+                  <pixiGraphics
+                    key={`boundary-${index}-${Date.now()}`}
+                    draw={(g) => {
+                      g.clear();
+                      g.setStrokeStyle({width:2, color:0x000000});
+                      const y = coordinateHelpers.toScreenY(layer.endDepth);
+                      g.moveTo(0, y);
+                      g.lineTo(plotDimensions.width, y);
+                      g.stroke();
+                    }}
+                    eventMode="static"
+                    cursor="ns-resize"
+                    hitArea={new Rectangle(
+                      0,
+                      coordinateHelpers.toScreenY(layer.endDepth) - 10,
+                      plotDimensions.width,
+                      20
+                    )}
+                    onpointerdown={(e:any) => handlePointerDown(e, index+1, "boundary")}
+                  />
+                ))}
 
-                <pixiContainer>
-                  {/* Hit areas for middle boundaries */}
-                  {layers.map((_, index) => {
-                    // Skip the last layer's end boundary
-                    if (index === layers.length - 1) return null;
-                    
-                    return (
-                      <pixiGraphics
-                        draw={(g: Graphics) => {
-                          g.clear();
-                          g.setFillStyle({ color: 0xffffff, alpha: 0 });
-                          const y = coordinateHelpers.toScreenY(layers[index].endDepth);
-                          g.rect(0, y - 10, plotDimensions.width, 20);
-                          g.fill();
-                        }}
-                        eventMode="static"
-                        cursor="ns-resize"
-                        onpointerdown={(e: any) =>
-                          handlePointerDown(e, index + 1, "boundary")
-                        }
-                      />
-                    );
-                  })}
-                  {/* Hit areas for velocity lines */}
-                  {layers.map((layer, index) => (
+                {layers.map((layer, index) => (
+                  <pixiContainer key={`velocity-container-${index}-${Date.now()}`}>
                     <pixiGraphics
-                      // key={`velocity-${index}`}
-                      draw={(g: Graphics) => {
+                      draw={(g) => {
                         g.clear();
-                        g.setFillStyle({ color: 0xffffff, alpha: 0 });
+                        g.setStrokeStyle({width:2, color:0xff0000});
                         const x = coordinateHelpers.toScreenX(layer.velocity);
                         const startY = coordinateHelpers.toScreenY(layer.startDepth);
-                        const endY = coordinateHelpers.toScreenY(layer.endDepth);
-                        g.rect(x - 10, startY, 20, endY - startY);
-                        g.fill();
+                        const endY = index === layers.length - 1 
+                          ? plotDimensions.height 
+                          : coordinateHelpers.toScreenY(layer.endDepth);
+                        g.moveTo(x, startY);
+                        g.lineTo(x, endY);
+                        g.stroke();
                       }}
                       eventMode="static"
                       cursor="ew-resize"
-                      onpointerdown={(e: any) =>
-                        handlePointerDown(e, index, "velocity")
-                      }
+                      hitArea={new Rectangle(
+                        coordinateHelpers.toScreenX(layer.velocity) - 10,
+                        coordinateHelpers.toScreenY(layer.startDepth),
+                        20,
+                        coordinateHelpers.toScreenY(layer.endDepth) - coordinateHelpers.toScreenY(layer.startDepth)
+                      )}
+                      onpointerdown={(e:any) => handlePointerDown(e, index, "velocity")}
                     />
-                  ))}
-                </pixiContainer>
+                    <pixiText
+                      text={`${layer.velocity.toFixed(0)}`}
+                      x={coordinateHelpers.toScreenX(layer.velocity) + 5}
+                      y={(coordinateHelpers.toScreenY(layer.startDepth) + coordinateHelpers.toScreenY(layer.endDepth)) / 2}
+                      style={new TextStyle({
+                        fontSize: 12,
+                        fill: 0xff0000,
+                      })}
+                    />
+                  </pixiContainer>
+                ))}
               </pixiContainer>
             </Application>
           )}
