@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.scss";
 import GeometryButton from "./components/GeometryButton";
 import { GeometryItem } from "./types";
@@ -17,7 +17,11 @@ function App() {
   const handleGeometryEdit = (data: GeometryItem[]) => {
     setGeometry(data);
   };
-
+  
+  useEffect(() => {
+    console.log("Geometry:", geometry)
+  }, [geometry])
+  
   return (
     <>
       <div className="container mt-5">

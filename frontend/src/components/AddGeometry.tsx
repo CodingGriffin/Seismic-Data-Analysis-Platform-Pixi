@@ -21,9 +21,9 @@ export default function AddGeometry({
   onSetGeometry,
   onClose,
 }: AddGeometryProps) {
-  const [inputMethod, setInputMethod] = useState<"Spreadsheet" | "Text">(
-    "Spreadsheet"
-  );
+  const [inputMethod, setInputMethod] = useState<
+    "Spreadsheet" | "Text" | "Array"
+  >("Spreadsheet");
   const [units, setUnits] = useState<"Meters" | "Feet">("Meters");
   const [geometryFormat, setGeometryFormat] = useState<"NXYZ" | "NZYX">("NXYZ");
   const [sheets, setSheets] = useState<SheetData[]>([]);
@@ -33,12 +33,13 @@ export default function AddGeometry({
   const [matrix, setMatrix] = useState<number[][]>([]);
   const [text, setText] = useState<string>(() => matrixToText(matrix));
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [numberOfPoints, setNumberOfPoints] = useState<number>(5);
+  const [spacing, setSpacing] = useState<number>(8);
 
   useEffect(() => {
     if (selectedSheet && sheets.length > 0) {
       const selectedData = sheets.find((sheet) => sheet.name === selectedSheet);
       if (selectedData) {
-        console.log("selectedData", selectedData);
         const parsedData: GeometryItem[] | null = getDataFromExcel(
           selectedData.data
         );
@@ -57,17 +58,13 @@ export default function AddGeometry({
 
   function matrixToText(matrix: number[][]) {
     return matrix
-      .map(row => 
-        row.map(num => 
-          num.toString().padEnd(6)
-        ).join(" ")
-      )
+      .map((row) => row.map((num) => num.toString().padEnd(6)).join(" "))
       .join("\n");
   }
 
   function validateMatrix(matrix: number[][]): ValidationResult {
     const errors: string[] = [];
-    
+
     // Check if matrix is empty
     if (matrix.length === 0) {
       errors.push("Matrix cannot be empty");
@@ -76,14 +73,14 @@ export default function AddGeometry({
 
     // Check if all rows have the same number of columns
     const expectedColumns = geometryFormat === "NXYZ" ? 4 : 4; // Adjust based on format
-    const hasInvalidRows = matrix.some(row => row.length !== expectedColumns);
+    const hasInvalidRows = matrix.some((row) => row.length !== expectedColumns);
     if (hasInvalidRows) {
       errors.push(`Each row must have exactly ${expectedColumns} columns`);
     }
 
     // Check if first column (N) is sequential
     for (let i = 1; i < matrix.length; i++) {
-      if (matrix[i][0] !== matrix[i-1][0] + 1) {
+      if (matrix[i][0] !== matrix[i - 1][0] + 1) {
         errors.push("First column (N) must be sequential");
         break;
       }
@@ -96,13 +93,17 @@ export default function AddGeometry({
     for (const row of matrix) {
       // Check X coordinate (or Z for NZYX format)
       if (Math.abs(row[1]) > maxCoordinate) {
-        errors.push(`Coordinate values must be within ±${maxCoordinate} ${units}`);
+        errors.push(
+          `Coordinate values must be within ±${maxCoordinate} ${units}`
+        );
         break;
       }
 
       // Check Y coordinate
       if (Math.abs(row[2]) > maxCoordinate) {
-        errors.push(`Coordinate values must be within ±${maxCoordinate} ${units}`);
+        errors.push(
+          `Coordinate values must be within ±${maxCoordinate} ${units}`
+        );
         break;
       }
 
@@ -115,14 +116,14 @@ export default function AddGeometry({
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
   const handleBlur = () => {
     const validation = validateMatrix(matrix);
     setValidationErrors(validation.errors);
-    
+
     if (validation.isValid) {
       setText(matrixToText(matrix));
     }
@@ -131,28 +132,28 @@ export default function AddGeometry({
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = event.target.value;
     setText(newText);
-    
+
     try {
       const newMatrix = newText
         .trim()
         .split("\n")
-        .map((row) => 
+        .map((row) =>
           row
             .trim()
             .split(/[\s,]+/)
-            .map((num) => parseFloat(num)) 
+            .map((num) => parseFloat(num))
             .filter((num) => !isNaN(num))
         )
-        .filter(row => row.length > 0);
+        .filter((row) => row.length > 0);
 
       const validation = validateMatrix(newMatrix);
       setValidationErrors(validation.errors);
-      
+
       if (validation.isValid) {
         setMatrix(newMatrix);
       }
     } catch (error) {
-      setValidationErrors(['Invalid data format']);
+      setValidationErrors(["Invalid data format"]);
     }
   };
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -190,10 +191,10 @@ export default function AddGeometry({
 
       // Transform matrix data to match GeometryItem interface
       const geometryData: GeometryItem[] = matrix.map((row, index) => ({
-        index: index + 1,  // Add required index field
+        index: index + 1, // Add required index field
         x: geometryFormat === "NXYZ" ? row[1] : row[3],
         y: row[2],
-        z: geometryFormat === "NXYZ" ? row[3] : row[1]
+        z: geometryFormat === "NXYZ" ? row[3] : row[1],
       }));
 
       onSetGeometry({ units, data: geometryData }); // Match GeometryArray interface
@@ -207,6 +208,21 @@ export default function AddGeometry({
         onClose();
       }
     }
+  };
+
+  const generateArrayGeometry = () => {
+    const geometryData: GeometryItem[] = Array.from(
+      { length: numberOfPoints },
+      (_, i) => ({
+        index: i + 1,
+        x: i * spacing,
+        y: 0,
+        z: 0,
+      })
+    );
+
+    onSetGeometry({ units, data: geometryData });
+    onClose();
   };
 
   return (
@@ -230,11 +246,14 @@ export default function AddGeometry({
                   className="form-select"
                   value={inputMethod}
                   onChange={(e) =>
-                    setInputMethod(e.target.value as "Spreadsheet" | "Text")
+                    setInputMethod(
+                      e.target.value as "Spreadsheet" | "Text" | "Array"
+                    )
                   }
                 >
                   <option value="Spreadsheet">Spreadsheet</option>
                   <option value="Text">Text</option>
+                  <option value="Array">Array</option>
                 </select>
               </div>
               <div className="col-6">
@@ -252,7 +271,7 @@ export default function AddGeometry({
               </div>
             </div>
 
-            {inputMethod === "Spreadsheet" ? (
+            {inputMethod === "Spreadsheet" && (
               <div className="mb-3">
                 <input
                   type="file"
@@ -268,7 +287,8 @@ export default function AddGeometry({
                   Upload Spreadsheet
                 </button>
               </div>
-            ) : (
+            )}
+            {inputMethod === "Text" && (
               <div className="col-12 d-flex justify-between align-items-center">
                 <label className="form-label w-50">Geometry Format:</label>
                 <select
@@ -303,7 +323,7 @@ export default function AddGeometry({
               </div>
             )}
 
-            {inputMethod === "Spreadsheet" ? (
+            {inputMethod === "Spreadsheet" && (
               <div
                 className="border rounded p-3 mb-3 mt-3 overflow-auto"
                 style={{ minHeight: "200px", maxHeight: "200px" }}
@@ -326,17 +346,18 @@ export default function AddGeometry({
                   <div className="text-center text-muted">No Data</div>
                 )}
               </div>
-            ) : (
+            )}
+            {inputMethod === "Text" && (
               <>
                 <textarea
                   className={`form-control border rounded p-3 mb-3 mt-3 overflow-auto ${
-                    validationErrors.length > 0 ? 'is-invalid' : ''
+                    validationErrors.length > 0 ? "is-invalid" : ""
                   }`}
                   style={{
                     minHeight: "200px",
                     maxHeight: "200px",
                     fontFamily: "monospace",
-                    whiteSpace: "pre"
+                    whiteSpace: "pre",
                   }}
                   value={text}
                   onChange={handleChange}
@@ -352,14 +373,54 @@ export default function AddGeometry({
                 )}
               </>
             )}
+
+            {inputMethod === "Array" && (
+              <div className="mb-3">
+                <div className="d-flex justify-content-between gap-3">
+                  <div className="mb-2 w-1/2">
+                    <label className="form-label">Number of Points</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="2"
+                      value={numberOfPoints}
+                      onChange={(e) =>
+                        setNumberOfPoints(
+                          Math.max(2, parseInt(e.target.value) || 2)
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="mb-2 w-1/2">
+                    <label className="form-label">Spacing ({units})</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="0.1"
+                      step="0.1"
+                      value={spacing}
+                      onChange={(e) =>
+                        setSpacing(
+                          Math.max(0.1, parseFloat(e.target.value) || 0.1)
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <div className="modal-footer">
             <button
               className="btn btn-primary w-100"
-              onClick={handleLoadData}
+              onClick={
+                inputMethod === "Array" ? generateArrayGeometry : handleLoadData
+              }
               disabled={
-                (inputMethod === "Text" && (!matrix.length || validationErrors.length > 0)) ||
-                (inputMethod === "Spreadsheet" && !previewData)
+                (inputMethod === "Text" &&
+                  (!matrix.length || validationErrors.length > 0)) ||
+                (inputMethod === "Spreadsheet" && !previewData) ||
+                (inputMethod === "Array" && numberOfPoints < 2)
               }
             >
               Load Data
