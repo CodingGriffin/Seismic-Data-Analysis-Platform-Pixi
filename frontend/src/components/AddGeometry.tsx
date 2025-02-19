@@ -192,13 +192,28 @@ export default function AddGeometry({
     reader.onload = async (e) => {
       if (!e.target?.result) return;
       const arrayBuffer = e.target.result as ArrayBuffer;
-      
-      // Extract geometry from SEG-Y file
-      const geometry = extractGeometryFromSegy(arrayBuffer);
-      console.log(geometry)
-      // Update state with the geometry data
-      onSetGeometry({ units, data: geometry });
-      onClose();
+
+      try {
+        // Extract geometry from SEG-Y file
+        const geometry = extractGeometryFromSegy(arrayBuffer);
+
+        // Set preview data
+        setPreviewData(
+          geometry.length > 0
+            ? geometry
+            : [{ index: 0, x: 0.0, y: 0.0, z: 0.0 }]
+        );
+
+        // Only update geometry and close if data is valid
+        // if (geometry.length > 0) {
+        //   onSetGeometry({ units, data: geometry });
+        //   onClose();
+        // }
+      } catch (error) {
+        console.error("Error parsing SEG-Y file:", error);
+        // Set fallback preview data on error
+        setPreviewData([{ index: 0, x: 0.0, y: 0.0, z: 0.0 }]);
+      }
     };
 
     reader.readAsArrayBuffer(file);
@@ -222,7 +237,7 @@ export default function AddGeometry({
 
       onSetGeometry({ units, data: geometryData }); // Match GeometryArray interface
       onClose();
-    } else {
+    } else if (inputMethod === "Spreadsheet") {
       const selectedData = sheets.find((sheet) => sheet.name === selectedSheet);
       if (selectedData) {
         const parsedData = getDataFromExcel(selectedData.data);
@@ -230,24 +245,28 @@ export default function AddGeometry({
         onSetGeometry({ units, data: parsedData }); // Match GeometryArray interface
         onClose();
       }
+    } else if (inputMethod === "SGY") {
+      if (previewData) {
+        onSetGeometry({ units, data: previewData });
+        onClose();
+      }
+    } else if (inputMethod === "Array") {
+      const geometryData: GeometryItem[] = Array.from(
+        { length: numberOfPoints },
+        (_, i) => ({
+          index: i + 1,
+          x: i * spacing,
+          y: 0,
+          z: 0,
+        })
+      );
+  
+      onSetGeometry({ units, data: geometryData });
+      onClose();
     }
   };
 
-  const generateArrayGeometry = () => {
-    const geometryData: GeometryItem[] = Array.from(
-      { length: numberOfPoints },
-      (_, i) => ({
-        index: i + 1,
-        x: i * spacing,
-        y: 0,
-        z: 0,
-      })
-    );
-
-    onSetGeometry({ units, data: geometryData });
-    onClose();
-  };
-
+  
   return (
     <div className="modal show d-block" tabIndex={-1}>
       <div className="modal-dialog">
@@ -268,11 +287,14 @@ export default function AddGeometry({
                 <select
                   className="form-select"
                   value={inputMethod}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    setPreviewData(null);
+                    setSheets([]);
+                    setSelectedSheet("");
                     setInputMethod(
                       e.target.value as "Spreadsheet" | "Text" | "Array" | "SGY"
-                    )
-                  }
+                    );
+                  }}
                 >
                   <option value="Spreadsheet">Spreadsheet</option>
                   <option value="Text">Text</option>
@@ -366,7 +388,7 @@ export default function AddGeometry({
               </div>
             )}
 
-            {inputMethod === "Spreadsheet" && (
+            {(inputMethod === "Spreadsheet" || inputMethod === "SGY") && (
               <div
                 className="border rounded p-3 mb-3 mt-3 overflow-auto"
                 style={{ minHeight: "200px", maxHeight: "200px" }}
@@ -457,13 +479,14 @@ export default function AddGeometry({
             <button
               className="btn btn-primary w-100"
               onClick={
-                inputMethod === "Array" ? generateArrayGeometry : handleLoadData
+                handleLoadData
               }
               disabled={
                 (inputMethod === "Text" &&
                   (!matrix.length || validationErrors.length > 0)) ||
                 (inputMethod === "Spreadsheet" && !previewData) ||
-                (inputMethod === "Array" && numberOfPoints < 2)
+                (inputMethod === "Array" && numberOfPoints < 2) ||
+                (inputMethod === "SGY" && !previewData)
               }
             >
               Load Data
