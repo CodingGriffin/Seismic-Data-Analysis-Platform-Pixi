@@ -1,7 +1,9 @@
 import { useState, useRef, type ChangeEvent, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { getDataFromExcel } from "../utils/excelParse";
+import { extractGeometryFromSegy } from "../utils/segyParse";
 import { GeometryItem } from "../types";
+
 interface AddGeometryProps {
   onSetGeometry: (data: any) => void;
   onClose: () => void;
@@ -22,7 +24,7 @@ export default function AddGeometry({
   onClose,
 }: AddGeometryProps) {
   const [inputMethod, setInputMethod] = useState<
-    "Spreadsheet" | "Text" | "Array"
+    "Spreadsheet" | "Text" | "Array" | "SGY"
   >("Spreadsheet");
   const [units, setUnits] = useState<"Meters" | "Feet">("Meters");
   const [geometryFormat, setGeometryFormat] = useState<"NXYZ" | "NZYX">("NXYZ");
@@ -30,6 +32,7 @@ export default function AddGeometry({
   const [selectedSheet, setSelectedSheet] = useState<string>("");
   const [previewData, setPreviewData] = useState<GeometryItem[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sgyFileInputRef = useRef<HTMLInputElement>(null);
   const [matrix, setMatrix] = useState<number[][]>([]);
   const [text, setText] = useState<string>(() => matrixToText(matrix));
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -181,6 +184,26 @@ export default function AddGeometry({
     reader.readAsArrayBuffer(file);
   };
 
+  const handleSgyFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      if (!e.target?.result) return;
+      const arrayBuffer = e.target.result as ArrayBuffer;
+      
+      // Extract geometry from SEG-Y file
+      const geometry = extractGeometryFromSegy(arrayBuffer);
+      console.log(geometry)
+      // Update state with the geometry data
+      onSetGeometry({ units, data: geometry });
+      onClose();
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
   const handleLoadData = () => {
     if (inputMethod === "Text") {
       const validation = validateMatrix(matrix);
@@ -247,13 +270,14 @@ export default function AddGeometry({
                   value={inputMethod}
                   onChange={(e) =>
                     setInputMethod(
-                      e.target.value as "Spreadsheet" | "Text" | "Array"
+                      e.target.value as "Spreadsheet" | "Text" | "Array" | "SGY"
                     )
                   }
                 >
                   <option value="Spreadsheet">Spreadsheet</option>
                   <option value="Text">Text</option>
                   <option value="Array">Array</option>
+                  <option value="SGY">SGY File</option>
                 </select>
               </div>
               <div className="col-6">
@@ -288,6 +312,25 @@ export default function AddGeometry({
                 </button>
               </div>
             )}
+
+            {inputMethod === "SGY" && (
+              <div className="mb-3">
+                <input
+                  type="file"
+                  className="d-none"
+                  ref={sgyFileInputRef}
+                  accept=".sgy"
+                  onChange={handleSgyFileUpload}
+                />
+                <button
+                  className="btn btn-primary w-100"
+                  onClick={() => sgyFileInputRef.current?.click()}
+                >
+                  Upload Sgy
+                </button>
+              </div>
+            )}
+
             {inputMethod === "Text" && (
               <div className="col-12 d-flex justify-between align-items-center">
                 <label className="form-label w-50">Geometry Format:</label>
