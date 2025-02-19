@@ -668,7 +668,7 @@ export const RightPlot = () => {
                     <pixiText
                       text={`${layer.velocity.toFixed(0)}`}
                       x={coordinateHelpers.toScreenX(layer.velocity) + 5}
-                      y={(coordinateHelpers.toScreenY(layer.startDepth) + coordinateHelpers.toScreenY(layer.endDepth)) / 2}
+                      y={(coordinateHelpers.toScreenY(layer.startDepth) + coordinateHelpers.toScreenY(layer.endDepth)) / 2 - 7}
                       style={new TextStyle({
                         fontSize: 12,
                         fill: 0xff0000,
