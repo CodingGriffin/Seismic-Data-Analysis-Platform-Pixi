@@ -21,15 +21,15 @@ interface PickData extends Point {
 }
 
 export const LeftPlot = () => {
-  const { 
-    layers, 
+  const {
+    layers,
     asceVersion,
   } = useDisper();
-  
+
   const [vels, setVels] = useState<(number | null)[]>([]);
-  const [points, setPoints] = useState<Point[]>([]);
+  const [points, setPoints] = useState<PickData[]>([]);
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
-  const [numPoints, setNumPoints] = useState<number>(20);
+  const [numPoints, setNumPoints] = useState<number>(10);
   const [axisLimits, setAxisLimits] = useState({
     xmin: 0.001, // Period min
     xmax: 0.6, // Period max
@@ -42,6 +42,7 @@ export const LeftPlot = () => {
   });
   const plotRef = useRef<HTMLDivElement>(null);
   const [periods, setPeriods] = useState<(number | null)[]>([]);
+  const [rmseVel, setRmseVel] = useState<number | null>(null)
   const [vs30, setVs30] = useState<number | null>(null);
   const [siteClass, setSiteClass] = useState<string | null>(null);
 
@@ -54,12 +55,58 @@ export const LeftPlot = () => {
   }, []);
   useEffect(() => {
     // Generate periods array to always fill from xmin to xmax
-    const periods = Array(numPoints + 1)  // +1 to include both start and end points
+    const spreadPeriods = Array(numPoints + 1)  // +1 to include both start and end points
       .fill(null)
       .map((_, index) => {
         // Use linear interpolation to ensure we include both xmin and xmax
         return axisLimits.xmin + (index * (axisLimits.xmax - axisLimits.xmin)) / numPoints;
       });
+
+    // Generate periods for picks as well, in order to calculate RMSE based on velocity
+    let newPeriods;
+    let pointIdxs: number[] | null = null;
+    console.log("pointsInEffect:", points)
+    if(points.length > 0) {
+      const newPointPeriods = Array(points.length)
+          .fill(null)
+          .map((_, index) => {
+            return points[index].x
+          })
+      pointIdxs = Array(points.length);
+
+      // Merge sorted arrays, tracking indices that match points so we can calculate RMSE later
+      newPeriods = Array(newPointPeriods.length + spreadPeriods.length)
+      let i=0, j=0, k=0, l=0;
+      while(i<newPointPeriods.length && j < spreadPeriods.length) {
+          if(newPointPeriods[i] < spreadPeriods[j]) {
+              newPeriods[k] = newPointPeriods[i];
+              pointIdxs[l] = k;
+              i++;
+              k++;
+              l++;
+          } else {
+              newPeriods[k] = spreadPeriods[j];
+              j++;
+              k++;
+          }
+      }
+      while(i<newPointPeriods.length) {
+          newPeriods[k] = newPointPeriods[i];
+          pointIdxs[l] = k;
+          i++;
+          k++;
+          l++;
+      }
+      while(j<spreadPeriods.length) {
+          newPeriods[k] = spreadPeriods[j];
+          j++;
+          k++;
+      }
+      const oldNewPeriods = [...newPointPeriods, ...spreadPeriods]
+      oldNewPeriods.sort((a,b) => a - b)
+    } else {
+      newPeriods = spreadPeriods
+    }
 
     if (layers.length) {
       const num_layers: number = layers.length;
@@ -68,7 +115,7 @@ export const LeftPlot = () => {
       );
       const vels_shear = layers.map(layer => layer.velocity);
       const densities = layers.map(layer => layer.density);
-      
+
       const vels_compression = vels_shear.map(v => v * Math.sqrt(3));
 
       const model = new VelModel(
@@ -97,7 +144,7 @@ export const LeftPlot = () => {
       setSiteClass(calculatedSiteClass);
 
       const vels = CalcCurve(
-        periods,
+        newPeriods,
         num_layers,
         layer_thicknesses,
         vels_shear,
@@ -106,15 +153,38 @@ export const LeftPlot = () => {
         2.0,
         densities
       );
-      console.log("Periods", periods);
+      console.log("Periods", newPeriods);
       console.log("Vels:", vels);
       setVels(vels);
-      setPeriods(periods);
+      setPeriods(newPeriods);
+
+      if(pointIdxs != null) {
+        const curveVels = pointIdxs.map((i) => vels[i])
+        const pointVels:number[] = points.map((p) => p.y)
+        const diffSquaredArr = pointVels
+          .map((pointVel, index) => {
+            const curveVel = curveVels[index]
+            if(curveVel != null) {
+              return (curveVel-pointVel)**2
+            } else {
+              return null
+            }
+          })
+          .filter(a=> a != null);
+        if(diffSquaredArr.length > 0) {
+          setRmseVel(diffSquaredArr.reduce((accumulator, currentValue) => accumulator + currentValue, 0))
+        } else{
+          setRmseVel(null)
+        }
+      }
     }
   }, [
     layers,
+    axisLimits.xmin,
+    axisLimits.xmax,
     axisLimits.ymin,
     axisLimits.ymax,
+    points,
     numPoints,
     asceVersion
   ]);
@@ -158,7 +228,8 @@ export const LeftPlot = () => {
       .filter(
         (point) =>
           !isNaN(point.x) && !isNaN(point.y) && point.x > 0 && point.y > 0
-      );
+      )
+      .sort((a,b) => a.x - b.x);
 
     console.log("Parsed data:", newPoints);
     if (newPoints.length > 0) {
@@ -173,7 +244,7 @@ export const LeftPlot = () => {
         ymin: Math.max(0, Math.floor(minVelocity * VELOCITY_MIN_MARGIN_FACTOR)),
         ymax: Math.ceil(maxVelocity * VELOCITY_MAX_MARGIN_FACTOR),
       });
-
+      console.log("newPoints:", newPoints)
       setPoints(newPoints);
     }
   };
