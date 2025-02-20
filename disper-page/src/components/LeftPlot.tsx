@@ -389,13 +389,21 @@ export const LeftPlot = () => {
                     // key={index}
                     draw={(g: Graphics) => {
                       g.clear();
+                      // Convert values based on selected units
+                      const xValue = periodUnit === 'frequency' 
+                        ? convertPeriodToFrequency(point.x)
+                        : point.x;
+                      const yValue = velocityUnit === 'slowness'
+                        ? convertVelocityToSlowness(point.y)
+                        : point.y;
+
                       const screenX =
-                        ((point.x - axisLimits.xmin) /
+                        ((xValue - axisLimits.xmin) /
                           (axisLimits.xmax - axisLimits.xmin)) *
                         plotDimensions.width;
                       const screenY =
                         plotDimensions.height -
-                        ((point.y - axisLimits.ymin) /
+                        ((yValue - axisLimits.ymin) /
                           (axisLimits.ymax - axisLimits.ymin)) *
                           plotDimensions.height;
 
@@ -429,21 +437,27 @@ export const LeftPlot = () => {
                     g.beginPath();
                     periods.forEach((period, index) => {
                       if (vels[index] !== null && period !== null) {
+                        // Convert values based on selected units
+                        const xValue = periodUnit === 'frequency'
+                          ? convertPeriodToFrequency(period)
+                          : period;
+                        const yValue = velocityUnit === 'slowness'
+                          ? convertVelocityToSlowness(vels[index])
+                          : vels[index];
+
                         const screenX =
-                          ((period - axisLimits.xmin) /
+                          ((xValue - axisLimits.xmin) /
                             (axisLimits.xmax - axisLimits.xmin)) *
                           plotDimensions.width;
                         const screenY =
                           plotDimensions.height -
-                          ((vels[index] - axisLimits.ymin) /
+                          ((yValue - axisLimits.ymin) /
                             (axisLimits.ymax - axisLimits.ymin)) *
                             plotDimensions.height;
                         if (index === 0) {
                           g.moveTo(screenX, screenY);
-                          // console.log("Drawing", screenX, screenY);
                         } else {
                           g.lineTo(screenX, screenY);
-                          // console.log("Drawing Lines", screenX, screenY);
                         }
                       }
                     });
@@ -461,13 +475,19 @@ export const LeftPlot = () => {
               className="absolute bg-white border border-black rounded px-1.5 py-0.5 text-xs shadow-sm pointer-events-none"
               style={{
                 left:
-                  ((hoveredPoint.x - axisLimits.xmin) /
+                  ((periodUnit === 'frequency' 
+                    ? convertPeriodToFrequency(hoveredPoint.x)
+                    : hoveredPoint.x
+                  - axisLimits.xmin) /
                     (axisLimits.xmax - axisLimits.xmin)) *
                     plotDimensions.width +
                   2,
                 top:
                   plotDimensions.height -
-                  ((hoveredPoint.y - axisLimits.ymin) /
+                  ((velocityUnit === 'slowness'
+                    ? convertVelocityToSlowness(hoveredPoint.y)
+                    : hoveredPoint.y
+                  - axisLimits.ymin) /
                     (axisLimits.ymax - axisLimits.ymin)) *
                     plotDimensions.height,
                 zIndex: 1000,
@@ -480,7 +500,9 @@ export const LeftPlot = () => {
                     background: "rgb(255, 0, 0)",
                   }}
                 />
-                {`(${hoveredPoint.x.toFixed(3)}, ${hoveredPoint.y.toFixed(3)})`}
+                {`(${hoveredPoint.x.toFixed(3)} ${periodUnit === 'period' ? 's' : 'Hz'}, ${
+                  hoveredPoint.y.toFixed(3)
+                } ${velocityUnit === 'velocity' ? 'm/s' : 's/m'})`}
               </div>
             </div>
           )}
