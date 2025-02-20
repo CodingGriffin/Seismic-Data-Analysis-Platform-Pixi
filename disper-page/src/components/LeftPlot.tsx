@@ -10,7 +10,7 @@ extend({ Graphics, Container });
 const VELOCITY_MAX_MARGIN_FACTOR = 1.1; // 110% of max velocity
 const VELOCITY_MIN_MARGIN_FACTOR = 0.9; // 90% of min velocity
 
-interface PickData extends Point {
+interface PickData {
   d1: number;
   d2: number;
   frequency: number;
@@ -27,6 +27,7 @@ export const LeftPlot = () => {
   } = useDisper();
   
   const [vels, setVels] = useState<(number | null)[]>([]);
+  const [pickData, setPickData] = useState<PickData[]>([]);
   const [points, setPoints] = useState<Point[]>([]);
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
   const [numPoints, setNumPoints] = useState<number>(20);
@@ -47,35 +48,77 @@ export const LeftPlot = () => {
   const [velocityUnit, setVelocityUnit] = useState<'velocity' | 'slowness'>('velocity');
   const [periodUnit, setPeriodUnit] = useState<'period' | 'frequency'>('period');
 
-  const convertVelocityToSlowness = (velocity: number) => 1 / velocity;
-  const convertSlownessToVelocity = (slowness: number) => 1 / slowness;
-  const convertPeriodToFrequency = (period: number) => 1 / period;
-  const convertFrequencyToPeriod = (frequency: number) => 1 / frequency;
+  const convertUnit = (value: number, from: string, to: string): number => {
+    if (from === to) return value;
+    return 1 / value;
+  };
 
+  const convertToPlotPoints = (
+    rawData: PickData[],
+    currentPeriodUnit: 'period' | 'frequency',
+    currentVelocityUnit: 'velocity' | 'slowness'
+  ): Point[] => {
+    return rawData.map((data) => {
+      const x = currentPeriodUnit === 'frequency' 
+        ? data.frequency 
+        : convertUnit(data.frequency, 'frequency', 'period');
+      
+      const y = currentVelocityUnit === 'slowness'
+        ? data.slowness
+        : convertUnit(data.slowness, 'slowness', 'velocity');
+
+      return { x, y, originalData: data };
+    }).filter(point => !isNaN(point.x) && !isNaN(point.y) && point.x > 0 && point.y > 0);
+  };
+
+  const updateAxisLimits = (
+    plotPoints: Point[], 
+    periodUnit: 'period' | 'frequency',
+    velocityUnit: 'velocity' | 'slowness'
+  ) => {
+    if (plotPoints.length === 0) return null;
+
+    const xValues = plotPoints.map((p) => p.x);
+    const yValues = plotPoints.map((p) => p.y);
+    const minX = Math.min(...xValues);
+    const maxX = Math.max(...xValues);
+    const minY = Math.min(...yValues);
+    const maxY = Math.max(...yValues);
+
+    const yMarginFactor = velocityUnit === 'velocity' 
+      ? { min: VELOCITY_MIN_MARGIN_FACTOR, max: VELOCITY_MAX_MARGIN_FACTOR }
+      : { min: 1.1, max: 0.9 };
+
+    const xMinLimit = periodUnit === 'period' ? 0.001 : 0.1;
+    const yMinLimit = velocityUnit === 'velocity' ? 30 : 0.0001;
+
+    return {
+      xmin: Math.max(xMinLimit, Math.round(minX * 1000) / 1000),
+      xmax: Math.round(maxX * 1000) / 1000,
+      ymin: Math.max(yMinLimit, Math.floor(minY * yMarginFactor.min)),
+      ymax: Math.ceil(maxY * yMarginFactor.max),
+    };
+  };
+  
   useEffect(() => {
     if (plotRef.current) {
       const { width, height } = plotRef.current.getBoundingClientRect();
-      console.log(`Width: ${width}, Height: ${height}`);
       setPlotDimensions({ width, height });
     }
   }, []);
+
   useEffect(() => {
-    // Generate periods array to always fill from xmin to xmax
-    const periods = Array(numPoints + 1)  // +1 to include both start and end points
+    const periods = Array(numPoints + 1)
       .fill(null)
       .map((_, index) => {
-        // Use linear interpolation to ensure we include both xmin and xmax
         return axisLimits.xmin + (index * (axisLimits.xmax - axisLimits.xmin)) / numPoints;
       });
 
     if (layers.length) {
-      const num_layers: number = layers.length;
-      const layer_thicknesses = layers.map(
-        layer => layer.endDepth - layer.startDepth
-      );
+      const num_layers = layers.length;
+      const layer_thicknesses = layers.map(layer => layer.endDepth - layer.startDepth);
       const vels_shear = layers.map(layer => layer.velocity);
       const densities = layers.map(layer => layer.density);
-      
       const vels_compression = vels_shear.map(v => v * Math.sqrt(3));
 
       const model = new VelModel(
@@ -90,15 +133,8 @@ export const LeftPlot = () => {
       );
 
       const calculatedVs30 = model.get_vs30();
-
-      const formattedAsceVersion = asceVersion
-        .toLowerCase()
-        .replace(/[- ]/g, "_");
-
-      const calculatedSiteClass = VelModel.calc_site_class(
-        formattedAsceVersion,
-        calculatedVs30
-      );
+      const formattedAsceVersion = asceVersion.toLowerCase().replace(/[- ]/g, "_");
+      const calculatedSiteClass = VelModel.calc_site_class(formattedAsceVersion, calculatedVs30);
 
       setVs30(calculatedVs30);
       setSiteClass(calculatedSiteClass);
@@ -113,18 +149,23 @@ export const LeftPlot = () => {
         2.0,
         densities
       );
-      console.log("Periods", periods);
-      console.log("Vels:", vels);
+
       setVels(vels);
       setPeriods(periods);
     }
-  }, [
-    layers,
-    axisLimits.ymin,
-    axisLimits.ymax,
-    numPoints,
-    asceVersion
-  ]);
+  }, [layers, axisLimits.ymin, axisLimits.ymax, numPoints, asceVersion]);
+
+  useEffect(() => {
+    if (!pickData.length) return;
+    
+    const plotPoints = convertToPlotPoints(pickData, periodUnit, velocityUnit);
+    const newAxisLimits = updateAxisLimits(plotPoints, periodUnit, velocityUnit);
+    
+    if (newAxisLimits) {
+      setAxisLimits(newAxisLimits);
+      setPoints(plotPoints);
+    }
+  }, [pickData, velocityUnit, periodUnit]);
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -133,7 +174,7 @@ export const LeftPlot = () => {
     if (!file) return;
 
     const text = await file.text();
-    const newPoints: PickData[] = text
+    const rawData: PickData[] = text
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
@@ -142,14 +183,7 @@ export const LeftPlot = () => {
           .split(/\s+/)
           .map((num) => parseFloat(num.trim()));
 
-        // Calculate period from frequency (T = 1/f)
-        const period = 1 / frequency;
-        // Calculate velocity from slowness (v = 1/s)
-        // Convert slowness from s/km to km/s
-        const velocity = 1 / slowness;
-
         return {
-          // Original data
           d1,
           d2,
           frequency,
@@ -157,31 +191,33 @@ export const LeftPlot = () => {
           slowness,
           d4,
           d5,
-          // Calculated x,y for plotting
-          x: period,
-          y: velocity,
         };
-      })
-      .filter(
-        (point) =>
-          !isNaN(point.x) && !isNaN(point.y) && point.x > 0 && point.y > 0
-      );
-
-    console.log("Parsed data:", newPoints);
-    if (newPoints.length > 0) {
-      const xValues = newPoints.map((p) => p.x);
-      const yValues = newPoints.map((p) => p.y);
-      const minVelocity = Math.min(...yValues);
-      const maxVelocity = Math.max(...yValues);
-
-      setAxisLimits({
-        xmin: Math.max(0.001, Math.round(Math.min(...xValues) * 1000) / 1000),
-        xmax: Math.round(Math.max(...xValues) * 1000) / 1000,
-        ymin: Math.max(0, Math.floor(minVelocity * VELOCITY_MIN_MARGIN_FACTOR)),
-        ymax: Math.ceil(maxVelocity * VELOCITY_MAX_MARGIN_FACTOR),
       });
+    setPickData(rawData);
+  };
 
-      setPoints(newPoints);
+  const handleUnitChange = (
+    type: 'velocity' | 'period',
+    newUnit: string
+  ) => {
+    const updateFn = type === 'velocity' ? setVelocityUnit : setPeriodUnit;
+    const currentUnit = type === 'velocity' ? velocityUnit : periodUnit;
+    
+    if (newUnit !== currentUnit) {
+      updateFn(newUnit as any);
+      setAxisLimits(prev => ({
+        ...prev,
+        [type === 'velocity' ? 'ymin' : 'xmin']: convertUnit(
+          prev[type === 'velocity' ? 'ymax' : 'xmax'],
+          currentUnit,
+          newUnit
+        ),
+        [type === 'velocity' ? 'ymax' : 'xmax']: convertUnit(
+          prev[type === 'velocity' ? 'ymin' : 'xmin'],
+          currentUnit,
+          newUnit
+        ),
+      }));
     }
   };
 
@@ -190,22 +226,33 @@ export const LeftPlot = () => {
     value: string
   ) => {
     const numValue = parseFloat(value);
-    if (!isNaN(numValue)) {
-      setAxisLimits((prev) => {
-        // Ensure xmin and ymin are never negative
-        if ((axis === "xmin" || axis === "ymin") && numValue < 0) {
-          return prev;
-        }
+    if (isNaN(numValue)) return;
+    
+    // Different validation rules based on unit type and axis
+    if (axis.startsWith('x')) {
+      // Period/Frequency limits
+      const minLimit = periodUnit === 'period' ? 0.001 : 0.1;
+      if (axis === 'xmin' && numValue < minLimit) return;
+      
+      setAxisLimits(prev => ({
+        ...prev,
+        [axis]: numValue,
+        // Ensure max is greater than min
+        ...(axis === 'xmin' && numValue >= prev.xmax ? { xmax: numValue + 0.1 } : {}),
+        ...(axis === 'xmax' && numValue <= prev.xmin ? { xmin: numValue - 0.1 } : {})
+      }));
+    } else {
+      // Velocity/Slowness limits
+      const minLimit = velocityUnit === 'velocity' ? 30 : 0.0001;
+      if (axis === 'ymin' && numValue < minLimit) return;
 
-        const newLimits = { ...prev, [axis]: numValue };
-        if (
-          newLimits.xmin >= newLimits.xmax ||
-          newLimits.ymin >= newLimits.ymax
-        ) {
-          return prev;
-        }
-        return newLimits;
-      });
+      setAxisLimits(prev => ({
+        ...prev,
+        [axis]: numValue,
+        // Ensure max is greater than min
+        ...(axis === 'ymin' && numValue >= prev.ymax ? { ymax: numValue + (velocityUnit === 'velocity' ? 10 : 0.001) } : {}),
+        ...(axis === 'ymax' && numValue <= prev.ymin ? { ymin: numValue - (velocityUnit === 'velocity' ? 10 : 0.001) } : {})
+      }));
     }
   };
 
@@ -217,24 +264,7 @@ export const LeftPlot = () => {
             <div className="mb-2">
               <select
                 value={velocityUnit}
-                onChange={(e) => {
-                  const newUnit = e.target.value as 'velocity' | 'slowness';
-                  setVelocityUnit(newUnit);
-                  
-                  if (newUnit === 'slowness') {
-                    setAxisLimits(prev => ({
-                      ...prev,
-                      ymin: convertVelocityToSlowness(prev.ymax),
-                      ymax: convertVelocityToSlowness(prev.ymin)
-                    }));
-                  } else {
-                    setAxisLimits(prev => ({
-                      ...prev,
-                      ymin: convertSlownessToVelocity(prev.ymax),
-                      ymax: convertSlownessToVelocity(prev.ymin)
-                    }));
-                  }
-                }}
+                onChange={(e) => handleUnitChange('velocity', e.target.value)}
                 className="bg-white border border-gray-300 rounded px-2 py-1 text-sm"
               >
                 <option value="velocity">Velocity (m/s)</option>
@@ -251,7 +281,7 @@ export const LeftPlot = () => {
                 value={axisLimits.ymax}
                 onChange={(e) => handleAxisLimitChange("ymax", e.target.value)}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="1"
+                step={velocityUnit === 'velocity' ? "1" : "0.0001"}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -263,7 +293,7 @@ export const LeftPlot = () => {
                 value={axisLimits.ymin}
                 onChange={(e) => handleAxisLimitChange("ymin", e.target.value)}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="1"
+                step={velocityUnit === 'velocity' ? "1" : "0.0001"}
               />
             </div>
           </div>
@@ -271,24 +301,7 @@ export const LeftPlot = () => {
             <div className="mb-2">
               <select
                 value={periodUnit}
-                onChange={(e) => {
-                  const newUnit = e.target.value as 'period' | 'frequency';
-                  setPeriodUnit(newUnit);
-                  
-                  if (newUnit === 'frequency') {
-                    setAxisLimits(prev => ({
-                      ...prev,
-                      xmin: convertPeriodToFrequency(prev.xmax),
-                      xmax: convertPeriodToFrequency(prev.xmin)
-                    }));
-                  } else {
-                    setAxisLimits(prev => ({
-                      ...prev,
-                      xmin: convertFrequencyToPeriod(prev.xmax),
-                      xmax: convertFrequencyToPeriod(prev.xmin)
-                    }));
-                  }
-                }}
+                onChange={(e) => handleUnitChange('period', e.target.value)}
                 className="bg-white border border-gray-300 rounded px-2 py-1 text-sm"
               >
                 <option value="period">Period (s)</option>
@@ -304,7 +317,7 @@ export const LeftPlot = () => {
                 value={axisLimits.xmax}
                 onChange={(e) => handleAxisLimitChange("xmax", e.target.value)}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="0.05"
+                step={periodUnit === 'period' ? "0.001" : "0.1"}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -316,7 +329,7 @@ export const LeftPlot = () => {
                 value={axisLimits.xmin}
                 onChange={(e) => handleAxisLimitChange("xmin", e.target.value)}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="0.05"
+                step={periodUnit === 'period' ? "0.001" : "0.1"}
               />
             </div>
           </div>
@@ -384,26 +397,18 @@ export const LeftPlot = () => {
               background="white"
             >
               <pixiContainer>
-                {points.map((point) => (
+                {points.map((point, index) => (
                   <pixiGraphics
-                    // key={index}
+                    key={`point-${index}`}
                     draw={(g: Graphics) => {
                       g.clear();
-                      // Convert values based on selected units
-                      const xValue = periodUnit === 'frequency' 
-                        ? convertPeriodToFrequency(point.x)
-                        : point.x;
-                      const yValue = velocityUnit === 'slowness'
-                        ? convertVelocityToSlowness(point.y)
-                        : point.y;
-
                       const screenX =
-                        ((xValue - axisLimits.xmin) /
+                        ((point.x - axisLimits.xmin) /
                           (axisLimits.xmax - axisLimits.xmin)) *
                         plotDimensions.width;
                       const screenY =
                         plotDimensions.height -
-                        ((yValue - axisLimits.ymin) /
+                        ((point.y - axisLimits.ymin) /
                           (axisLimits.ymax - axisLimits.ymin)) *
                           plotDimensions.height;
 
@@ -439,10 +444,10 @@ export const LeftPlot = () => {
                       if (vels[index] !== null && period !== null) {
                         // Convert values based on selected units
                         const xValue = periodUnit === 'frequency'
-                          ? convertPeriodToFrequency(period)
+                          ? convertUnit(period, 'period', 'frequency')
                           : period;
                         const yValue = velocityUnit === 'slowness'
-                          ? convertVelocityToSlowness(vels[index])
+                          ? convertUnit(vels[index], 'velocity', 'slowness')
                           : vels[index];
 
                         const screenX =
@@ -476,7 +481,7 @@ export const LeftPlot = () => {
               style={{
                 left:
                   ((periodUnit === 'frequency' 
-                    ? convertPeriodToFrequency(hoveredPoint.x)
+                    ? convertUnit(hoveredPoint.x, 'period', 'frequency')
                     : hoveredPoint.x
                   - axisLimits.xmin) /
                     (axisLimits.xmax - axisLimits.xmin)) *
@@ -485,7 +490,7 @@ export const LeftPlot = () => {
                 top:
                   plotDimensions.height -
                   ((velocityUnit === 'slowness'
-                    ? convertVelocityToSlowness(hoveredPoint.y)
+                    ? convertUnit(hoveredPoint.y, 'velocity', 'slowness')
                     : hoveredPoint.y
                   - axisLimits.ymin) /
                     (axisLimits.ymax - axisLimits.ymin)) *
