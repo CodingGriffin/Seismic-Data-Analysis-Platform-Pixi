@@ -44,6 +44,13 @@ export const LeftPlot = () => {
   const [periods, setPeriods] = useState<(number | null)[]>([]);
   const [vs30, setVs30] = useState<number | null>(null);
   const [siteClass, setSiteClass] = useState<string | null>(null);
+  const [velocityUnit, setVelocityUnit] = useState<'velocity' | 'slowness'>('velocity');
+  const [periodUnit, setPeriodUnit] = useState<'period' | 'frequency'>('period');
+
+  const convertVelocityToSlowness = (velocity: number) => 1 / velocity;
+  const convertSlownessToVelocity = (slowness: number) => 1 / slowness;
+  const convertPeriodToFrequency = (period: number) => 1 / period;
+  const convertFrequencyToPeriod = (frequency: number) => 1 / frequency;
 
   useEffect(() => {
     if (plotRef.current) {
@@ -207,9 +214,37 @@ export const LeftPlot = () => {
       <div className="w-full">
         <div className="flex gap-4 flex-wrap justify-center mb-4">
           <div className="flex flex-col">
+            <div className="mb-2">
+              <select
+                value={velocityUnit}
+                onChange={(e) => {
+                  const newUnit = e.target.value as 'velocity' | 'slowness';
+                  setVelocityUnit(newUnit);
+                  
+                  if (newUnit === 'slowness') {
+                    setAxisLimits(prev => ({
+                      ...prev,
+                      ymin: convertVelocityToSlowness(prev.ymax),
+                      ymax: convertVelocityToSlowness(prev.ymin)
+                    }));
+                  } else {
+                    setAxisLimits(prev => ({
+                      ...prev,
+                      ymin: convertSlownessToVelocity(prev.ymax),
+                      ymax: convertSlownessToVelocity(prev.ymin)
+                    }));
+                  }
+                }}
+                className="bg-white border border-gray-300 rounded px-2 py-1 text-sm"
+              >
+                <option value="velocity">Velocity (m/s)</option>
+                <option value="slowness">Slowness (s/m)</option>
+              </select>
+            </div>
+            
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-600">
-                Max Velocity:
+                Max {velocityUnit === 'velocity' ? 'Velocity' : 'Slowness'}:
               </label>
               <input
                 type="number"
@@ -221,7 +256,7 @@ export const LeftPlot = () => {
             </div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-600">
-                Min Velocity:
+                Min {velocityUnit === 'velocity' ? 'Velocity' : 'Slowness'}:
               </label>
               <input
                 type="number"
@@ -233,9 +268,36 @@ export const LeftPlot = () => {
             </div>
           </div>
           <div className="flex flex-col">
+            <div className="mb-2">
+              <select
+                value={periodUnit}
+                onChange={(e) => {
+                  const newUnit = e.target.value as 'period' | 'frequency';
+                  setPeriodUnit(newUnit);
+                  
+                  if (newUnit === 'frequency') {
+                    setAxisLimits(prev => ({
+                      ...prev,
+                      xmin: convertPeriodToFrequency(prev.xmax),
+                      xmax: convertPeriodToFrequency(prev.xmin)
+                    }));
+                  } else {
+                    setAxisLimits(prev => ({
+                      ...prev,
+                      xmin: convertFrequencyToPeriod(prev.xmax),
+                      xmax: convertFrequencyToPeriod(prev.xmin)
+                    }));
+                  }
+                }}
+                className="bg-white border border-gray-300 rounded px-2 py-1 text-sm"
+              >
+                <option value="period">Period (s)</option>
+                <option value="frequency">Frequency (Hz)</option>
+              </select>
+            </div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-600">
-                Max Period:
+                Max {periodUnit === 'period' ? 'Period' : 'Frequency'}:
               </label>
               <input
                 type="number"
@@ -247,7 +309,7 @@ export const LeftPlot = () => {
             </div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-600">
-                Min Period:
+                Min {periodUnit === 'period' ? 'Period' : 'Frequency'}:
               </label>
               <input
                 type="number"
@@ -297,12 +359,16 @@ export const LeftPlot = () => {
           className="relative border border-gray-200 rounded-lg bg-white shadow-sm w-full aspect-[4/3] min-h-[300px]"
           ref={plotRef}
         >
-          <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-sm">
-            Velocity (m/s)
+          <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-sm flex items-center gap-2">
+            <span className="px-2 py-1 text-sm">
+              {velocityUnit === 'velocity' ? 'Velocity (m/s)' : 'Slowness (s/m)'}
+            </span>
           </div>
 
-          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm">
-            Period (s)
+          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm flex items-center gap-2">
+            <span className="px-2 py-1 text-sm">
+              {periodUnit === 'period' ? 'Period (s)' : 'Frequency (Hz)'}
+            </span>
           </div>
 
           <div className="absolute -left-8 top-0 h-full flex flex-col justify-between">
