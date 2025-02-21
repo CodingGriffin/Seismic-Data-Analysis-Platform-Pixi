@@ -34,7 +34,9 @@ export const LeftPlot = () => {
   
   const [pickData, setPickData] = useState<PickData[]>([]);
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
-  const [numPoints, setNumPoints] = useState<number>(20);
+  const [numPoints, setNumPoints] = useState<number>(10);
+  const [rmseVel, setRmseVel] = useState<number | null>(null);
+  const [rmseSlowness, setRmseSlowness] = useState<number | null>(null);
   const [axisLimits, setAxisLimits] = useState({
     xmin: 0.001, // Period min
     xmax: 0.6, // Period max
@@ -85,7 +87,8 @@ export const LeftPlot = () => {
         : convertUnit(data.slowness, 'slowness', 'velocity');
 
       return { x, y, originalData: data };
-    }).filter(point => !isNaN(point.x) && !isNaN(point.y) && point.x > 0 && point.y > 0);
+    }).filter(point => !isNaN(point.x) && !isNaN(point.y) && point.x > 0 && point.y > 0)
+    .sort((a,b) => a.x - b.x);
   };
 
   const updateAxisLimits = (
@@ -155,7 +158,52 @@ export const LeftPlot = () => {
 
   useEffect(() => {
     // Generate points that exactly match the axis limits
-    const xValues = generateEvenlySpacedPoints(axisLimits.xmin, axisLimits.xmax, numPoints);
+    const xValues = generateEvenlySpacedPoints(axisLimits.xmin, axisLimits.xmax, numPoints + 1);
+    // Convert periods based on current unit before calculation
+    const calcPeriods = periodUnit === 'frequency'
+    ? xValues.map(p => convertUnit(p, 'frequency', 'period'))
+    : xValues;
+
+    let newPeriods;
+    let pointIdxs: number[] | null = null;
+
+    if(pickPoints.length > 0) {
+      const newPointPeriods = pickPoints.map((point:Point) => periodUnit === 'frequency' ? convertUnit(point.x,'frequency', 'period') : point.x);   
+      pointIdxs = Array(newPointPeriods.length);
+
+      // Merge sorted arrays, tracking indices that match points so we can calculate RMSE later
+      newPeriods = Array(newPointPeriods.length + calcPeriods.length)
+      let i=0, j=0, k=0, l=0;
+      while(i<newPointPeriods.length && j < calcPeriods.length) {
+          if(newPointPeriods[i] < calcPeriods[j]) {
+              newPeriods[k] = newPointPeriods[i];
+              pointIdxs[l] = k;
+              i++;
+              k++;
+              l++;
+          } else {
+              newPeriods[k] = calcPeriods[j];
+              j++;
+              k++;
+          }
+      }
+      while(i<newPointPeriods.length) {
+          newPeriods[k] = newPointPeriods[i];
+          pointIdxs[l] = k;
+          i++;
+          k++;
+          l++;
+      }
+      while(j<calcPeriods.length) {
+          newPeriods[k] = calcPeriods[j];
+          j++;
+          k++;
+      }
+      const oldNewPeriods = [...newPointPeriods, ...calcPeriods]
+      oldNewPeriods.sort((a,b) => a - b)
+    } else {
+      newPeriods = calcPeriods
+    }
 
     if (layers.length) {
       const num_layers = layers.length;
@@ -190,13 +238,8 @@ export const LeftPlot = () => {
       setVs30(calculatedVs30);
       setSiteClass(calculatedSiteClass);
 
-      // Convert periods based on current unit before calculation
-      const calcPeriods = periodUnit === 'frequency'
-        ? xValues.map(p => convertUnit(p, 'frequency', 'period'))
-        : xValues;
-
       const newVelocities = CalcCurve(
-        calcPeriods,
+        newPeriods,
         num_layers,
         layer_thicknesses,
         vels_shear,
@@ -206,11 +249,54 @@ export const LeftPlot = () => {
         densities
       );
 
+      if(pointIdxs != null) {
+        const curveVels = pointIdxs.map((i) => newVelocities[i])
+        const pointVels:number[] = pickPoints.map((p) => velocityUnit === 'slowness' ? convertUnit(p.y, 'slowness','velocity') : p.y)
+        console.log("PointVels:", pointVels)
 
-      setPeriods(calcPeriods);
-      setVelocities(newVelocities);
+        // Calculate RMSE for velocity
+        const diffSquaredVelArr = pointVels
+          .map((pointVel, index) => {
+            const curveVel = curveVels[index]
+            if(curveVel != null) {
+              return (curveVel-pointVel)**2
+            } else {
+              return null
+            }
+          })
+          .filter(a=> a != null);
+        if(diffSquaredVelArr.length > 0) {
+          setRmseVel(Math.sqrt(diffSquaredVelArr.reduce((accumulator, currentValue) => accumulator + currentValue, 0) / diffSquaredVelArr.length))
+        } else {
+          setRmseVel(null)
+        }
+
+        // Calculate RMSE for slowness
+        const diffSquaredSlowArr = pointVels
+          .map((pointVel, index) => {
+            const curveVel = curveVels[index]
+            if(curveVel != null) {
+              // Convert both to slowness for comparison
+              const pointSlowness = 1 / pointVel;
+              const curveSlowness = 1 / curveVel;
+              return (curveSlowness - pointSlowness)**2
+            } else {
+              return null
+            }
+          })
+          .filter(a=> a != null);
+        if(diffSquaredSlowArr.length > 0) {
+          setRmseSlowness(Math.sqrt(diffSquaredSlowArr.reduce((accumulator, currentValue) => accumulator + currentValue, 0) / diffSquaredSlowArr.length))
+        } else {
+          setRmseSlowness(null)
+        }
+      }
+
+      console.log("newVelocities:", newVelocities)
+      setPeriods(newPeriods.sort((a:any, b:any) => a - b));
+      setVelocities(newVelocities.sort((a:any, b:any) => a - b));
     }
-  }, [layers, axisLimits.xmin, axisLimits.xmax, axisLimits.ymin, axisLimits.ymax, numPoints, asceVersion, velocityUnit, periodUnit]);
+  }, [layers, axisLimits.xmin, axisLimits.xmax, axisLimits.ymin, axisLimits.ymax, numPoints, pickPoints, asceVersion, velocityUnit, periodUnit]);
 
   useEffect(() => {
     const newCurvePoints: Point[] = periods
@@ -344,6 +430,15 @@ export const LeftPlot = () => {
         ...(axis === 'ymax' && numValue <= prev.ymin ? { ymin: numValue - (velocityUnit === 'velocity' ? 10 : 0.001) } : {})
       }));
     }
+  };
+
+  const displayRMSE = () => {
+    if (velocityUnit === 'velocity' && rmseVel !== null) {
+      return `${rmseVel.toFixed(2)} m/s`;
+    } else if (velocityUnit === 'slowness' && rmseSlowness !== null) {
+      return `${rmseSlowness.toFixed(6)} s/m`;
+    }
+    return 'N/A';
   };
 
   return (
@@ -606,7 +701,11 @@ export const LeftPlot = () => {
         <div className="flex justify-center space-x-8">
           <div className="text-center">
             <span className="font-semibold">Vs30:</span>{" "}
-            <span>{vs30 ? `${vs30.toFixed(1)} m/s` : "N/A"}</span>
+            <span className="font-bold">{vs30 ? `${vs30.toFixed(1)} m/s` : "N/A"}</span>
+          </div>
+          <div className="text-center">
+            <span className="font-semibold">RMSE:</span>
+            <span className="font-bold">{displayRMSE()}</span>
           </div>
           <div className="text-center">
             <span className="font-semibold">Site Class:</span>{" "}
