@@ -55,6 +55,9 @@ export const LeftPlot = () => {
   const [siteClass, setSiteClass] = useState<string | null>(null);
   const [velocityUnit, setVelocityUnit] = useState<'velocity' | 'slowness'>('velocity');
   const [periodUnit, setPeriodUnit] = useState<'period' | 'frequency'>('period');
+  const [velocityReversed, setVelocityReversed] = useState(false);
+  const [periodReversed, setPeriodReversed] = useState(false);
+  const [axesSwapped, setAxesSwapped] = useState(false);
 
   const convertUnit = (value: number, from: string, to: string): number => {
     if (from === to) return value;
@@ -449,12 +452,40 @@ export const LeftPlot = () => {
     return 'N/A';
   };
 
+  const handleSwapAxes = () => {
+    setAxesSwapped(prev => !prev);
+    setAxisLimits(prev => ({
+      xmin: prev.ymin,
+      xmax: prev.ymax,
+      ymin: prev.xmin,
+      ymax: prev.xmax
+    }));
+  };
+
+  const handleReverseAxis = (type: 'velocity' | 'period') => {
+    if (type === 'velocity') {
+      setVelocityReversed(prev => !prev);
+      setAxisLimits(prev => ({
+        ...prev,
+        ymin: prev.ymax,
+        ymax: prev.ymin
+      }));
+    } else {
+      setPeriodReversed(prev => !prev);
+      setAxisLimits(prev => ({
+        ...prev,
+        xmin: prev.xmax,
+        xmax: prev.xmin
+      }));
+    }
+  };
+
   return (
     <div className="flex flex-col items-center border-2 border-gray-300 rounded-lg p-4 shadow-sm">
       <div className="w-full">
         <div className="flex gap-4 flex-wrap justify-center mb-4">
           <div className="flex flex-col">
-            <div className="mb-2">
+            <div className="mb-2 flex items-center gap-2">
               <select
                 value={velocityUnit}
                 onChange={(e) => handleUnitChange('velocity', e.target.value)}
@@ -463,6 +494,13 @@ export const LeftPlot = () => {
                 <option value="velocity">Velocity ({displayUnits}/s)</option>
                 <option value="slowness">Slowness (s/{displayUnits})</option>
               </select>
+              <button
+                onClick={() => handleReverseAxis('velocity')}
+                className="px-2 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
+                title="Reverse Velocity Axis"
+              >
+                ↑↓
+              </button>
             </div>
             
             <div className="flex items-center justify-between">
@@ -495,7 +533,7 @@ export const LeftPlot = () => {
             </div>
           </div>
           <div className="flex flex-col">
-            <div className="mb-2">
+            <div className="mb-2 flex items-center gap-2">
               <select
                 value={periodUnit}
                 onChange={(e) => handleUnitChange('period', e.target.value)}
@@ -504,6 +542,13 @@ export const LeftPlot = () => {
                 <option value="period">Period (s)</option>
                 <option value="frequency">Frequency (Hz)</option>
               </select>
+              <button
+                onClick={() => handleReverseAxis('period')}
+                className="px-2 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
+                title="Reverse Period Axis"
+              >
+                ←→
+              </button>
             </div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-600">
@@ -530,6 +575,15 @@ export const LeftPlot = () => {
               />
             </div>
           </div>
+        </div>
+        <div className="flex justify-center gap-4 mb-4">
+          <button
+            onClick={handleSwapAxes}
+            className="px-3 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
+            title="Swap Axes"
+          >
+            Swap Axes
+          </button>
         </div>
         <div className="flex justify-center gap-4">
           <input
@@ -569,18 +623,16 @@ export const LeftPlot = () => {
           className="relative border border-gray-200 rounded-lg bg-white shadow-sm w-full aspect-[4/3] min-h-[300px]"
           ref={plotRef}
         >
-          <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-sm flex items-center gap-2">
+          <div className={`absolute ${axesSwapped ? '-bottom-8 left-1/2 -translate-x-1/2' : '-left-12 top-1/2 -translate-y-1/2 -rotate-90'} text-sm flex items-center gap-2`}>
             <span className="px-2 py-1 text-sm">
-              {velocityUnit === 'velocity' ? `Velocity (${displayUnits}/s)` : `Slowness (${displayUnits}/m)`}
+              {velocityUnit === 'velocity' ? `Velocity (${displayUnits}/s)` : `Slowness (s/${displayUnits})`}
             </span>
           </div>
 
-          <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm flex items-center gap-2">
+          <div className={`absolute ${axesSwapped ? '-left-12 top-1/2 -translate-y-1/2 -rotate-90' : '-bottom-8 left-1/2 -translate-x-1/2'} text-sm flex items-center gap-2`}>
             <span className="px-2 py-1 text-sm">
               {periodUnit === 'period' ? 'Period (s)' : 'Frequency (Hz)'}
             </span>
-
-            
           </div>
 
           <div className="absolute -left-8 top-0 h-full flex flex-col justify-between">
