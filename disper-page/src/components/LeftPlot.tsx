@@ -155,7 +155,7 @@ export const LeftPlot = () => {
 
   useEffect(() => {
     // Generate points that exactly match the axis limits
-    const newPeriods = generateEvenlySpacedPoints(axisLimits.xmin, axisLimits.xmax, numPoints);
+    const xValues = generateEvenlySpacedPoints(axisLimits.xmin, axisLimits.xmax, numPoints);
 
     if (layers.length) {
       const num_layers = layers.length;
@@ -192,8 +192,8 @@ export const LeftPlot = () => {
 
       // Convert periods based on current unit before calculation
       const calcPeriods = periodUnit === 'frequency'
-        ? newPeriods.map(p => convertUnit(p, 'frequency', 'period'))
-        : newPeriods;
+        ? xValues.map(p => convertUnit(p, 'frequency', 'period'))
+        : xValues;
 
       const newVelocities = CalcCurve(
         calcPeriods,
@@ -206,7 +206,8 @@ export const LeftPlot = () => {
         densities
       );
 
-      setPeriods(newPeriods);
+
+      setPeriods(calcPeriods);
       setVelocities(newVelocities);
     }
   }, [layers, axisLimits.xmin, axisLimits.xmax, axisLimits.ymin, axisLimits.ymax, numPoints, asceVersion, velocityUnit, periodUnit]);
