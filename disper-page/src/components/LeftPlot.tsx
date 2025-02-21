@@ -80,23 +80,46 @@ export const LeftPlot = () => {
 
     const xValues = plotPoints.map((p) => p.x);
     const yValues = plotPoints.map((p) => p.y);
-    const minX = Math.min(...xValues);
-    const maxX = Math.max(...xValues);
-    const minY = Math.min(...yValues);
-    const maxY = Math.max(...yValues);
+    // Ensure we only consider positive values
+    const minX = Math.max(0, Math.min(...xValues));
+    const maxX = Math.max(0, Math.max(...xValues));
+    const minY = Math.max(0, Math.min(...yValues));
+    const maxY = Math.max(0, Math.max(...yValues));
 
     const yMarginFactor = velocityUnit === 'velocity' 
-      ? { min: VELOCITY_MIN_MARGIN_FACTOR, max: VELOCITY_MAX_MARGIN_FACTOR }
-      : { min: 1.1, max: 0.9 };
+        ? { min: VELOCITY_MIN_MARGIN_FACTOR, max: VELOCITY_MAX_MARGIN_FACTOR }
+        : { min: 0.9, max: 1.1 }; // Reversed for slowness
 
+    // Define minimum limits based on units
     const xMinLimit = periodUnit === 'period' ? 0.001 : 0.1;
     const yMinLimit = velocityUnit === 'velocity' ? 30 : 0.0001;
 
-    return {
-      xmin: Math.max(xMinLimit, Math.round(minX * 1000) / 1000),
-      xmax: Math.round(maxX * 1000) / 1000,
-      ymin: Math.max(yMinLimit, Math.floor(minY * yMarginFactor.min)),
-      ymax: Math.ceil(maxY * yMarginFactor.max),
+    // For period/frequency (x-axis)
+    const xmin = periodUnit === 'period' 
+        ? Math.max(xMinLimit, Math.round(minX * 1000) / 1000)
+        : Math.max(xMinLimit, Math.round(minX * 10) / 10);
+
+    const xmax = periodUnit === 'period'
+        ? Math.max(xmin + 0.001, Math.round(maxX * 1000) / 1000)
+        : Math.max(xmin + 0.1, Math.round(maxX * 10) / 10);
+
+    // For velocity/slowness (y-axis)
+    let ymin, ymax;
+    
+    if (velocityUnit === 'velocity') {
+        ymin = Math.max(yMinLimit, Math.floor(minY * yMarginFactor.min));
+        ymax = Math.max(ymin + 10, Math.ceil(maxY * yMarginFactor.max));
+    } else {
+        // For slowness, we want to expand the range by 10% on both sides
+        ymin = Math.max(yMinLimit, Math.round(minY * yMarginFactor.min * 10000) / 10000);
+        ymax = Math.max(ymin + 0.0001, Math.round(maxY * yMarginFactor.max * 10000) / 10000);
+    }
+
+    return { 
+        xmin: Math.max(0, xmin), 
+        xmax: Math.max(xmin + (periodUnit === 'period' ? 0.001 : 0.1), xmax), 
+        ymin: Math.max(0, ymin), 
+        ymax: Math.max(ymin + (velocityUnit === 'velocity' ? 10 : 0.0001), ymax) 
     };
   };
   
@@ -226,7 +249,7 @@ export const LeftPlot = () => {
     value: string
   ) => {
     const numValue = parseFloat(value);
-    if (isNaN(numValue)) return;
+    if (isNaN(numValue) || numValue < 0) return;
     
     // Different validation rules based on unit type and axis
     if (axis.startsWith('x')) {
@@ -479,22 +502,23 @@ export const LeftPlot = () => {
             <div
               className="absolute bg-white border border-black rounded px-1.5 py-0.5 text-xs shadow-sm pointer-events-none"
               style={{
-                left:
-                  ((periodUnit === 'frequency' 
+                left: (() => {
+                  const xValue = periodUnit === 'frequency'
                     ? convertUnit(hoveredPoint.x, 'period', 'frequency')
-                    : hoveredPoint.x
-                  - axisLimits.xmin) /
+                    : hoveredPoint.x;
+                  return ((xValue - axisLimits.xmin) /
                     (axisLimits.xmax - axisLimits.xmin)) *
-                    plotDimensions.width +
-                  2,
-                top:
-                  plotDimensions.height -
-                  ((velocityUnit === 'slowness'
+                    plotDimensions.width + 2;
+                })(),
+                top: (() => {
+                  const yValue = velocityUnit === 'slowness'
                     ? convertUnit(hoveredPoint.y, 'velocity', 'slowness')
-                    : hoveredPoint.y
-                  - axisLimits.ymin) /
+                    : hoveredPoint.y;
+                  return plotDimensions.height -
+                    ((yValue - axisLimits.ymin) /
                     (axisLimits.ymax - axisLimits.ymin)) *
-                    plotDimensions.height,
+                    plotDimensions.height;
+                })(),
                 zIndex: 1000,
               }}
             >
@@ -505,9 +529,21 @@ export const LeftPlot = () => {
                     background: "rgb(255, 0, 0)",
                   }}
                 />
-                {`(${hoveredPoint.x.toFixed(3)} ${periodUnit === 'period' ? 's' : 'Hz'}, ${
-                  hoveredPoint.y.toFixed(3)
-                } ${velocityUnit === 'velocity' ? 'm/s' : 's/m'})`}
+                {(() => {
+                  const xValue = periodUnit === 'frequency'
+                    ? convertUnit(hoveredPoint.x, 'period', 'frequency')
+                    : hoveredPoint.x;
+                  const yValue = velocityUnit === 'slowness'
+                    ? convertUnit(hoveredPoint.y, 'velocity', 'slowness')
+                    : hoveredPoint.y;
+                  
+                  const xPrecision = periodUnit === 'period' ? 3 : 1;
+                  const yPrecision = velocityUnit === 'velocity' ? 1 : 4;
+                  
+                  return `(${xValue.toFixed(xPrecision)} ${periodUnit === 'period' ? 's' : 'Hz'}, ${
+                    yValue.toFixed(yPrecision)
+                  } ${velocityUnit === 'velocity' ? 'm/s' : 's/m'})`;
+                })()}
               </div>
             </div>
           )}
