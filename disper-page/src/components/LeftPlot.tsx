@@ -26,9 +26,13 @@ export const LeftPlot = () => {
     asceVersion,
   } = useDisper();
   
-  const [vels, setVels] = useState<(number | null)[]>([]);
+  const [periods, setPeriods] = useState<(number|null)[]>([]);
+  const [velocities, setVelocities] = useState<(number|null)[]>([]);
+  
+  const [curvePoints, setCurvePoints] = useState<Point[]>([]);
+  const [pickPoints, setPickPoints] = useState<Point[]>([]);
+  
   const [pickData, setPickData] = useState<PickData[]>([]);
-  const [points, setPoints] = useState<Point[]>([]);
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
   const [numPoints, setNumPoints] = useState<number>(20);
   const [axisLimits, setAxisLimits] = useState({
@@ -42,7 +46,6 @@ export const LeftPlot = () => {
     height: 480,
   });
   const plotRef = useRef<HTMLDivElement>(null);
-  const [periods, setPeriods] = useState<(number | null)[]>([]);
   const [vs30, setVs30] = useState<number | null>(null);
   const [siteClass, setSiteClass] = useState<string | null>(null);
   const [velocityUnit, setVelocityUnit] = useState<'velocity' | 'slowness'>('velocity');
@@ -131,7 +134,7 @@ export const LeftPlot = () => {
   }, []);
 
   useEffect(() => {
-    const periods = Array(numPoints + 1)
+    const newPeriods = Array(numPoints + 1)
       .fill(null)
       .map((_, index) => {
         return axisLimits.xmin + (index * (axisLimits.xmax - axisLimits.xmin)) / numPoints;
@@ -162,8 +165,8 @@ export const LeftPlot = () => {
       setVs30(calculatedVs30);
       setSiteClass(calculatedSiteClass);
 
-      const vels = CalcCurve(
-        periods,
+      const newVelocities:(number|null)[] = CalcCurve(
+        newPeriods,
         num_layers,
         layer_thicknesses,
         vels_shear,
@@ -173,22 +176,42 @@ export const LeftPlot = () => {
         densities
       );
 
-      setVels(vels);
-      setPeriods(periods);
+      setPeriods(newPeriods);
+      setVelocities(newVelocities);
     }
   }, [layers, axisLimits.ymin, axisLimits.ymax, numPoints, asceVersion]);
 
   useEffect(() => {
+    const newCurvePoints: Point[] = periods
+      .map((period, index) => {
+        if (period === null || velocities[index] === null) return null;
+        
+        const x = periodUnit === 'frequency' 
+          ? convertUnit(period as number, 'period', 'frequency')
+          : period as number;
+        
+        const y = velocityUnit === 'slowness'
+          ? convertUnit(velocities[index] as number, 'velocity', 'slowness')
+          : velocities[index] as number;
+          
+        return { x, y };
+      })
+      .filter((point): point is Point => point !== null);
+      
+    setCurvePoints(newCurvePoints);
+  }, [periods, velocities, periodUnit, velocityUnit]);
+
+  useEffect(() => {
     if (!pickData.length) return;
     
-    const plotPoints = convertToPlotPoints(pickData, periodUnit, velocityUnit);
-    const newAxisLimits = updateAxisLimits(plotPoints, periodUnit, velocityUnit);
+    const newPickPoints = convertToPlotPoints(pickData, periodUnit, velocityUnit);
+    const newAxisLimits = updateAxisLimits(newPickPoints, periodUnit, velocityUnit);
     
     if (newAxisLimits) {
       setAxisLimits(newAxisLimits);
-      setPoints(plotPoints);
+      setPickPoints(newPickPoints);
     }
-  }, [pickData, velocityUnit, periodUnit]);
+  }, [pickData, velocityUnit, periodUnit]); 
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -420,7 +443,7 @@ export const LeftPlot = () => {
               background="white"
             >
               <pixiContainer>
-                {points.map((point, index) => (
+                {pickPoints.map((point, index) => (
                   <pixiGraphics
                     key={`point-${index}`}
                     draw={(g: Graphics) => {
@@ -463,30 +486,19 @@ export const LeftPlot = () => {
                       alpha: 1,
                     });
                     g.beginPath();
-                    periods.forEach((period, index) => {
-                      if (vels[index] !== null && period !== null) {
-                        // Convert values based on selected units
-                        const xValue = periodUnit === 'frequency'
-                          ? convertUnit(period, 'period', 'frequency')
-                          : period;
-                        const yValue = velocityUnit === 'slowness'
-                          ? convertUnit(vels[index], 'velocity', 'slowness')
-                          : vels[index];
-
-                        const screenX =
-                          ((xValue - axisLimits.xmin) /
-                            (axisLimits.xmax - axisLimits.xmin)) *
-                          plotDimensions.width;
-                        const screenY =
-                          plotDimensions.height -
-                          ((yValue - axisLimits.ymin) /
-                            (axisLimits.ymax - axisLimits.ymin)) *
-                            plotDimensions.height;
-                        if (index === 0) {
-                          g.moveTo(screenX, screenY);
-                        } else {
-                          g.lineTo(screenX, screenY);
-                        }
+                    curvePoints.forEach((point, index) => {
+                      const screenX = ((point.x - axisLimits.xmin) /
+                        (axisLimits.xmax - axisLimits.xmin)) *
+                        plotDimensions.width;
+                      const screenY = plotDimensions.height -
+                        ((point.y - axisLimits.ymin) /
+                        (axisLimits.ymax - axisLimits.ymin)) *
+                        plotDimensions.height;
+                      
+                      if (index === 0) {
+                        g.moveTo(screenX, screenY);
+                      } else {
+                        g.lineTo(screenX, screenY);
                       }
                     });
                     g.stroke();
