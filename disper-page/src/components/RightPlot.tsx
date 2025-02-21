@@ -38,7 +38,10 @@ export const RightPlot = () => {
     asceVersion,
     setAsceVersion,
     splitLayer, 
-    deleteLayer
+    deleteLayer,
+    displayUnits, // Add this
+    ToMeter,      // Add this
+    ToFeet        // Add this
   } = useDisper();
   
   const [hoveredLine, setHoveredLine] = useState<HoveredLine | null>(null);
@@ -494,15 +497,18 @@ export const RightPlot = () => {
               </label>
               <input
                 type="number"
-                value={axisLimits.ymax}
-                onChange={(e) =>
+                value={displayUnits === 'ft' ? ToFeet(axisLimits.ymax) : axisLimits.ymax}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (value < 0) return;
+                  const valueInMeters = displayUnits === 'ft' ? ToMeter(value) : value;
                   setAxisLimits((prev) => ({
                     ...prev,
-                    ymax: parseFloat(e.target.value),
-                  }))
-                }
+                    ymax: valueInMeters,
+                  }));
+                }}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="1"
+                step={displayUnits === 'ft' ? "0.5" : "0.1"}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -511,16 +517,18 @@ export const RightPlot = () => {
               </label>
               <input
                 type="number"
-                value={axisLimits.ymin}
+                value={displayUnits === 'ft' ? ToFeet(axisLimits.ymin) : axisLimits.ymin}
                 onChange={(e) => {
-                  if (parseFloat(e.target.value) < 0) return;
+                  const value = parseFloat(e.target.value);
+                  if (value < 0) return;
+                  const valueInMeters = displayUnits === 'ft' ? ToMeter(value) : value;
                   setAxisLimits((prev) => ({
                     ...prev,
-                    ymin: parseFloat(e.target.value),
+                    ymin: valueInMeters,
                   }));
                 }}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="1"
+                step={displayUnits === 'ft' ? "0.5" : "0.1"}
               />
             </div>
           </div>
@@ -531,15 +539,18 @@ export const RightPlot = () => {
               </label>
               <input
                 type="number"
-                value={axisLimits.xmax}
-                onChange={(e) =>
+                value={displayUnits === 'ft' ? ToFeet(axisLimits.xmax) : axisLimits.xmax}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (value < 0) return;
+                  const valueInMeters = displayUnits === 'ft' ? ToMeter(value) : value;
                   setAxisLimits((prev) => ({
                     ...prev,
-                    xmax: parseFloat(e.target.value),
-                  }))
-                }
+                    xmax: valueInMeters,
+                  }));
+                }}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step="1.0"
+                step={displayUnits === 'ft' ? "1.0" : "0.5"}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -548,18 +559,19 @@ export const RightPlot = () => {
               </label>
               <input
                 type="number"
-                value={axisLimits.xmin}
+                value={displayUnits === 'ft' ? ToFeet(axisLimits.xmin) : axisLimits.xmin}
                 onChange={(e) => {
                   const value = parseFloat(e.target.value);
                   if (value < 0) return;
+                  const valueInMeters = displayUnits === 'ft' ? ToMeter(value) : value;
                   setAxisLimits((prev) => ({
                     ...prev,
-                    xmin: value,
+                    xmin: valueInMeters,
                   }));
                 }}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
                 min="0"
-                step="1.0"
+                step={displayUnits === 'ft' ? "1.0" : "0.5"}
               />
             </div>
           </div>
@@ -594,19 +606,35 @@ export const RightPlot = () => {
           onPointerDown={handlePlotClick}
         >
           <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-sm">
-            Depth (m)
+            Depth ({displayUnits})
           </div>
           <div className="absolute -left-8 top-0 h-full flex flex-col justify-between">
-            <div className="text-xs">{axisLimits.ymin.toFixed(3)}</div>
-            <div className="text-xs">{axisLimits.ymax.toFixed(3)}</div>
+            <div className="text-xs">
+              {displayUnits === 'ft' 
+                ? ToFeet(axisLimits.ymin).toFixed(3)
+                : axisLimits.ymin.toFixed(3)}
+            </div>
+            <div className="text-xs">
+              {displayUnits === 'ft'
+                ? ToFeet(axisLimits.ymax).toFixed(3)
+                : axisLimits.ymax.toFixed(3)}
+            </div>
           </div>
 
           <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm">
-            Velocity (m/s)
+            Velocity ({displayUnits}/s)
           </div>
           <div className="absolute -bottom-6 left-0 w-full flex justify-between">
-            <div className="text-xs">{axisLimits.xmin.toFixed(3)}</div>
-            <div className="text-xs">{axisLimits.xmax.toFixed(3)}</div>
+            <div className="text-xs">
+              {displayUnits === 'ft'
+                ? ToFeet(axisLimits.xmin).toFixed(3)
+                : axisLimits.xmin.toFixed(3)}
+            </div>
+            <div className="text-xs">
+              {displayUnits === 'ft'
+                ? ToFeet(axisLimits.xmax).toFixed(3)
+                : axisLimits.xmax.toFixed(3)}
+            </div>
           </div>
 
           {plotRef.current && (
@@ -666,9 +694,12 @@ export const RightPlot = () => {
                       onpointerdown={(e:any) => handlePointerDown(e, index, "velocity")}
                     />
                     <pixiText
-                      text={`${layer.velocity.toFixed(0)}`}
+                      text={`${displayUnits === 'ft' 
+                        ? ToFeet(layer.velocity).toFixed(0)
+                        : layer.velocity.toFixed(0)}`}
                       x={coordinateHelpers.toScreenX(layer.velocity) + 5}
-                      y={(coordinateHelpers.toScreenY(layer.startDepth) + coordinateHelpers.toScreenY(layer.endDepth)) / 2 - 7}
+                      y={(coordinateHelpers.toScreenY(layer.startDepth) + 
+                          coordinateHelpers.toScreenY(layer.endDepth)) / 2 - 7}
                       style={new TextStyle({
                         fontSize: 12,
                         fill: 0xff0000,
@@ -692,8 +723,12 @@ export const RightPlot = () => {
               }}
             >
               {hoveredLine.type === "depth"
-                ? `Depth: ${hoveredLine.value.toFixed(2)}`
-                : `Velocity: ${hoveredLine.value.toFixed(2)}`}
+                ? `Depth: ${displayUnits === 'ft' 
+                    ? ToFeet(hoveredLine.value).toFixed(3)
+                    : hoveredLine.value.toFixed(3)} ${displayUnits}`
+                : `Velocity: ${displayUnits === 'ft'
+                    ? ToFeet(hoveredLine.value).toFixed(3)
+                    : hoveredLine.value.toFixed(3)} ${displayUnits}/s`}
             </div>
           )}
         </div>
