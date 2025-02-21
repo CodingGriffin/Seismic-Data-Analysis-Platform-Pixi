@@ -24,6 +24,9 @@ export const LeftPlot = () => {
   const { 
     layers, 
     asceVersion,
+    displayUnits,
+    ToMeter,
+    ToFeet
   } = useDisper();
   
   const [periods, setPeriods] = useState<(number|null)[]>([]);
@@ -86,7 +89,7 @@ export const LeftPlot = () => {
         ? data.slowness
         : convertUnit(data.slowness, 'slowness', 'velocity');
 
-      return { x, y, originalData: data };
+      return { x, y, screenY: 0 }; // Added screenY property
     }).filter(point => !isNaN(point.x) && !isNaN(point.y) && point.x > 0 && point.y > 0)
     .sort((a,b) => a.x - b.x);
   };
@@ -422,21 +425,26 @@ export const LeftPlot = () => {
       const minLimit = velocityUnit === 'velocity' ? 30 : 0.0001;
       if (axis === 'ymin' && numValue < minLimit) return;
 
+      // Convert input value from display units to meters
+      const valueInMeters = displayUnits === 'ft' ? ToMeter(numValue) : numValue;
+
       setAxisLimits(prev => ({
         ...prev,
-        [axis]: numValue,
+        [axis]: valueInMeters,
         // Ensure max is greater than min
-        ...(axis === 'ymin' && numValue >= prev.ymax ? { ymax: numValue + (velocityUnit === 'velocity' ? 10 : 0.001) } : {}),
-        ...(axis === 'ymax' && numValue <= prev.ymin ? { ymin: numValue - (velocityUnit === 'velocity' ? 10 : 0.001) } : {})
+        ...(axis === 'ymin' && valueInMeters >= prev.ymax ? 
+          { ymax: valueInMeters + (velocityUnit === 'velocity' ? 10 : 0.001) } : {}),
+        ...(axis === 'ymax' && valueInMeters <= prev.ymin ? 
+          { ymin: valueInMeters - (velocityUnit === 'velocity' ? 10 : 0.001) } : {})
       }));
     }
   };
 
   const displayRMSE = () => {
     if (velocityUnit === 'velocity' && rmseVel !== null) {
-      return `${rmseVel.toFixed(2)} m/s`;
+      return displayUnits === 'ft' ? `${(rmseVel * 3.28084).toFixed(2)} ft/s` : `${rmseVel.toFixed(2)} m/s`;
     } else if (velocityUnit === 'slowness' && rmseSlowness !== null) {
-      return `${rmseSlowness.toFixed(6)} s/m`;
+      return displayUnits === 'ft' ? `${(rmseSlowness * 3.28084).toFixed(6)} s/ft` : `${rmseSlowness.toFixed(6)} s/m`;
     }
     return 'N/A';
   };
@@ -452,8 +460,8 @@ export const LeftPlot = () => {
                 onChange={(e) => handleUnitChange('velocity', e.target.value)}
                 className="bg-white border border-gray-300 rounded px-2 py-1 text-sm"
               >
-                <option value="velocity">Velocity (m/s)</option>
-                <option value="slowness">Slowness (s/m)</option>
+                <option value="velocity">Velocity ({displayUnits}/s)</option>
+                <option value="slowness">Slowness (s/{displayUnits})</option>
               </select>
             </div>
             
@@ -463,7 +471,9 @@ export const LeftPlot = () => {
               </label>
               <input
                 type="number"
-                value={axisLimits.ymax}
+                value={displayUnits === 'ft' ? 
+                  ToFeet(axisLimits.ymax) : 
+                  axisLimits.ymax}
                 onChange={(e) => handleAxisLimitChange("ymax", e.target.value)}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
                 step={velocityUnit === 'velocity' ? "1" : "0.0001"}
@@ -475,7 +485,9 @@ export const LeftPlot = () => {
               </label>
               <input
                 type="number"
-                value={axisLimits.ymin}
+                value={displayUnits === 'ft' ? 
+                  ToFeet(axisLimits.ymin) : 
+                  axisLimits.ymin}
                 onChange={(e) => handleAxisLimitChange("ymin", e.target.value)}
                 className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
                 step={velocityUnit === 'velocity' ? "1" : "0.0001"}
@@ -559,7 +571,7 @@ export const LeftPlot = () => {
         >
           <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-sm flex items-center gap-2">
             <span className="px-2 py-1 text-sm">
-              {velocityUnit === 'velocity' ? 'Velocity (m/s)' : 'Slowness (s/m)'}
+              {velocityUnit === 'velocity' ? `Velocity (${displayUnits}/s)` : `Slowness (${displayUnits}/m)`}
             </span>
           </div>
 
@@ -567,11 +579,17 @@ export const LeftPlot = () => {
             <span className="px-2 py-1 text-sm">
               {periodUnit === 'period' ? 'Period (s)' : 'Frequency (Hz)'}
             </span>
+
+            
           </div>
 
           <div className="absolute -left-8 top-0 h-full flex flex-col justify-between">
-            <div className="text-xs">{axisLimits.ymax.toFixed(3)}</div>
-            <div className="text-xs">{axisLimits.ymin.toFixed(3)}</div>
+            <div className="text-xs">{displayUnits === 'ft' ? 
+                  ToFeet(axisLimits.ymax) : 
+                  axisLimits.ymax}</div>
+            <div className="text-xs">{displayUnits === 'ft' ? 
+                  ToFeet(axisLimits.ymin) : 
+                  axisLimits.ymin}</div>
           </div>
 
           {plotRef.current && (
@@ -648,51 +666,32 @@ export const LeftPlot = () => {
           {/* Tooltip */}
           {hoveredPoint && (
             <div
-              className="absolute bg-white border border-black rounded px-1.5 py-0.5 text-xs shadow-sm pointer-events-none"
+              className="absolute bg-white px-2 py-1 text-sm border rounded shadow-sm"
               style={{
-                left: (() => {
-                  const xValue = periodUnit === 'frequency'
-                    ? convertUnit(hoveredPoint.x, 'period', 'frequency')
-                    : hoveredPoint.x;
-                  return ((xValue - axisLimits.xmin) /
-                    (axisLimits.xmax - axisLimits.xmin)) *
-                    plotDimensions.width + 2;
-                })(),
-                top: (() => {
-                  const yValue = velocityUnit === 'slowness'
-                    ? convertUnit(hoveredPoint.y, 'velocity', 'slowness')
-                    : hoveredPoint.y;
-                  return plotDimensions.height -
-                    ((yValue - axisLimits.ymin) /
-                    (axisLimits.ymax - axisLimits.ymin)) *
-                    plotDimensions.height;
-                })(),
-                zIndex: 1000,
+                left: `${((hoveredPoint.x - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) * plotDimensions.width + 10}px`,
+                top: `${plotDimensions.height - ((hoveredPoint.y - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) * plotDimensions.height - 10}px`,
               }}
             >
-              <div className="flex items-center gap-1">
-                <div
-                  className="w-3 h-3 border border-black"
-                  style={{
-                    background: "rgb(255, 0, 0)",
-                  }}
-                />
-                {(() => {
-                  const xValue = periodUnit === 'frequency'
-                    ? convertUnit(hoveredPoint.x, 'period', 'frequency')
-                    : hoveredPoint.x;
-                  const yValue = velocityUnit === 'slowness'
-                    ? convertUnit(hoveredPoint.y, 'velocity', 'slowness')
-                    : hoveredPoint.y;
-                  
-                  const xPrecision = periodUnit === 'period' ? 3 : 1;
-                  const yPrecision = velocityUnit === 'velocity' ? 1 : 4;
-                  
-                  return `(${xValue.toFixed(xPrecision)} ${periodUnit === 'period' ? 's' : 'Hz'}, ${
-                    yValue.toFixed(yPrecision)
-                  } ${velocityUnit === 'velocity' ? 'm/s' : 's/m'})`;
-                })()}
-              </div>
+              {(() => {
+                const xValue = periodUnit === 'frequency'
+                  ? convertUnit(hoveredPoint.x, 'period', 'frequency')
+                  : hoveredPoint.x;
+                let yValue = velocityUnit === 'slowness'
+                  ? convertUnit(hoveredPoint.y, 'velocity', 'slowness')
+                  : hoveredPoint.y;
+                
+                // Convert velocity to display units if needed
+                if (velocityUnit === 'velocity' && displayUnits === 'ft') {
+                  yValue = ToFeet(yValue);
+                }
+                
+                const xPrecision = periodUnit === 'period' ? 3 : 1;
+                const yPrecision = velocityUnit === 'velocity' ? 1 : 4;
+                
+                return `(${xValue.toFixed(xPrecision)} ${periodUnit === 'period' ? 's' : 'Hz'}, ${
+                  yValue.toFixed(yPrecision)
+                } ${velocityUnit === 'velocity' ? `${displayUnits}/s` : `s/${displayUnits}`})`;
+              })()}
             </div>
           )}
         </div>
@@ -701,7 +700,7 @@ export const LeftPlot = () => {
         <div className="flex justify-center space-x-8">
           <div className="text-center">
             <span className="font-semibold">Vs30:</span>{" "}
-            <span className="font-bold">{vs30 ? `${vs30.toFixed(1)} m/s` : "N/A"}</span>
+            <span className="font-bold">{vs30? displayUnits === 'ft' ? `${ToFeet(vs30)} ft/s`:`${vs30} m/s`: 'N/A'}</span>
           </div>
           <div className="text-center">
             <span className="font-semibold">RMSE:</span>

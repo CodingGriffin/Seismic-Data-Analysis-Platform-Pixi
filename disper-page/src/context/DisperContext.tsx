@@ -32,6 +32,10 @@ interface DisperContextType {
   phaseVelMax: number;
   setPhaseVelMin: (value: number) => void;
   setPhaseVelMax: (value: number) => void;
+  displayUnits: 'm' | 'ft';
+  setDisplayUnits: (units: 'm' | 'ft') => void;
+  ToMeter: (value: number) => number;
+  ToFeet: (value: number) => number;
 }
 
 const DisperContext = createContext<DisperContextType | undefined>(undefined);
@@ -48,6 +52,16 @@ export function DisperProvider({ children }: DisperProviderProps) {
   const [velModel, setVelModel] = useState<VelModel | null>(null);
   const [phaseVelMin, setPhaseVelMin] = useState<number>(10);
   const [phaseVelMax, setPhaseVelMax] = useState<number>(2000);
+  const [displayUnits, setDisplayUnits] = useState<'m' | 'ft'>('m');
+
+  // Add conversion helpers
+  const ToFeet = useCallback((value: number): number => {
+    return value * 3.28084;
+  }, [displayUnits]);
+
+  const ToMeter = useCallback((value: number): number => {
+    return value / 3.28084;
+  }, [displayUnits]);
 
   const addLayer = (newLayer: Layer) => {
     setLayers(prevLayers => [...prevLayers, newLayer]);
@@ -174,6 +188,10 @@ export function DisperProvider({ children }: DisperProviderProps) {
     phaseVelMax,
     setPhaseVelMin,
     setPhaseVelMax,
+    displayUnits,
+    setDisplayUnits,
+    ToMeter,
+    ToFeet,
   };
 
   return (
