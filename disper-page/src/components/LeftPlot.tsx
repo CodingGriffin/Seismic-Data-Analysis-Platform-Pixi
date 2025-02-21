@@ -53,7 +53,21 @@ export const LeftPlot = () => {
 
   const convertUnit = (value: number, from: string, to: string): number => {
     if (from === to) return value;
-    return 1 / value;
+    if (value === 0) return 0;
+    
+    // Handle period/frequency conversion
+    if ((from === 'period' && to === 'frequency') || 
+        (from === 'frequency' && to === 'period')) {
+      return 1 / value;
+    }
+    
+    // Handle velocity/slowness conversion
+    if ((from === 'velocity' && to === 'slowness') || 
+        (from === 'slowness' && to === 'velocity')) {
+      return 1 / value;
+    }
+    
+    return value;
   };
 
   const convertToPlotPoints = (
@@ -133,12 +147,15 @@ export const LeftPlot = () => {
     }
   }, []);
 
+  // Helper function to generate evenly spaced points
+  const generateEvenlySpacedPoints = (min: number, max: number, count: number): number[] => {
+    const step = (max - min) / (count - 1);
+    return Array.from({ length: count }, (_, i) => min + step * i);
+  };
+
   useEffect(() => {
-    const newPeriods = Array(numPoints + 1)
-      .fill(null)
-      .map((_, index) => {
-        return axisLimits.xmin + (index * (axisLimits.xmax - axisLimits.xmin)) / numPoints;
-      });
+    // Generate points that exactly match the axis limits
+    const newPeriods = generateEvenlySpacedPoints(axisLimits.xmin, axisLimits.xmax, numPoints);
 
     if (layers.length) {
       const num_layers = layers.length;
@@ -147,14 +164,22 @@ export const LeftPlot = () => {
       const densities = layers.map(layer => layer.density);
       const vels_compression = vels_shear.map(v => v * Math.sqrt(3));
 
+      // Convert velocity limits based on current unit
+      const ymin = velocityUnit === 'slowness' 
+        ? convertUnit(axisLimits.ymax, 'velocity', 'slowness')
+        : axisLimits.ymin;
+      const ymax = velocityUnit === 'slowness'
+        ? convertUnit(axisLimits.ymin, 'velocity', 'slowness')
+        : axisLimits.ymax;
+
       const model = new VelModel(
         num_layers,
         layer_thicknesses,
         densities,
         vels_compression,
         vels_shear,
-        Math.max(axisLimits.ymin - 50, 10),
-        axisLimits.ymax + 10,
+        Math.max(ymin - (velocityUnit === 'slowness' ? -0.0001 : 50), velocityUnit === 'slowness' ? 0.0001 : 10),
+        ymax + (velocityUnit === 'slowness' ? 0.0001 : 10),
         2.0
       );
 
@@ -165,13 +190,18 @@ export const LeftPlot = () => {
       setVs30(calculatedVs30);
       setSiteClass(calculatedSiteClass);
 
-      const newVelocities:(number|null)[] = CalcCurve(
-        newPeriods,
+      // Convert periods based on current unit before calculation
+      const calcPeriods = periodUnit === 'frequency'
+        ? newPeriods.map(p => convertUnit(p, 'frequency', 'period'))
+        : newPeriods;
+
+      const newVelocities = CalcCurve(
+        calcPeriods,
         num_layers,
         layer_thicknesses,
         vels_shear,
-        Math.max(axisLimits.ymin - 50, 10),
-        axisLimits.ymax + 10,
+        Math.max(ymin - (velocityUnit === 'slowness' ? -0.0001 : 50), velocityUnit === 'slowness' ? 0.0001 : 10),
+        ymax + (velocityUnit === 'slowness' ? 0.0001 : 10),
         2.0,
         densities
       );
@@ -179,24 +209,37 @@ export const LeftPlot = () => {
       setPeriods(newPeriods);
       setVelocities(newVelocities);
     }
-  }, [layers, axisLimits.ymin, axisLimits.ymax, numPoints, asceVersion]);
+  }, [layers, axisLimits.xmin, axisLimits.xmax, axisLimits.ymin, axisLimits.ymax, numPoints, asceVersion, velocityUnit, periodUnit]);
 
   useEffect(() => {
     const newCurvePoints: Point[] = periods
       .map((period, index) => {
         if (period === null || velocities[index] === null) return null;
         
-        const x = periodUnit === 'frequency' 
-          ? convertUnit(period as number, 'period', 'frequency')
-          : period as number;
-        
-        const y = velocityUnit === 'slowness'
-          ? convertUnit(velocities[index] as number, 'velocity', 'slowness')
-          : velocities[index] as number;
+        try {
+          // Convert x-axis (period/frequency)
+          const x = periodUnit === 'frequency' 
+            ? convertUnit(period, 'period', 'frequency')
+            : period;
           
-        return { x, y };
+          // Convert y-axis (velocity/slowness)
+          const y = velocityUnit === 'slowness'
+            ? convertUnit(velocities[index], 'velocity', 'slowness')
+            : velocities[index];
+            
+          return { x, y };
+        } catch (error) {
+          console.warn('Error converting point:', error);
+          return null;
+        }
       })
-      .filter((point): point is Point => point !== null);
+      .filter((point): point is Point => 
+        point !== null && 
+        !isNaN(point.x) && 
+        !isNaN(point.y) && 
+        point.x > 0 && 
+        point.y > 0
+      );
       
     setCurvePoints(newCurvePoints);
   }, [periods, velocities, periodUnit, velocityUnit]);
@@ -486,15 +529,13 @@ export const LeftPlot = () => {
                       alpha: 1,
                     });
                     g.beginPath();
+
+                    // Draw curve points
                     curvePoints.forEach((point, index) => {
-                      const screenX = ((point.x - axisLimits.xmin) /
-                        (axisLimits.xmax - axisLimits.xmin)) *
-                        plotDimensions.width;
-                      const screenY = plotDimensions.height -
-                        ((point.y - axisLimits.ymin) /
-                        (axisLimits.ymax - axisLimits.ymin)) *
-                        plotDimensions.height;
-                      
+                      // Ensure proper scaling to fill the entire plot
+                      const screenX = ((point.x - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) * plotDimensions.width;
+                      const screenY = plotDimensions.height - ((point.y - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) * plotDimensions.height;
+
                       if (index === 0) {
                         g.moveTo(screenX, screenY);
                       } else {
@@ -502,7 +543,6 @@ export const LeftPlot = () => {
                       }
                     });
                     g.stroke();
-                    g.closePath();
                   }}
                 />
               </pixiContainer>
