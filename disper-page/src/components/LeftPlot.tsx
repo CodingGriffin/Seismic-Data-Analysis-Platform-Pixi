@@ -480,6 +480,51 @@ export const LeftPlot = () => {
     }
   };
 
+  const calculateTooltipPosition = (point: Point) => {
+    let xValue = point.x;
+    let yValue = point.y;
+    
+    // Convert units
+    if (periodUnit === 'frequency') {
+      xValue = convertUnit(xValue, 'period', 'frequency');
+    }
+    if (velocityUnit === 'slowness') {
+      yValue = convertUnit(yValue, 'velocity', 'slowness');
+    }
+
+    // Calculate initial screen coordinates
+    let screenX = ((xValue - axisLimits.xmin) / 
+      (axisLimits.xmax - axisLimits.xmin)) * 
+      plotDimensions.width;
+    
+    let screenY = ((yValue - axisLimits.ymin) / 
+      (axisLimits.ymax - axisLimits.ymin)) * 
+      plotDimensions.height;
+
+    // Handle axis reversals
+    if (periodReversed) {
+      screenX = plotDimensions.width - screenX;
+    }
+    if (!velocityReversed) {
+      screenY = plotDimensions.height - screenY;
+    }
+
+    // Handle axis swapping
+    if (axesSwapped) {
+      [screenX, screenY] = [screenY, screenX];
+    }
+
+    // Calculate offset directions based on position in plot
+    const OFFSET = 10;
+    const xOffset = screenX > plotDimensions.width / 2 ? -OFFSET : OFFSET;
+    const yOffset = screenY > plotDimensions.height / 2 ? -OFFSET : OFFSET;
+    
+    return {
+      left: `${screenX + xOffset}px`,
+      top: `${screenY + yOffset}px`,
+    };
+  };
+
   return (
     <div className="flex flex-col items-center border-2 border-gray-300 rounded-lg p-4 shadow-sm">
       <div className="w-full">
@@ -732,7 +777,7 @@ export const LeftPlot = () => {
                       if (axesSwapped) {
                         [screenX, screenY] = [screenY, screenX];
                       }
-                      
+
                       if (index === 0) {
                         g.moveTo(screenX, screenY);
                       } else {
@@ -750,27 +795,35 @@ export const LeftPlot = () => {
           {hoveredPoint && (
             <div
               className="absolute bg-white px-2 py-1 text-sm border rounded shadow-sm"
-              style={{
-                left: `${((hoveredPoint.x - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) * plotDimensions.width + 10}px`,
-                top: `${plotDimensions.height - ((hoveredPoint.y - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) * plotDimensions.height - 10}px`,
-              }}
+              style={calculateTooltipPosition(hoveredPoint)}
             >
               {(() => {
-                const xValue = periodUnit === 'frequency'
-                  ? convertUnit(hoveredPoint.x, 'period', 'frequency')
-                  : hoveredPoint.x;
-                let yValue = velocityUnit === 'slowness'
-                  ? convertUnit(hoveredPoint.y, 'velocity', 'slowness')
-                  : hoveredPoint.y;
-                
-                // Convert velocity to display units if needed
-                if (velocityUnit === 'velocity' && displayUnits === 'ft') {
-                  yValue = ToFeet(yValue);
+                // Handle x-axis (period/frequency) conversion
+                let xValue = hoveredPoint.x;
+                if (periodUnit === 'frequency') {
+                  xValue = convertUnit(xValue, 'period', 'frequency');; // Convert period to frequency
+                }
+
+                // Handle y-axis (velocity/slowness) conversion
+                let yValue = hoveredPoint.y;
+                if (velocityUnit === 'slowness') {
+                  yValue = convertUnit(yValue, 'velocity', 'slowness'); // Convert velocity to slowness
                 }
                 
-                const xPrecision = periodUnit === 'period' ? 3 : 1;
-                const yPrecision = velocityUnit === 'velocity' ? 1 : 4;
+                // Convert to display units if needed
+                if (displayUnits === 'ft') {
+                  if (velocityUnit === 'velocity') {
+                    yValue = ToFeet(yValue);
+                  } else { // slowness
+                    yValue = yValue / 3.28084; // Convert s/m to s/ft
+                  }
+                }
                 
+                // Set precision based on unit type
+                const xPrecision = periodUnit === 'period' ? 3 : 1;
+                const yPrecision = velocityUnit === 'velocity' ? 1 : 6;
+                
+                // Format the display string
                 return `(${xValue.toFixed(xPrecision)} ${periodUnit === 'period' ? 's' : 'Hz'}, ${
                   yValue.toFixed(yPrecision)
                 } ${velocityUnit === 'velocity' ? `${displayUnits}/s` : `s/${displayUnits}`})`;
