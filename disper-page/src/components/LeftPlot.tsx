@@ -533,9 +533,9 @@ export const LeftPlot = () => {
               <button
                 onClick={() => handleReverseAxis('velocity')}
                 className="px-2 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
-                title="Reverse Velocity Axis"
+                title={`Reverse ${axesSwapped ? 'Horizontal' : 'Vertical'} Axis`}
               >
-                ↑↓
+                {axesSwapped ? '←→' : '↑↓'}
               </button>
             </div>
             
@@ -581,9 +581,9 @@ export const LeftPlot = () => {
               <button
                 onClick={() => handleReverseAxis('period')}
                 className="px-2 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
-                title="Reverse Period Axis"
+                title={`Reverse ${axesSwapped ? 'Vertical' : 'Horizontal'} Axis`}
               >
-                ←→
+                {axesSwapped ? '↑↓' : '←→'}
               </button>
             </div>
             <div className="flex items-center justify-between">
