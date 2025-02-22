@@ -671,27 +671,79 @@ export const LeftPlot = () => {
             </span>
           </div>
 
+          {/* Y-axis numbers */}
           <div className="absolute -left-8 top-0 h-full flex flex-col justify-between">
             <div className="text-xs">
-              {displayUnits === 'ft' ? 
-                ToFeet(velocityReversed ? axisLimits.ymin : axisLimits.ymax).toFixed(3) : 
-                (velocityReversed ? axisLimits.ymin : axisLimits.ymax).toFixed(3)}
+              {axesSwapped ? 
+                (periodReversed ? 
+                  (periodUnit === 'period' ? 
+                    axisLimits.xmin.toFixed(4) : 
+                    convertUnit(axisLimits.xmin, 'period', 'frequency').toFixed(4)
+                  ) : 
+                  (periodUnit === 'period' ? 
+                    axisLimits.xmax.toFixed(4) : 
+                    convertUnit(axisLimits.xmax, 'period', 'frequency').toFixed(4)
+                  )
+                ) : 
+                (displayUnits === 'ft' ? 
+                  ToFeet(velocityReversed ? axisLimits.ymin : axisLimits.ymax).toFixed(4) : 
+                  (velocityReversed ? axisLimits.ymin : axisLimits.ymax).toFixed(4)
+                )}
             </div>
             <div className="text-xs">
-              {displayUnits === 'ft' ? 
-                ToFeet(velocityReversed ? axisLimits.ymax : axisLimits.ymin).toFixed(3) : 
-                (velocityReversed ? axisLimits.ymax : axisLimits.ymin).toFixed(3)}
+              {axesSwapped ? 
+                (periodReversed ? 
+                  (periodUnit === 'period' ? 
+                    axisLimits.xmax.toFixed(4) : 
+                    convertUnit(axisLimits.xmax, 'period', 'frequency').toFixed(4)
+                  ) : 
+                  (periodUnit === 'period' ? 
+                    axisLimits.xmin.toFixed(4) : 
+                    convertUnit(axisLimits.xmin, 'period', 'frequency').toFixed(4)
+                  )
+                ) : 
+                (displayUnits === 'ft' ? 
+                  ToFeet(velocityReversed ? axisLimits.ymax : axisLimits.ymin).toFixed(4) : 
+                  (velocityReversed ? axisLimits.ymax : axisLimits.ymin).toFixed(4)
+                )}
             </div>
           </div>
 
+          {/* X-axis numbers */}
           <div className="absolute -bottom-6 left-0 w-full flex justify-between">
             <div className="text-xs">
-              {periodReversed ? axisLimits.xmax.toFixed(3)
-                 : axisLimits.xmin.toFixed(3)}
+              {axesSwapped ? 
+                (displayUnits === 'ft' ? 
+                  ToFeet(velocityReversed ? axisLimits.ymax : axisLimits.ymin).toFixed(4) : 
+                  (velocityReversed ? axisLimits.ymax : axisLimits.ymin).toFixed(4)
+                ) : 
+                (periodReversed ? 
+                  (periodUnit === 'period' ? 
+                    axisLimits.xmax.toFixed(3) : 
+                    convertUnit(axisLimits.xmax, 'period', 'frequency').toFixed(4)
+                  ) : 
+                  (periodUnit === 'period' ? 
+                    axisLimits.xmin.toFixed(3) : 
+                    convertUnit(axisLimits.xmin, 'period', 'frequency').toFixed(4)
+                  )
+                )}
             </div>
             <div className="text-xs">
-              {periodReversed ? axisLimits.xmin.toFixed(3)
-                 : axisLimits.xmax.toFixed(3)}
+              {axesSwapped ? 
+                (displayUnits === 'ft' ? 
+                  ToFeet(velocityReversed ? axisLimits.ymin : axisLimits.ymax).toFixed(4) : 
+                  (velocityReversed ? axisLimits.ymin : axisLimits.ymax).toFixed(4)
+                ) : 
+                (periodReversed ? 
+                  (periodUnit === 'period' ? 
+                    axisLimits.xmin.toFixed(4) : 
+                    convertUnit(axisLimits.xmin, 'period', 'frequency').toFixed(4)
+                  ) : 
+                  (periodUnit === 'period' ? 
+                    axisLimits.xmax.toFixed(4) : 
+                    convertUnit(axisLimits.xmax, 'period', 'frequency').toFixed(4)
+                  )
+                )}
             </div>
           </div>
 
