@@ -271,31 +271,14 @@ export const LeftPlot = () => {
             }
           })
           .filter(a=> a != null);
+
         if(diffSquaredVelArr.length > 0) {
           setRmseVel(Math.sqrt(diffSquaredVelArr.reduce((accumulator, currentValue) => accumulator + currentValue, 0) / diffSquaredVelArr.length))
         } else {
           setRmseVel(null)
         }
 
-        // Calculate RMSE for slowness
-        const diffSquaredSlowArr = pointVels
-          .map((pointVel, index) => {
-            const curveVel = curveVels[index]
-            if(curveVel != null) {
-              // Convert both to slowness for comparison
-              const pointSlowness = 1 / pointVel;
-              const curveSlowness = 1 / curveVel;
-              return (curveSlowness - pointSlowness)**2
-            } else {
-              return null
-            }
-          })
-          .filter(a=> a != null);
-        if(diffSquaredSlowArr.length > 0) {
-          setRmseSlowness(Math.sqrt(diffSquaredSlowArr.reduce((accumulator, currentValue) => accumulator + currentValue, 0) / diffSquaredSlowArr.length))
-        } else {
-          setRmseSlowness(null)
-        }
+        // Slowness RMSE calculation removed
       }
 
       console.log("newVelocities:", newVelocities)
@@ -444,10 +427,10 @@ export const LeftPlot = () => {
   };
 
   const displayRMSE = () => {
-    if (velocityUnit === 'velocity' && rmseVel !== null) {
-      return displayUnits === 'ft' ? `${(rmseVel * 3.28084).toFixed(2)} ft/s` : `${rmseVel.toFixed(2)} m/s`;
-    } else if (velocityUnit === 'slowness' && rmseSlowness !== null) {
-      return displayUnits === 'ft' ? `${(rmseSlowness * 3.28084).toFixed(6)} s/ft` : `${rmseSlowness.toFixed(6)} s/m`;
+    if (rmseVel !== null) {
+      return displayUnits === 'ft' ? 
+        `${(rmseVel * 3.28084).toFixed(2)} ft/s` : 
+        `${rmseVel.toFixed(2)} m/s`;
     }
     return 'N/A';
   };
