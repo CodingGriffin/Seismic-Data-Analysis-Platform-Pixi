@@ -515,14 +515,22 @@ export const LeftPlot = () => {
     }
 
     // Calculate offset directions based on position in plot
-    const OFFSET = 10;
+    const OFFSET = 20;
     const xOffset = screenX > plotDimensions.width / 2 ? -OFFSET : OFFSET;
     const yOffset = screenY > plotDimensions.height / 2 ? -OFFSET : OFFSET;
-    
-    return {
-      left: `${screenX + xOffset}px`,
-      top: `${screenY + yOffset}px`,
-    };
+    let style:any = {};
+    if (periodUnit === 'frequency') {
+      style['right'] = `${Math.abs(screenX + xOffset)}px`;
+    } else {
+      style['left'] = `${screenX + xOffset}px`;
+    }
+    if (periodUnit === 'frequency') {
+      style['bottom'] = `${Math.abs(screenY + yOffset)}px`;
+    } else {
+      style['top'] = `${screenY + yOffset}px`;
+    }
+
+    return style;
   };
 
   return (
