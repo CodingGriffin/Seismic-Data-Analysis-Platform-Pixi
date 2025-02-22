@@ -689,12 +689,16 @@ export const LeftPlot = () => {
           </div>
 
           <div className="absolute -left-8 top-0 h-full flex flex-col justify-between">
-            <div className="text-xs">{displayUnits === 'ft' ? 
-                  ToFeet(axisLimits.ymax) : 
-                  axisLimits.ymax}</div>
-            <div className="text-xs">{displayUnits === 'ft' ? 
-                  ToFeet(axisLimits.ymin) : 
-                  axisLimits.ymin}</div>
+            <div className="text-xs">
+              {displayUnits === 'ft' ? 
+                ToFeet(velocityReversed ? axisLimits.ymin : axisLimits.ymax).toFixed(4) : 
+                (velocityReversed ? axisLimits.ymin : axisLimits.ymax).toFixed(4)}
+            </div>
+            <div className="text-xs">
+              {displayUnits === 'ft' ? 
+                ToFeet(velocityReversed ? axisLimits.ymax : axisLimits.ymin).toFixed(4) : 
+                (velocityReversed ? axisLimits.ymax : axisLimits.ymin).toFixed(4)}
+            </div>
           </div>
 
           {plotRef.current && (
