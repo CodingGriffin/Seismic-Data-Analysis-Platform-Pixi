@@ -454,29 +454,29 @@ export const LeftPlot = () => {
 
   const handleSwapAxes = () => {
     setAxesSwapped(prev => !prev);
-    setAxisLimits(prev => ({
-      xmin: prev.ymin,
-      xmax: prev.ymax,
-      ymin: prev.xmin,
-      ymax: prev.xmax
-    }));
+    // setAxisLimits(prev => ({
+    //   xmin: prev.ymin,
+    //   xmax: prev.ymax,
+    //   ymin: prev.xmin,
+    //   ymax: prev.xmax
+    // }));
   };
 
   const handleReverseAxis = (type: 'velocity' | 'period') => {
     if (type === 'velocity') {
       setVelocityReversed(prev => !prev);
-      setAxisLimits(prev => ({
-        ...prev,
-        ymin: prev.ymax,
-        ymax: prev.ymin
-      }));
+      // setAxisLimits(prev => ({
+      //   ...prev,
+      //   ymin: prev.ymax,
+      //   ymax: prev.ymin
+      // }));
     } else {
       setPeriodReversed(prev => !prev);
-      setAxisLimits(prev => ({
-        ...prev,
-        xmin: prev.xmax,
-        xmax: prev.xmin
-      }));
+      // setAxisLimits(prev => ({
+      //   ...prev,
+      //   xmin: prev.xmax,
+      //   xmax: prev.xmin
+      // }));
     }
   };
 
@@ -657,15 +657,27 @@ export const LeftPlot = () => {
                     key={`point-${index}`}
                     draw={(g: Graphics) => {
                       g.clear();
-                      const screenX =
-                        ((point.x - axisLimits.xmin) /
+                      let screenX = ((point.x - axisLimits.xmin) /
                           (axisLimits.xmax - axisLimits.xmin)) *
                         plotDimensions.width;
-                      const screenY =
-                        plotDimensions.height -
-                        ((point.y - axisLimits.ymin) /
+                      
+                      let screenY = ((point.y - axisLimits.ymin) /
                           (axisLimits.ymax - axisLimits.ymin)) *
                           plotDimensions.height;
+
+                      // Handle axis reversals
+                      if (periodReversed) {
+                        screenX = plotDimensions.width - screenX;
+                      }
+                      
+                      if (!velocityReversed) {
+                        screenY = plotDimensions.height - screenY;
+                      }
+
+                      // Handle axis swapping if needed
+                      if (axesSwapped) {
+                        [screenX, screenY] = [screenY, screenX];
+                      }
 
                       if (point === hoveredPoint) {
                         g.fill({ color: 0xff0000 });
@@ -699,9 +711,28 @@ export const LeftPlot = () => {
                     // Draw curve points
                     curvePoints.forEach((point, index) => {
                       // Ensure proper scaling to fill the entire plot
-                      const screenX = ((point.x - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) * plotDimensions.width;
-                      const screenY = plotDimensions.height - ((point.y - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) * plotDimensions.height;
+                      let screenX = ((point.x - axisLimits.xmin) /
+                          (axisLimits.xmax - axisLimits.xmin)) *
+                        plotDimensions.width;
+                      
+                      let screenY = ((point.y - axisLimits.ymin) /
+                          (axisLimits.ymax - axisLimits.ymin)) *
+                          plotDimensions.height;
 
+                      // Handle axis reversals
+                      if (periodReversed) {
+                        screenX = plotDimensions.width - screenX;
+                      }
+                      
+                      if (!velocityReversed) {
+                        screenY = plotDimensions.height - screenY;
+                      }
+
+                      // Handle axis swapping if needed
+                      if (axesSwapped) {
+                        [screenX, screenY] = [screenY, screenX];
+                      }
+                      
                       if (index === 0) {
                         g.moveTo(screenX, screenY);
                       } else {
