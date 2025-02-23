@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { Layer } from '../types';
+import { Layer, PickData } from '../types';
 import VelModel from '../utils/VelModel';
 
 const INITIAL_DATA: Layer[] = [
@@ -36,6 +36,8 @@ interface DisperContextType {
   setDisplayUnits: (units: 'm' | 'ft') => void;
   ToMeter: (value: number) => number;
   ToFeet: (value: number) => number;
+  pickData: PickData[];
+  setPickData: (data: PickData[]) => void;
 }
 
 const DisperContext = createContext<DisperContextType | undefined>(undefined);
@@ -53,6 +55,7 @@ export function DisperProvider({ children }: DisperProviderProps) {
   const [phaseVelMin, setPhaseVelMin] = useState<number>(10);
   const [phaseVelMax, setPhaseVelMax] = useState<number>(2000);
   const [displayUnits, setDisplayUnits] = useState<'m' | 'ft'>('m');
+  const [pickData, setPickData] = useState<PickData[]>([]);
 
   // Add conversion helpers
   const ToFeet = useCallback((value: number): number => {
@@ -192,6 +195,8 @@ export function DisperProvider({ children }: DisperProviderProps) {
     setDisplayUnits,
     ToMeter,
     ToFeet,
+    pickData,
+    setPickData,
   };
 
   return (

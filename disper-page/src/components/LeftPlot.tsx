@@ -2,6 +2,7 @@ import { Application, extend } from "@pixi/react";
 import { Graphics, Container } from "pixi.js";
 import { useState, useRef, useEffect } from "react";
 import { Point } from "../types";
+import { PickData } from '../types';
 import { CalcCurve } from "../utils";
 import VelModel from "../utils/VelModel";
 import { useDisper } from '../context/DisperContext';
@@ -10,23 +11,15 @@ extend({ Graphics, Container });
 const VELOCITY_MAX_MARGIN_FACTOR = 1.1; // 110% of max velocity
 const VELOCITY_MIN_MARGIN_FACTOR = 0.9; // 90% of min velocity
 
-interface PickData {
-  d1: number;
-  d2: number;
-  frequency: number;
-  d3: number;
-  slowness: number;
-  d4: number;
-  d5: number;
-}
-
 export const LeftPlot = () => {
   const { 
     layers, 
     asceVersion,
     displayUnits,
     ToMeter,
-    ToFeet
+    ToFeet,
+    pickData,
+    setPickData
   } = useDisper();
   
   const [periods, setPeriods] = useState<(number|null)[]>([]);
@@ -35,7 +28,6 @@ export const LeftPlot = () => {
   const [curvePoints, setCurvePoints] = useState<Point[]>([]);
   const [pickPoints, setPickPoints] = useState<Point[]>([]);
   
-  const [pickData, setPickData] = useState<PickData[]>([]);
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
   const [numPoints, setNumPoints] = useState<number>(10);
   const [rmseVel, setRmseVel] = useState<number | null>(null);

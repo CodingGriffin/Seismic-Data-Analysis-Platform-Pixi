@@ -1,3 +1,13 @@
+export interface PickData {
+  d1: number;
+  d2: number;
+  frequency: number;
+  d3: number;
+  slowness: number;
+  d4: number;
+  d5: number;
+}
+
 export interface LayerData {
     depth: number;
     density: number;
