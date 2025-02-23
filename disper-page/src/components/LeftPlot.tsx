@@ -532,7 +532,10 @@ export const LeftPlot = () => {
               </select>
               <button
                 onClick={() => handleReverseAxis('velocity')}
-                className="px-2 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
+                className={`px-2 py-1 text-sm border rounded transition-colors duration-200
+                  ${velocityReversed ? 
+                    'bg-blue-500 text-white hover:bg-blue-600' : 
+                    'bg-gray-100 hover:bg-gray-200'}`}
                 title={`Reverse ${axesSwapped ? 'Horizontal' : 'Vertical'} Axis`}
               >
                 {axesSwapped ? '←→' : '↑↓'}
@@ -580,7 +583,10 @@ export const LeftPlot = () => {
               </select>
               <button
                 onClick={() => handleReverseAxis('period')}
-                className="px-2 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
+                className={`px-2 py-1 text-sm border rounded transition-colors duration-200
+                  ${periodReversed ? 
+                    'bg-blue-500 text-white hover:bg-blue-600' : 
+                    'bg-gray-100 hover:bg-gray-200'}`}
                 title={`Reverse ${axesSwapped ? 'Vertical' : 'Horizontal'} Axis`}
               >
                 {axesSwapped ? '↑↓' : '←→'}
@@ -615,7 +621,10 @@ export const LeftPlot = () => {
         <div className="flex justify-center gap-4 mb-4">
           <button
             onClick={handleSwapAxes}
-            className="px-3 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
+            className={`px-3 py-1 text-sm border rounded transition-colors duration-200
+              ${axesSwapped ? 
+                'bg-blue-500 text-white hover:bg-blue-600' : 
+                'bg-gray-100 hover:bg-gray-200'}`}
             title="Swap Axes"
           >
             Swap Axes
