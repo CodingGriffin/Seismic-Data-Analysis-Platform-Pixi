@@ -676,13 +676,11 @@ export const LeftPlot = () => {
             <div className="text-xs">
               {axesSwapped ? 
                 (periodReversed ? 
-                  (periodUnit === 'period' ? 
-                    axisLimits.xmin.toFixed(4) : 
-                    convertUnit(axisLimits.xmin, 'period', 'frequency').toFixed(4)
+                  (
+                    axisLimits.xmin.toFixed(4) 
                   ) : 
-                  (periodUnit === 'period' ? 
-                    axisLimits.xmax.toFixed(4) : 
-                    convertUnit(axisLimits.xmax, 'period', 'frequency').toFixed(4)
+                  (
+                    axisLimits.xmax.toFixed(4)
                   )
                 ) : 
                 (displayUnits === 'ft' ? 
@@ -693,13 +691,11 @@ export const LeftPlot = () => {
             <div className="text-xs">
               {axesSwapped ? 
                 (periodReversed ? 
-                  (periodUnit === 'period' ? 
-                    axisLimits.xmax.toFixed(4) : 
-                    convertUnit(axisLimits.xmax, 'period', 'frequency').toFixed(4)
+                  (
+                    axisLimits.xmax.toFixed(4)
                   ) : 
-                  (periodUnit === 'period' ? 
-                    axisLimits.xmin.toFixed(4) : 
-                    convertUnit(axisLimits.xmin, 'period', 'frequency').toFixed(4)
+                  (
+                    axisLimits.xmin.toFixed(4)
                   )
                 ) : 
                 (displayUnits === 'ft' ? 
@@ -718,13 +714,11 @@ export const LeftPlot = () => {
                   (velocityReversed ? axisLimits.ymax : axisLimits.ymin).toFixed(4)
                 ) : 
                 (periodReversed ? 
-                  (periodUnit === 'period' ? 
-                    axisLimits.xmax.toFixed(3) : 
-                    convertUnit(axisLimits.xmax, 'period', 'frequency').toFixed(4)
+                  (
+                    axisLimits.xmax.toFixed(4) 
                   ) : 
-                  (periodUnit === 'period' ? 
-                    axisLimits.xmin.toFixed(3) : 
-                    convertUnit(axisLimits.xmin, 'period', 'frequency').toFixed(4)
+                  ( 
+                    axisLimits.xmin.toFixed(4)
                   )
                 )}
             </div>
@@ -735,13 +729,11 @@ export const LeftPlot = () => {
                   (velocityReversed ? axisLimits.ymin : axisLimits.ymax).toFixed(4)
                 ) : 
                 (periodReversed ? 
-                  (periodUnit === 'period' ? 
-                    axisLimits.xmin.toFixed(4) : 
-                    convertUnit(axisLimits.xmin, 'period', 'frequency').toFixed(4)
+                  (
+                    axisLimits.xmin.toFixed(4) 
                   ) : 
-                  (periodUnit === 'period' ? 
-                    axisLimits.xmax.toFixed(4) : 
-                    convertUnit(axisLimits.xmax, 'period', 'frequency').toFixed(4)
+                  (
+                    axisLimits.xmax.toFixed(4)
                   )
                 )}
             </div>
