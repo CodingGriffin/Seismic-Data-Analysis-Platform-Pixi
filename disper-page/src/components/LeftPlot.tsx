@@ -91,7 +91,7 @@ export const LeftPlot = () => {
         ? data.slowness
         : convertUnit(data.slowness, 'slowness', 'velocity');
 
-      return { x, y, screenY: 0 }; // Added screenY property
+      return { x, y };
     }).filter(point => !isNaN(point.x) && !isNaN(point.y) && point.x > 0 && point.y > 0)
     .sort((a,b) => a.x - b.x);
   };
@@ -111,40 +111,38 @@ export const LeftPlot = () => {
     const minY = Math.max(0, Math.min(...yValues));
     const maxY = Math.max(0, Math.max(...yValues));
 
-    const yMarginFactor = velocityUnit === 'velocity' 
-        ? { min: VELOCITY_MIN_MARGIN_FACTOR, max: VELOCITY_MAX_MARGIN_FACTOR }
-        : { min: 0.9, max: 1.1 }; // Reversed for slowness
+    const yMarginFactor = { min: VELOCITY_MIN_MARGIN_FACTOR, max: VELOCITY_MAX_MARGIN_FACTOR };
 
     // Define minimum limits based on units
-    const xMinLimit = periodUnit === 'period' ? 0.001 : 0.1;
-    const yMinLimit = velocityUnit === 'velocity' ? 30 : 0.0001;
+    const xMinLimit = periodUnit === 'period' ? 0.0001 : 0.1;
+    const yMinLimit = velocityUnit === 'velocity' ? 1 : 0.0001;
 
     // For period/frequency (x-axis)
     const xmin = periodUnit === 'period' 
-        ? Math.max(xMinLimit, Math.round(minX * 1000) / 1000)
-        : Math.max(xMinLimit, Math.round(minX * 10) / 10);
+        ? Math.max(xMinLimit, Math.ceil(minX * 10000 - 1) / 10000)
+        : Math.max(xMinLimit, Math.ceil(minX * 10 - 1) / 10);
 
     const xmax = periodUnit === 'period'
-        ? Math.max(xmin + 0.001, Math.round(maxX * 1000) / 1000)
-        : Math.max(xmin + 0.1, Math.round(maxX * 10) / 10);
+        ? Math.max(xmin + 0.001, Math.floor(maxX * 10000 + 1) / 10000)
+        : Math.max(xmin + 0.1, Math.floor(maxX * 10 + 1) / 10);
 
     // For velocity/slowness (y-axis)
     let ymin, ymax;
     
     if (velocityUnit === 'velocity') {
         ymin = Math.max(yMinLimit, Math.floor(minY * yMarginFactor.min));
-        ymax = Math.max(ymin + 10, Math.ceil(maxY * yMarginFactor.max));
+        ymax = Math.max(ymin + 1, Math.ceil(maxY * yMarginFactor.max));
     } else {
         // For slowness, we want to expand the range by 10% on both sides
-        ymin = Math.max(yMinLimit, Math.round(minY * yMarginFactor.min * 10000) / 10000);
-        ymax = Math.max(ymin + 0.0001, Math.round(maxY * yMarginFactor.max * 10000) / 10000);
+        ymin = Math.max(yMinLimit, Math.floor(minY * yMarginFactor.min * 10000) / 10000);
+        ymax = Math.max(ymin + 0.0001, Math.ceil(maxY * yMarginFactor.max * 10000) / 10000);
     }
 
     return { 
         xmin: Math.max(0, xmin), 
-        xmax: Math.max(xmin + (periodUnit === 'period' ? 0.001 : 0.1), xmax), 
+        xmax: Math.max(xmin + (periodUnit === 'period' ? 0.0001 : 0.1), xmax), 
         ymin: Math.max(0, ymin), 
-        ymax: Math.max(ymin + (velocityUnit === 'velocity' ? 10 : 0.0001), ymax) 
+        ymax: Math.max(ymin + (velocityUnit === 'velocity' ? 1 : 0.0001), ymax) 
     };
   };
   
