@@ -414,7 +414,7 @@ export const LeftPlot = () => {
       });
     } else {
       // Velocity/Slowness limits
-      const minLimit = velocityUnit === 'velocity' ? 0 : 0.0001;
+      const minLimit = velocityUnit === 'velocity' ? 1 : 0.0001;
       const valueInMeters = displayUnits === 'ft' ? ToMeter(numValue) : numValue;
 
       setAxisLimits(prev => {
