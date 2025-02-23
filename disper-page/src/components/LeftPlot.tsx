@@ -39,7 +39,6 @@ export const LeftPlot = () => {
   const [hoveredPoint, setHoveredPoint] = useState<Point | null>(null);
   const [numPoints, setNumPoints] = useState<number>(10);
   const [rmseVel, setRmseVel] = useState<number | null>(null);
-  const [rmseSlowness, setRmseSlowness] = useState<number | null>(null);
   const [axisLimits, setAxisLimits] = useState({
     xmin: 0.001, // Period min
     xmax: 0.6, // Period max
@@ -258,7 +257,6 @@ export const LeftPlot = () => {
       if(pointIdxs != null) {
         const curveVels = pointIdxs.map((i) => newVelocities[i])
         const pointVels:number[] = pickPoints.map((p) => velocityUnit === 'slowness' ? convertUnit(p.y, 'slowness','velocity') : p.y)
-        console.log("PointVels:", pointVels)
 
         // Calculate RMSE for velocity
         const diffSquaredVelArr = pointVels
@@ -277,8 +275,6 @@ export const LeftPlot = () => {
         } else {
           setRmseVel(null)
         }
-
-        // Slowness RMSE calculation removed
       }
 
       console.log("newVelocities:", newVelocities)
@@ -391,38 +387,54 @@ export const LeftPlot = () => {
     value: string
   ) => {
     const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue < 0) return;
+    if (isNaN(numValue)) return;
     
     // Different validation rules based on unit type and axis
     if (axis.startsWith('x')) {
       // Period/Frequency limits
       const minLimit = periodUnit === 'period' ? 0.001 : 0.1;
-      if (axis === 'xmin' && numValue < minLimit) return;
       
-      setAxisLimits(prev => ({
-        ...prev,
-        [axis]: numValue,
-        // Ensure max is greater than min
-        ...(axis === 'xmin' && numValue >= prev.xmax ? { xmax: numValue + 0.1 } : {}),
-        ...(axis === 'xmax' && numValue <= prev.xmin ? { xmin: numValue - 0.1 } : {})
-      }));
+      setAxisLimits(prev => {
+        let newLimits = { ...prev };
+        
+        if (axis === 'xmin') {
+          // Ensure min is at least minLimit
+          newLimits.xmin = Math.max(minLimit, numValue);
+          // If min becomes greater than or equal to max, adjust max
+          if (newLimits.xmin >= newLimits.xmax) {
+            newLimits.xmax = newLimits.xmin + (periodUnit === 'period' ? 0.001 : 0.1);
+          }
+        } else { // xmax
+          // Ensure max is greater than min by at least the minimum delta
+          const minDelta = periodUnit === 'period' ? 0.001 : 0.1;
+          newLimits.xmax = Math.max(newLimits.xmin + minDelta, numValue);
+        }
+        
+        return newLimits;
+      });
     } else {
       // Velocity/Slowness limits
-      const minLimit = velocityUnit === 'velocity' ? 30 : 0.0001;
-      if (axis === 'ymin' && numValue < minLimit) return;
-
-      // Convert input value from display units to meters
+      const minLimit = velocityUnit === 'velocity' ? 0 : 0.0001;
       const valueInMeters = displayUnits === 'ft' ? ToMeter(numValue) : numValue;
 
-      setAxisLimits(prev => ({
-        ...prev,
-        [axis]: valueInMeters,
-        // Ensure max is greater than min
-        ...(axis === 'ymin' && valueInMeters >= prev.ymax ? 
-          { ymax: valueInMeters + (velocityUnit === 'velocity' ? 10 : 0.001) } : {}),
-        ...(axis === 'ymax' && valueInMeters <= prev.ymin ? 
-          { ymin: valueInMeters - (velocityUnit === 'velocity' ? 10 : 0.001) } : {})
-      }));
+      setAxisLimits(prev => {
+        let newLimits = { ...prev };
+        
+        if (axis === 'ymin') {
+          // Ensure min is at least minLimit
+          newLimits.ymin = Math.max(minLimit, valueInMeters);
+          // If min becomes greater than or equal to max, adjust max
+          if (newLimits.ymin >= newLimits.ymax) {
+            newLimits.ymax = newLimits.ymin + (velocityUnit === 'velocity' ? 1 : 0.0001);
+          }
+        } else { // ymax
+          // Ensure max is greater than min by at least the minimum delta
+          const minDelta = velocityUnit === 'velocity' ? 1 : 0.0001;
+          newLimits.ymax = Math.max(newLimits.ymin + minDelta, valueInMeters);
+        }
+        
+        return newLimits;
+      });
     }
   };
 
