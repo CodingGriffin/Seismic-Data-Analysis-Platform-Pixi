@@ -518,6 +518,23 @@ export const LeftPlot = () => {
     return style;
   };
 
+  const transformToScreenCoordinates = (point: { x: number, y: number }) => {
+    // Transform to screen space
+    let screenX = ((point.x - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) * plotDimensions.width;
+    let screenY = ((point.y - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) * plotDimensions.height;
+
+    // Handle axis reversals
+    if (periodReversed) {
+      screenX = plotDimensions.width - screenX;
+    }
+    if (!velocityReversed) {
+      screenY = plotDimensions.height - screenY;
+    }
+
+    // Handle axis swapping
+    return axesSwapped ? { x: screenY, y: screenX } : { x: screenX, y: screenY };
+  };
+
   return (
     <div className="flex flex-col items-center border-2 border-gray-300 rounded-lg p-4 shadow-sm">
       <div className="w-full">
@@ -763,37 +780,16 @@ export const LeftPlot = () => {
                     key={`point-${index}`}
                     draw={(g: Graphics) => {
                       g.clear();
-                      let screenX = ((point.x - axisLimits.xmin) /
-                          (axisLimits.xmax - axisLimits.xmin)) *
-                        plotDimensions.width;
+                      const { x, y } = transformToScreenCoordinates(point);
                       
-                      let screenY = ((point.y - axisLimits.ymin) /
-                          (axisLimits.ymax - axisLimits.ymin)) *
-                          plotDimensions.height;
-
-                      // Handle axis reversals
-                      if (periodReversed) {
-                        screenX = plotDimensions.width - screenX;
-                      }
-                      
-                      if (!velocityReversed) {
-                        screenY = plotDimensions.height - screenY;
-                      }
-
-                      // Handle axis swapping if needed
-                      if (axesSwapped) {
-                        [screenX, screenY] = [screenY, screenX];
-                      }
-
                       if (point === hoveredPoint) {
                         g.fill({ color: 0xff0000 });
-                        g.circle(screenX, screenY, 7);
+                        g.circle(x, y, 7);
                         g.fill({ color: 0xff00ff, alpha: 0.8 });
-                        g.circle(screenX, screenY, 3);
-                        console.log("Hovered point:", screenX, screenY);
+                        g.circle(x, y, 3);
                       } else {
                         g.fill({ color: 0xff0000 });
-                        g.circle(screenX, screenY, 5);
+                        g.circle(x, y, 5);
                       }
                       g.fill();
                     }}
@@ -816,33 +812,11 @@ export const LeftPlot = () => {
 
                     // Draw curve points
                     curvePoints.forEach((point, index) => {
-                      // Ensure proper scaling to fill the entire plot
-                      let screenX = ((point.x - axisLimits.xmin) /
-                          (axisLimits.xmax - axisLimits.xmin)) *
-                        plotDimensions.width;
-                      
-                      let screenY = ((point.y - axisLimits.ymin) /
-                          (axisLimits.ymax - axisLimits.ymin)) *
-                          plotDimensions.height;
-
-                      // Handle axis reversals
-                      if (periodReversed) {
-                        screenX = plotDimensions.width - screenX;
-                      }
-                      
-                      if (!velocityReversed) {
-                        screenY = plotDimensions.height - screenY;
-                      }
-
-                      // Handle axis swapping if needed
-                      if (axesSwapped) {
-                        [screenX, screenY] = [screenY, screenX];
-                      }
-
+                      const { x, y } = transformToScreenCoordinates(point);
                       if (index === 0) {
-                        g.moveTo(screenX, screenY);
+                        g.moveTo(x, y);
                       } else {
-                        g.lineTo(screenX, screenY);
+                        g.lineTo(x, y);
                       }
                     });
                     g.stroke();
