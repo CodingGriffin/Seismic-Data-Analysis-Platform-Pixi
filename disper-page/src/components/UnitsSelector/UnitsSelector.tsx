@@ -1,11 +1,11 @@
-import { useDisper } from '../context/DisperContext';
+import { useDisper } from '../../context/DisperContext';
 
 interface UnitsSelectorProps {
   className?: string;
 }
 
 export default function UnitsSelector({ className = '' }: UnitsSelectorProps) {
-  const { displayUnits, setDisplayUnits } = useDisper();
+  const { state:{displayUnits}, setDisplayUnits } = useDisper();
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>

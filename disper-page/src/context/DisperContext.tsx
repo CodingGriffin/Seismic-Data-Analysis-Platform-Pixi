@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useReducer, useCallback, ReactNode, useEffect } from 'react';
 import { Layer, PickData } from '../types';
 import VelModel from '../utils/VelModel';
 
@@ -8,117 +8,153 @@ const INITIAL_DATA: Layer[] = [
   { startDepth: 44.0, endDepth: 144.0, velocity: 1270.657, density: 2.0, ignore: 0 },
 ];
 
-interface DisperContextType {
-  layers: Layer[];
-  setLayers: (layers: Layer[]) => void;
+const initialState = {
+  layers: INITIAL_DATA,
+  asceVersion: "ASCE 7-22",
+  vs30: null as number | null,
+  siteClass: null as string | null,
+  velModel: null,
+  phaseVelMin: 10,
+  phaseVelMax: 2000,
+  displayUnits: 'm' as 'm' | 'ft',
+  pickData: [] as PickData[],
+  dataLimits: {
+    minFrequency: 0.0001,
+    maxFrequency: 100,
+    minSlowness: 0.0001,
+    maxSlowness: 100,
+  },
+};
+
+// Define the context type
+type DisperContextType = {
+  state: typeof initialState;
   addLayer: (newLayer: Layer) => void;
   updateLayer: (index: number, updatedLayer: Partial<Layer>) => void;
   removeLayer: (index: number) => void;
-  splitLayer: (index: number, depth: number) => void;
-  deleteLayer?: (index: number) => void;
-  
-  calculateVs30: () => number;
-  calculateSiteClass: (vs30: number) => string | null;
-  
-  asceVersion: string;
-  setAsceVersion: (version: string) => void;
-  
-  vs30: number | null;
+  setLayers: (layers: Layer[]) => void;
   setVs30: (value: number | null) => void;
-  siteClass: string | null;
   setSiteClass: (value: string | null) => void;
-  velModel: VelModel | null;
-  phaseVelMin: number;
-  phaseVelMax: number;
-  setPhaseVelMin: (value: number) => void;
-  setPhaseVelMax: (value: number) => void;
-  displayUnits: 'm' | 'ft';
-  setDisplayUnits: (units: 'm' | 'ft') => void;
-  ToMeter: (value: number) => number;
-  ToFeet: (value: number) => number;
-  pickData: PickData[];
+  setAsceVersion: (version: string) => void;
   setPickData: (data: PickData[]) => void;
+  calculateVs30: () => number;
+  setDisplayUnits: (units: 'm' | 'ft') => void;
+  splitLayer: (index: number, depth: number) => void;
+  deleteLayer: (index: number) => void;
+  ToFeet: (value: number) => number;
+  ToMeter: (value: number) => number;
+};
+
+function reducer(state: typeof initialState, action: { type: string; payload: any }) {
+  switch (action.type) {
+    case 'SET_LAYERS':
+      return { ...state, layers: action.payload };
+    case 'ADD_LAYER':
+      return { ...state, layers: [...state.layers, action.payload] };
+    case 'UPDATE_LAYER':
+      return {
+        ...state,
+        layers: state.layers.map((layer, index) =>
+          index === action.payload.index ? { ...layer, ...action.payload.updatedLayer } : layer
+        ),
+      };
+    case 'REMOVE_LAYER':
+      return { ...state, layers: state.layers.filter((_, i) => i !== action.payload) };
+    case 'SET_VS30':
+      return { ...state, vs30: action.payload };
+    case 'SET_SITE_CLASS':
+      return { ...state, siteClass: action.payload };
+    case 'SET_ASCE_VERSION':
+      return { ...state, asceVersion: action.payload };
+    case 'SET_PICK_DATA':
+      return { ...state, pickData: action.payload };
+    case 'SET_DISPLAY_UNITS':
+      return { ...state, displayUnits: action.payload };
+    case 'SET_DATA_LIMITS':
+      return { ...state, dataLimits: action.payload };
+    default:
+      return state;
+  }
 }
 
-const DisperContext = createContext<DisperContextType | undefined>(undefined);
+export const DisperContext = createContext<DisperContextType | null>(null);
 
-interface DisperProviderProps {
-  children: ReactNode;
+export function useDisper() {
+  const context = useContext(DisperContext);
+  if (!context) throw new Error('useDisper must be used within a DisperProvider');
+  return context;
 }
 
-export function DisperProvider({ children }: DisperProviderProps) {
-  const [layers, setLayers] = useState<Layer[]>(INITIAL_DATA);
-  const [asceVersion, setAsceVersion] = useState<string>("ASCE 7-22");
-  const [vs30, setVs30] = useState<number | null>(null);
-  const [siteClass, setSiteClass] = useState<string | null>(null);
-  const [velModel, setVelModel] = useState<VelModel | null>(null);
-  const [phaseVelMin, setPhaseVelMin] = useState<number>(10);
-  const [phaseVelMax, setPhaseVelMax] = useState<number>(2000);
-  const [displayUnits, setDisplayUnits] = useState<'m' | 'ft'>('m');
-  const [pickData, setPickData] = useState<PickData[]>([]);
+export function DisperProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Add conversion helpers
-  const ToFeet = useCallback((value: number): number => {
-    return value * 3.28084;
-  }, [displayUnits]);
+  const addLayer = useCallback((newLayer: Layer) => {
+    dispatch({ type: 'ADD_LAYER', payload: newLayer });
+  }, []);
 
-  const ToMeter = useCallback((value: number): number => {
-    return value / 3.28084;
-  }, [displayUnits]);
+  const updateLayer = useCallback((index: number, updatedLayer: Partial<Layer>) => {
+    dispatch({ type: 'UPDATE_LAYER', payload: { index, updatedLayer } });
+  }, []);
 
-  const addLayer = (newLayer: Layer) => {
-    setLayers(prevLayers => [...prevLayers, newLayer]);
-  };
+  const removeLayer = useCallback((index: number) => {
+    dispatch({ type: 'REMOVE_LAYER', payload: index });
+  }, []);
 
-  const updateLayer = (index: number, updatedLayer: Partial<Layer>) => {
-    setLayers(prevLayers => {
-      const newLayers = [...prevLayers];
-      newLayers[index] = { ...newLayers[index], ...updatedLayer };
-      return newLayers;
-    });
-  };
+  const setLayers = useCallback((layers: Layer[]) => {
+    dispatch({ type: 'SET_LAYERS', payload: layers });
+  }, []);
 
-  const removeLayer = (index: number) => {
-    setLayers(prevLayers => prevLayers.filter((_, i) => i !== index));
-  };
+  const setVs30 = useCallback((value: number | null) => {
+    dispatch({ type: 'SET_VS30', payload: value });
+  }, []);
 
-  const splitLayer = (index: number, depth: number) => {
-    setLayers(prevLayers => {
-      const newLayers = [...prevLayers];
-      const layer = newLayers[index];
-      
-      if (depth > layer.startDepth && depth < layer.endDepth) {
-        const upperLayer: Layer = {
-          startDepth: layer.startDepth,
-          endDepth: depth,
-          velocity: layer.velocity,
-          density: layer.density,
-          ignore: layer.ignore
-        };
+  const setSiteClass = useCallback((value: string | null) => {
+    dispatch({ type: 'SET_SITE_CLASS', payload: value });
+  }, []);
 
-        const lowerLayer: Layer = {
-          startDepth: depth,
-          endDepth: layer.endDepth,
-          velocity: layer.velocity,
-          density: layer.density,
-          ignore: layer.ignore
-        };
+  const setAsceVersion = useCallback((version: string) => {
+    dispatch({ type: 'SET_ASCE_VERSION', payload: version });
+  }, []);
 
-        newLayers.splice(index, 1, upperLayer, lowerLayer);
-      }
-      
-      return newLayers;
-    });
-  };
+  const setPickData = useCallback((data: PickData[]) => {
+    dispatch({ type: 'SET_PICK_DATA', payload: data });
+  }, []);
 
-  const calculateVs30 = () => {
-    const num_layers = layers.length;
-    const layer_thicknesses = layers.map(
-      layer => layer.endDepth - layer.startDepth
-    );
-    const vels_shear = layers.map(layer => layer.velocity);
-    const densities = layers.map(layer => layer.density);
-    const vels_compression = vels_shear.map(v => v * Math.sqrt(3));
+  const setDisplayUnits = useCallback((units: 'm' | 'ft') => {
+    dispatch({ type: 'SET_DISPLAY_UNITS', payload: units });
+  }, []);
+
+  const splitLayer = useCallback((index: number, depth: number) => {
+    const layer = state.layers[index];
+    if (!layer) return;
+
+    const newLayers = [...state.layers];
+    const upperLayer = { ...layer, endDepth: depth };
+    const lowerLayer = { ...layer, startDepth: depth };
+
+    newLayers.splice(index, 1, upperLayer, lowerLayer);
+    dispatch({ type: 'SET_LAYERS', payload: newLayers });
+  }, [state.layers]);
+
+  const deleteLayer = useCallback((index: number) => {
+    if (state.layers.length <= 1) return; // Don't delete the last layer
+    dispatch({ type: 'REMOVE_LAYER', payload: index });
+  }, [state.layers]);
+
+  const ToFeet = useCallback((value: number) => {
+    return value * 3.28084; // Convert meters to feet
+  }, []);
+
+  const ToMeter = useCallback((value: number) => {
+    return value / 3.28084; // Convert feet to meters
+  }, []);
+
+  const calculateVs30 = useCallback(() => {
+    const num_layers = state.layers.length;
+    const layer_thicknesses = state.layers.map((layer: Layer) => layer.endDepth - layer.startDepth);
+    const vels_shear = state.layers.map((layer: Layer) => layer.velocity);
+    const densities = state.layers.map((layer: Layer) => layer.density);
+    const vels_compression = vels_shear.map((v:number) => v * Math.sqrt(3));
 
     const model = new VelModel(
       num_layers,
@@ -126,90 +162,68 @@ export function DisperProvider({ children }: DisperProviderProps) {
       densities,
       vels_compression,
       vels_shear,
-      phaseVelMin,
-      phaseVelMax,
+      state.phaseVelMin,
+      state.phaseVelMax,
       2.0
     );
 
-    setVelModel(model);
+    dispatch({ type: 'SET_VS30', payload: model.get_vs30() });
     return model.get_vs30();
-  };
+  }, [state.layers, state.phaseVelMin, state.phaseVelMax]);
 
-  const calculateSiteClass = (vs30: number) => {
-    const formattedAsceVersion = asceVersion
-      .toLowerCase()
-      .replace(/[- ]/g, "_");
-    
-    return VelModel.calc_site_class(formattedAsceVersion, vs30);
-  };
+  useEffect(() => {
+    if (state.pickData.length > 0) {
+      const minFrequency = Math.min(...state.pickData.map((data: PickData) => data.frequency));
+      const maxFrequency = Math.max(...state.pickData.map((data: PickData) => data.frequency));
+      const minSlowness = Math.min(...state.pickData.map((data: PickData) => data.slowness));
+      const maxSlowness = Math.max(...state.pickData.map((data: PickData) => data.slowness));
 
-  const deleteLayer = useCallback((index: number) => {
-    setLayers(prevLayers => {
-      if (prevLayers.length <= 1) return prevLayers;
-      
-      const newLayers = [...prevLayers];
-      
-      if (index === 0) {
-        newLayers[1].startDepth = newLayers[0].startDepth;
-        newLayers.splice(0, 1);
-      } else if (index === prevLayers.length - 1) {
-        newLayers.splice(index, 1);
-      } else {
-        newLayers[index - 1].endDepth = prevLayers[index].endDepth;
-        newLayers.splice(index, 1);
-      }
-      
-      return newLayers;
-    });
-  }, []);
-
-  const value: DisperContextType = {
-    // Layer Management
-    layers,
-    setLayers,
-    addLayer,
-    updateLayer,
-    removeLayer,
-    splitLayer,
-    deleteLayer,
-    
-    // Layer Calculations
-    calculateVs30,
-    calculateSiteClass,
-    
-    // ASCE Version
-    asceVersion,
-    setAsceVersion,
-    
-    // Results
-    vs30,
-    setVs30,
-    siteClass,
-    setSiteClass,
-    velModel,
-    phaseVelMin,
-    phaseVelMax,
-    setPhaseVelMin,
-    setPhaseVelMax,
-    displayUnits,
-    setDisplayUnits,
-    ToMeter,
-    ToFeet,
-    pickData,
-    setPickData,
-  };
+      dispatch({
+        type: 'SET_DATA_LIMITS',
+        payload: { minFrequency, maxFrequency, minSlowness, maxSlowness },
+      });
+    }
+  }, [state.pickData]);
 
   return (
-    <DisperContext.Provider value={value}>
+    <DisperContext.Provider
+      value={{
+        state,
+        addLayer,
+        updateLayer,
+        removeLayer,
+        setLayers,
+        setVs30,
+        setSiteClass,
+        setAsceVersion,
+        setPickData,
+        calculateVs30,
+        setDisplayUnits,
+        splitLayer,
+        deleteLayer,
+        ToFeet,
+        ToMeter
+      }}
+    >
       {children}
     </DisperContext.Provider>
   );
 }
 
-export function useDisper() {
-  const context = useContext(DisperContext);
-  if (context === undefined) {
-    throw new Error('useDisper must be used within a DisperProvider');
-  }
-  return context;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

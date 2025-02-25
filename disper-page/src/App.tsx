@@ -1,7 +1,7 @@
-import { LeftPlot } from './components/LeftPlot';
-import { RightPlot } from './components/RightPlot';
+import { LeftPlot } from './components/LeftPlot/LeftPlot';
+import { RightPlot } from './components/RightPlot/RightPlot';
 import { DisperProvider } from './context/DisperContext';
-import UnitsSelector from './components/UnitsSelector';
+import UnitsSelector from './components/UnitsSelector/UnitsSelector';
 
 export default function App() {
     return (
