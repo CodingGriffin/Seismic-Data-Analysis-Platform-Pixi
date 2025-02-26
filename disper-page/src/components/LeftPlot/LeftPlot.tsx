@@ -795,10 +795,10 @@ export const LeftPlot = () => {
                 : `Slowness (s/${displayUnits})`
             }
             xLabel={periodUnit === "period" ? "Period (s)" : "Frequency (Hz)"}
-            xMin={axisLimits.xmin}
-            xMax={axisLimits.xmax}
-            yMin={axisLimits.ymin}
-            yMax={axisLimits.ymax}
+            xMin={axesSwapped? axisLimits.ymin: axisLimits.xmin}
+            xMax={axesSwapped? axisLimits.ymax: axisLimits.xmax}
+            yMin={axesSwapped? axisLimits.xmin: axisLimits.ymin}
+            yMax={axesSwapped? axisLimits.xmax: axisLimits.ymax}
             display={(value) =>
               displayUnits === "ft"
                 ? ToFeet(value).toFixed(3)
