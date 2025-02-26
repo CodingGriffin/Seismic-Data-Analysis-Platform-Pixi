@@ -663,7 +663,7 @@ export const LeftPlot = () => {
 
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-600">
-                Max {velocityUnit === "velocity" ? "Velocity" : "Slowness"}:
+                Max {axesSwapped?periodUnit==="period"?"Period":"Frequency":velocityUnit === "velocity" ? "Velocity" : "Slowness"}:
               </label>
               <input
                 type="number"
@@ -679,7 +679,7 @@ export const LeftPlot = () => {
             </div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-600">
-                Min {velocityUnit === "velocity" ? "Velocity" : "Slowness"}:
+                Min {axesSwapped?periodUnit==="period"?"Period":"Frequency":velocityUnit === "velocity" ? "Velocity" : "Slowness"}:
               </label>
               <input
                 type="number"
@@ -721,7 +721,7 @@ export const LeftPlot = () => {
             </div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-600">
-                Max {periodUnit === "period" ? "Period" : "Frequency"}:
+                Max {axesSwapped? velocityUnit === "velocity" ? "Velocity" : "Slowness":periodUnit === "period" ? "Period" : "Frequency"}:
               </label>
               <input
                 type="number"
@@ -733,7 +733,7 @@ export const LeftPlot = () => {
             </div>
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-600">
-                Min {periodUnit === "period" ? "Period" : "Frequency"}:
+                Min {axesSwapped? velocityUnit === "velocity" ? "Velocity" : "Slowness":periodUnit === "period" ? "Period" : "Frequency"}:
               </label>
               <input
                 type="number"
