@@ -316,8 +316,8 @@ export const LeftPlot = () => {
     if (!plotRef.current) return;
     event.stopPropagation();
     const rect = plotRef.current.getBoundingClientRect();
-    const screenX = event.clientX - rect.left;
-    const screenY = rect.height - (event.clientY - rect.top);
+    const screenX = periodReversed? rect.width - (event.clientX - rect.left) : event.clientX - rect.left;
+    const screenY = velocityReversed? event.clientY - rect.top : rect.height - (event.clientY - rect.top);
 
     const nearestPoint = pickPoints
       .map((point) => {
