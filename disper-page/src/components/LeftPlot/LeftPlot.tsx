@@ -13,6 +13,10 @@ extend({ Graphics, Container });
 
 const VELOCITY_MAX_MARGIN_FACTOR = 1.1; // 110% of max velocity
 const VELOCITY_MIN_MARGIN_FACTOR = 0.9; // 90% of min velocity
+const ABS_MIN_VELOCITY = 0.0000000001;
+const ABS_MIN_PERIOD = 0.0000000001;
+const ABS_MIN_SLOWNESS = 0.0000000001;
+const ABS_MIN_FREQUENCY= 0.0000000001;
 
 export const LeftPlot = () => {
   const {
@@ -224,7 +228,7 @@ export const LeftPlot = () => {
     // Different validation rules based on unit type and axis
     if (axis.startsWith("x")) {
       // Period/Frequency limits
-      const minLimit = periodUnit === "period" ? 0.001 : 0.1;
+      const minLimit = periodUnit === "period" ? ABS_MIN_PERIOD : ABS_MIN_FREQUENCY;
 
       setAxisLimits((prev) => {
         let newLimits = { ...prev };
@@ -235,12 +239,12 @@ export const LeftPlot = () => {
           // If min becomes greater than or equal to max, adjust max
           if (newLimits.xmin >= newLimits.xmax) {
             newLimits.xmax =
-              newLimits.xmin + (periodUnit === "period" ? 0.001 : 0.1);
+              newLimits.xmin + (periodUnit === "period" ? ABS_MIN_PERIOD : ABS_MIN_FREQUENCY);
           }
         } else {
           // xmax
           // Ensure max is greater than min by at least the minimum delta
-          const minDelta = periodUnit === "period" ? 0.001 : 0.1;
+          const minDelta = periodUnit === "period" ? ABS_MIN_PERIOD : ABS_MIN_FREQUENCY;
           newLimits.xmax = Math.max(newLimits.xmin + minDelta, numValue);
         }
 
@@ -248,7 +252,7 @@ export const LeftPlot = () => {
       });
     } else {
       // Velocity/Slowness limits
-      const minLimit = velocityUnit === "velocity" ? 1 : 0.0001;
+      const minLimit = velocityUnit === "velocity" ? ABS_MIN_VELOCITY : ABS_MIN_SLOWNESS;
       const valueInMeters =
         displayUnits === "ft" ? ToMeter(numValue) : numValue;
 
@@ -261,12 +265,12 @@ export const LeftPlot = () => {
           // If min becomes greater than or equal to max, adjust max
           if (newLimits.ymin >= newLimits.ymax) {
             newLimits.ymax =
-              newLimits.ymin + (velocityUnit === "velocity" ? 1 : 0.0001);
+              newLimits.ymin + (velocityUnit === "velocity" ? ABS_MIN_VELOCITY : ABS_MIN_SLOWNESS);
           }
         } else {
           // ymax
           // Ensure max is greater than min by at least the minimum delta
-          const minDelta = velocityUnit === "velocity" ? 1 : 0.0001;
+          const minDelta = velocityUnit === "velocity" ? ABS_MIN_VELOCITY : ABS_MIN_SLOWNESS;
           newLimits.ymax = Math.max(newLimits.ymin + minDelta, valueInMeters);
         }
 
@@ -329,7 +333,7 @@ export const LeftPlot = () => {
       })
       .filter((point) => point.dist < 5)
       .sort((a, b) => a.dist - b.dist)[0];
-    nearestPoint && console.log("Nearest Point:", nearestPoint);
+    // nearestPoint && console.log("Nearest Point:", nearestPoint);
     setHoveredPoint(nearestPoint);
   };
 
@@ -354,25 +358,25 @@ export const LeftPlot = () => {
 
   useEffect(() => {
     const xmin = Math.max(
-      0.0001,
+      0.0000000001,
       periodUnit === "frequency"
         ? dataLimits.minFrequency
         : 1 / dataLimits.maxFrequency
     );
     const xmax = Math.max(
-      0.0001,
+      0.0000000001,
       periodUnit === "frequency"
         ? dataLimits.maxFrequency
         : 1 / dataLimits.minFrequency
     );
     const ymin = Math.max(
-      0.0001,
+      0.0000000001,
       velocityUnit === "slowness"
         ? dataLimits.minSlowness
         : 1 / dataLimits.maxSlowness
     );
     const ymax = Math.max(
-      0.0001,
+      0.0000000001,
       velocityUnit === "slowness"
         ? dataLimits.maxSlowness
         : 1 / dataLimits.minSlowness
@@ -440,7 +444,7 @@ export const LeftPlot = () => {
   ]);
 
   useEffect(() => {
-    console.log("Pick Points After Changed:", axisLimits, pickPoints);
+    // console.log("Pick Points After Changed:", axisLimits, pickPoints);
   }, [pickPoints]);
 
   useEffect(() => {
@@ -502,8 +506,8 @@ export const LeftPlot = () => {
     } else {
       newPeriods = calcPeriods;
     }
-    
-    console.log("Periods:", newPeriods)
+
+    // console.log("Periods:", newPeriods)
     if (layers.length) {
       const num_layers = layers.length;
 
@@ -582,8 +586,7 @@ export const LeftPlot = () => {
         }
       }
 
-      console.log("newVelocities:", newVelocities);
-
+      // console.log("newVelocities:", newVelocities);
       const newCurvePoints: Point[] = newPeriods
         .map((period, index) => {
           if (period === null || newVelocities[index] === null) return null;
@@ -854,7 +857,7 @@ export const LeftPlot = () => {
               />
               <pixiGraphics
                 draw={(g: Graphics) => {
-                  console.log("Pick Points in Drawing:", pickPoints);
+                  // console.log("Pick Points in Drawing:", pickPoints);
                   g.clear();
                   pickPoints.map((point) => {
                     let x = coordinateHelpers.toScreenX(point.x);
@@ -882,7 +885,7 @@ export const LeftPlot = () => {
             </pixiContainer>
             <pixiGraphics
               draw={(g: Graphics) => {
-                console.log("Curve Points in Drawing:", curvePoints);
+                // console.log("Curve Points in Drawing:", curvePoints);
                 g.clear();
                 g.setStrokeStyle({
                   width: 2,
