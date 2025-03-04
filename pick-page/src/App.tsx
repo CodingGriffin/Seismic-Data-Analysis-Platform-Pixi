@@ -1,12 +1,15 @@
 import { NpyViewer } from './components/NpyViewer';
+import { NpyViewerProvider } from './context/NpyViewerContext';
 
 function App() {
   return (
-    <div className="w-full min-h-screen bg-white p-8">
-      <div className="w-full max-w-6xl mx-auto">
-        <NpyViewer />
+    <NpyViewerProvider>
+      <div className="w-full min-h-screen bg-white p-8">
+        <div className="w-full max-w-6xl mx-auto">
+          <NpyViewer />
+        </div>
       </div>
-    </div>
+    </NpyViewerProvider>
   );
 }
 
