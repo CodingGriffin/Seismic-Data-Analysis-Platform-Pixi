@@ -1,4 +1,4 @@
-import { NpyViewer } from './components/NpyViewer';
+import { NpyViewer } from './components/NpyViewer/NpyViewer';
 import { NpyViewerProvider } from './context/NpyViewerContext';
 
 function App() {
