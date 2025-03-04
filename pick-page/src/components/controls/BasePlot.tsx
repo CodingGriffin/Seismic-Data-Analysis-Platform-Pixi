@@ -157,7 +157,7 @@ export const BasePlot = forwardRef<HTMLDivElement, BasePlotProps>(({
 
   return (
     <div
-      className="relative border border-gray-200 rounded-lg bg-white shadow-sm w-full aspect-[4/3] min-h-[300px]"
+      className="relative border border-gray-200 rounded-lg bg-white shadow-sm w-full h-full min-h-[300px]"
     >
       <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-sm">
         {displayedValues.yLabel}

@@ -1,4 +1,4 @@
-import { Container, Sprite, Graphics, Text, Texture } from "pixi.js";
+import { Container, Sprite, Graphics, Text, Texture, SCALE_MODES } from "pixi.js";
 import { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import { extend } from "@pixi/react";
 import { useNpyViewer, COLOR_MAPS, type ColorMapKey, getColorFromMap } from '../../context/NpyViewerContext';
@@ -125,6 +125,7 @@ export function NpyViewer() {
     ctx.putImageData(imgData, 0, 0);
 
     const texture = Texture.from(canvas);
+    texture.baseTexture.scaleMode = SCALE_MODES.LINEAR; // Add smooth scaling
     canvas.remove();
     return texture;
   };
@@ -422,7 +423,7 @@ export function NpyViewer() {
       </div>
 
       {/* Viewer Container */}
-      <div className="w-full">
+      <div className="w-full aspect-[2/1] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
         {texture ? (
           <BasePlot
             ref={plotRef}
@@ -433,7 +434,6 @@ export function NpyViewer() {
             yMin={axisLimits.ymin}
             yMax={axisLimits.ymax}
             display={(value) => value.toFixed(3)}
-            onDimensionChange={handleDimensionChange}
             tooltipContent={hoveredPoint ? 
               `(${calculateDisplayValues(hoveredPoint.x, hoveredPoint.y).axisX.toFixed(3)}, 
                 ${calculateDisplayValues(hoveredPoint.x, hoveredPoint.y).axisY.toFixed(3)})` 
@@ -441,38 +441,35 @@ export function NpyViewer() {
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onDimensionChange={handleDimensionChange}
           >
             <pixiContainer>
-              <pixiSprite
-                texture={texture}
-              />
-              {points.map((point, index) => {
-                if (point === draggedPoint || point === hoveredPoint) return null;
-                return (
-                  <pixiGraphics
-                    key={`point-${index}`}
-                    draw={g => {
-                      g.clear();
-                      g.setFillStyle({ color: 0xFF0000 });
-                      g.circle(point.x, point.y, 5);
-                      g.fill();
-                    }}
-                  />
-                );
-              })}
-              {(draggedPoint || hoveredPoint) && (
-                <pixiGraphics
-                  draw={g => {
-                    g.clear();
-                    const selectedPoint = draggedPoint || hoveredPoint;
-                    g.setFillStyle({ color: 0xFF0000 });
-                    g.circle(selectedPoint!.x, selectedPoint!.y, 7);
-                    g.setFillStyle({ color: 0xFFFFFF, alpha: 0.8 });
-                    g.circle(selectedPoint!.x, selectedPoint!.y, 3);
-                    g.fill();
-                  }}
+              {texture && (
+                <pixiSprite
+                  texture={texture}
+                  width={plotDimensions.width} // Account for plot margins
+                  height={plotDimensions.height}
+                  anchor={0}
                 />
               )}
+              <pixiGraphics
+                draw={(g) => {
+                  g.clear();
+                  
+                  // Draw points
+                  points.forEach((point) => {
+                    const isHovered = hoveredPoint === point;
+                    const isDragged = draggedPoint === point;
+                    
+                    g.setFillStyle({ 
+                      color: isHovered || isDragged ? 0x00FF00 : 0xFF0000,
+                      alpha: 0.8 
+                    });
+                    g.circle(point.x, point.y, isHovered || isDragged ? 6 : 4);
+                    g.fill();
+                  });
+                }}
+              />
             </pixiContainer>
           </BasePlot>
         ) : (
