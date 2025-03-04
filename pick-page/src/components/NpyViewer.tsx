@@ -113,7 +113,11 @@ const COLOR_MAPS = {
 // Add type for color maps
 type ColorMapKey = keyof typeof COLOR_MAPS;
 
-// Add type for original data
+interface AxisData {
+  data: Float32Array | Float64Array;
+  shape: number[];
+}
+
 interface NpyData {
   data: Float32Array | Float64Array | Uint8Array | Uint16Array | Int8Array | Int16Array | Int32Array | BigUint64Array | BigInt64Array;
   shape: number[];
@@ -161,7 +165,8 @@ export function NpyViewer() {
 
   // Add ref for original data
   const originalDataRef = useRef<NpyData | null>(null);
-
+  const xAxisRef = useRef<AxisData | null>(null);
+  const yAxisRef = useRef<AxisData | null>(null);
   // Add transform function that works with stored data
   const applyTransformations = useCallback(() => {
     if (!originalDataRef.current) return;
@@ -594,17 +599,53 @@ export function NpyViewer() {
 
       {/* File Input - Fixed position */}
       <div className="w-full max-w-xl mb-8">
-        <input
-          type="file"
-          accept=".npy"
-          onChange={handleFileSelect}
-          className="block w-full text-sm text-gray-500 mb-4
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-full file:border-0
-            file:text-sm file:font-semibold
-            file:bg-blue-50 file:text-blue-700
-            hover:file:bg-blue-100"
-        />
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Main Data (NPY)
+            </label>
+            <input
+              type="file"
+              accept=".npy"
+              className="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              X-Axis Data (NPY)
+            </label>
+            <input
+              type="file"
+              accept=".npy"
+              className="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Y-Axis Data (NPY)
+            </label>
+            <input
+              type="file"
+              accept=".npy"
+              className="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100"
+            />
+          </div>
+        </div>
         <div className="flex flex-wrap gap-2 justify-center">
           {(Object.keys(COLOR_MAPS) as ColorMapKey[]).map(mapName => (
             <button
