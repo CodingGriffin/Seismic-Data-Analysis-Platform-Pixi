@@ -3,7 +3,7 @@ import { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import { extend } from "@pixi/react";
 import { useNpyViewer, COLOR_MAPS, type ColorMapKey, getColorFromMap } from '../../context/NpyViewerContext';
 import { BasePlot } from '../controls/BasePlot';
-import { FileInput } from './FileInput';
+import { FileInput } from '../controls/FileInput';
 
 extend({ Container, Sprite, Graphics, Text });
 
