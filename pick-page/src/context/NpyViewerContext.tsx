@@ -1,5 +1,4 @@
-import { createContext, useContext, useReducer, useCallback, ReactNode } from 'react';
-import { Texture } from 'pixi.js';
+import { createContext, useContext, useReducer, useCallback, ReactNode, useEffect } from 'react';
 import NpyJs from 'npyjs';
 
 // Types
@@ -30,7 +29,62 @@ interface NpyData {
   max: number;
 }
 
-type ColorMapKey = 'RdYlBu' | 'Spectral' | 'PuOr' | 'RdGy';
+export const COLOR_MAPS = {
+  'RdYlBu': [
+    'rgb(165,0,38)',
+    'rgb(215,48,39)',
+    'rgb(244,109,67)',
+    'rgb(253,174,97)',
+    'rgb(254,224,144)',
+    'rgb(255,255,191)',
+    'rgb(224,243,248)',
+    'rgb(171,217,233)',
+    'rgb(116,173,209)',
+    'rgb(69,117,180)',
+    'rgb(49,54,149)'
+  ],
+  'Spectral': [
+    'rgb(158,1,66)',
+    'rgb(213,62,79)',
+    'rgb(244,109,67)',
+    'rgb(253,174,97)',
+    'rgb(254,224,139)',
+    'rgb(255,255,191)',
+    'rgb(230,245,152)',
+    'rgb(171,221,164)',
+    'rgb(102,194,165)',
+    'rgb(50,136,189)',
+    'rgb(94,79,162)'
+  ],
+  'PuOr': [
+    'rgb(127,59,8)',
+    'rgb(179,88,6)',
+    'rgb(224,130,20)',
+    'rgb(253,184,99)',
+    'rgb(254,224,182)',
+    'rgb(247,247,247)',
+    'rgb(216,218,235)',
+    'rgb(178,171,210)',
+    'rgb(128,115,172)',
+    'rgb(84,39,136)',
+    'rgb(45,0,75)'
+  ],
+  'RdGy': [
+    'rgb(103,0,31)',
+    'rgb(178,24,43)',
+    'rgb(214,96,77)',
+    'rgb(244,165,130)',
+    'rgb(253,219,199)',
+    'rgb(255,255,255)',
+    'rgb(224,224,224)',
+    'rgb(186,186,186)',
+    'rgb(135,135,135)',
+    'rgb(77,77,77)',
+    'rgb(26,26,26)'
+  ]
+} as const;
+
+export type ColorMapKey = keyof typeof COLOR_MAPS;
 
 interface ImageTransform {
   flipHorizontal: boolean;
@@ -46,9 +100,46 @@ interface AxisLimits {
   ymax: number;
 }
 
+interface TextureData {
+  transformed: Float32Array;
+  dimensions: { width: number; height: number };
+}
+// Parse RGB string to RGB object
+const parseRGB = (rgbStr: string): RGB => {
+  const matches = rgbStr.match(/rgb\((\d+),(\d+),(\d+)\)/);
+  if (!matches) throw new Error('Invalid RGB string');
+  return {
+    r: parseInt(matches[1]),
+    g: parseInt(matches[2]),
+    b: parseInt(matches[3])
+  };
+};
+
+// Linear interpolation between two RGB colors
+const interpolateRGB = (color1: RGB, color2: RGB, ratio: number): RGB => {
+  return {
+    r: Math.round(color1.r + (color2.r - color1.r) * ratio),
+    g: Math.round(color1.g + (color2.g - color1.g) * ratio),
+    b: Math.round(color1.b + (color2.b - color1.b) * ratio)
+  };
+};
+
+// Get color for a normalized value using the color map
+export const getColorFromMap = (normalizedValue: number, colorMap: string[]): RGB => {
+  const rgbColors = colorMap.map(parseRGB);
+  const segments = rgbColors.length - 1;
+  const segment = Math.min(Math.floor(normalizedValue * segments), segments - 1);
+  const segmentRatio = (normalizedValue * segments) - segment;
+  // console.log("segments:", segments)
+  // console.log("segment:", segment)
+  // console.log("segmentRatio:", segmentRatio)
+
+  return interpolateRGB(rgbColors[segment], rgbColors[segment + 1], segmentRatio);
+};
+
 // Initial state
 const initialState = {
-  texture: null as Texture | null,
+  textureData : null as TextureData | null,
   error: null as string | null,
   isLoading: false,
   points: [] as Point[],
@@ -77,7 +168,7 @@ const initialState = {
 
 // Action types
 type Action =
-  | { type: 'SET_TEXTURE'; payload: Texture | null }
+  | { type: 'SET_TEXTURE_DATA'; payload: TextureData|null }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_POINTS'; payload: Point[] }
@@ -99,8 +190,8 @@ type Action =
 // Reducer
 function reducer(state: typeof initialState, action: Action): typeof initialState {
   switch (action.type) {
-    case 'SET_TEXTURE':
-      return { ...state, texture: action.payload };
+    case 'SET_TEXTURE_DATA':
+      return { ...state, textureData: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
     case 'SET_LOADING':
@@ -159,7 +250,7 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
 // Context type
 interface NpyViewerContextType {
   state: typeof initialState;
-  setTexture: (texture: Texture | null) => void;
+  setTextureData: (textureData: TextureData | null) => void;
   setError: (error: string | null) => void;
   setLoading: (isLoading: boolean) => void;
   addPoint: (point: Point) => void;
@@ -186,8 +277,8 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   // Action creators
-  const setTexture = useCallback((texture: Texture | null) => {
-    dispatch({ type: 'SET_TEXTURE', payload: texture });
+  const setTextureData = useCallback((textureData: TextureData | null) => {
+    dispatch({ type: 'SET_TEXTURE_DATA', payload: textureData });
   }, []);
 
   const setError = useCallback((error: string | null) => {
@@ -318,11 +409,88 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     return { axisX, axisY };
   }, [state.axisLimits]);
 
+  const processImageData = useCallback((originalData: NpyData, imageTransform: ImageTransform) => {
+    const { data, shape } = originalData;
+    const [height, width] = shape;
+    const transformed = new Float32Array(data.length);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let dstX = x;
+        let dstY = y;
+
+        // Apply counter-clockwise rotation (90° CCW)
+        if (imageTransform.rotationCounterClockwise) {
+          [dstX, dstY] = [dstY, width - 1 - dstX];
+        }
+
+        // Apply clockwise rotation (90° CW)
+        if (imageTransform.rotationClockwise) {
+          [dstX, dstY] = [height - 1 - dstY, dstX];
+        }
+
+        // Apply flips after rotations
+        const isRotated = imageTransform.rotationCounterClockwise || imageTransform.rotationClockwise;
+        const currentWidth = isRotated ? height : width;
+        const currentHeight = isRotated ? width : height;
+
+        if (imageTransform.flipHorizontal) {
+          dstX = currentWidth - 1 - dstX;
+        }
+        if (imageTransform.flipVertical) {
+          dstY = currentHeight - 1 - dstY;
+        }
+
+        const srcIndex = y * width + x;
+        const dstIndex = dstY * (isRotated ? height : width) + dstX;
+        transformed[dstIndex] = Number(data[srcIndex]);
+      }
+    }
+
+    return {
+      transformed,
+      dimensions: {
+        width: imageTransform.rotationCounterClockwise || imageTransform.rotationClockwise ? height : width,
+        height: imageTransform.rotationCounterClockwise || imageTransform.rotationClockwise ? width : height
+      }
+    };
+  }, []);
+
+  
+
+  const applyTransformations = useCallback(async () => {
+    if (!state.originalData) return;
+    
+    setLoading(true);
+    try {
+      console.log("Processing Image...");
+      
+      // Process the image data
+      const { transformed, dimensions } = processImageData(state.originalData, state.imageTransform);
+      
+      setTextureData({transformed, dimensions});
+
+    } catch (error) {
+      console.error("Error processing image:", error);
+      setError(error instanceof Error ? error.message : "Failed to process image");
+    } finally {
+      setLoading(false);
+    }
+  }, [state.imageTransform, state.selectedColorMap, state.originalData, setTextureData, setError, setLoading]);
+
+  useEffect(() => {
+    console.log("Original Data:", state.originalData);
+    
+    if (state.originalData) {
+      applyTransformations();
+    }
+  }, [state.imageTransform, state.selectedColorMap, state.originalData, applyTransformations]);
+
   return (
     <NpyViewerContext.Provider
       value={{
         state,
-        setTexture,
+        setTextureData,
         setError,
         setLoading,
         addPoint,

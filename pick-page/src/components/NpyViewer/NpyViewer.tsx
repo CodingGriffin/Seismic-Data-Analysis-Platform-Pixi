@@ -1,115 +1,13 @@
 import { Container, Sprite, Texture, Graphics, Text, FederatedPointerEvent } from "pixi.js";
-import { useCallback, useRef, useEffect } from "react";
-import NpyJs from "npyjs";
+import { useCallback, useRef, useEffect, useState } from "react";
 import { Application, extend } from "@pixi/react";
-import { useNpyViewer } from '../../context/NpyViewerContext';
+import { useNpyViewer, COLOR_MAPS, type ColorMapKey, getColorFromMap } from '../../context/NpyViewerContext';
 
 extend({ Container, Sprite, Graphics, Text });
-
-// Add color map types and helper functions
-interface RGB {
-  r: number;
-  g: number;
-  b: number;
-}
-
-// Parse RGB string to RGB object
-const parseRGB = (rgbStr: string): RGB => {
-  const matches = rgbStr.match(/rgb\((\d+),(\d+),(\d+)\)/);
-  if (!matches) throw new Error('Invalid RGB string');
-  return {
-    r: parseInt(matches[1]),
-    g: parseInt(matches[2]),
-    b: parseInt(matches[3])
-  };
-};
-
-// Linear interpolation between two RGB colors
-const interpolateRGB = (color1: RGB, color2: RGB, ratio: number): RGB => {
-  return {
-    r: Math.round(color1.r + (color2.r - color1.r) * ratio),
-    g: Math.round(color1.g + (color2.g - color1.g) * ratio),
-    b: Math.round(color1.b + (color2.b - color1.b) * ratio)
-  };
-};
-
-// Get color for a normalized value using the color map
-const getColorFromMap = (normalizedValue: number, colorMap: string[]): RGB => {
-  const rgbColors = colorMap.map(parseRGB);
-  const segments = rgbColors.length - 1;
-  const segment = Math.min(Math.floor(normalizedValue * segments), segments - 1);
-  const segmentRatio = (normalizedValue * segments) - segment;
-  // console.log("segments:", segments)
-  // console.log("segment:", segment)
-  // console.log("segmentRatio:", segmentRatio)
-
-  return interpolateRGB(rgbColors[segment], rgbColors[segment + 1], segmentRatio);
-};
-
-// Update COLOR_MAPS with ColorBrewer schemes
-const COLOR_MAPS = {
-  'RdYlBu': [
-    'rgb(165,0,38)',
-    'rgb(215,48,39)',
-    'rgb(244,109,67)',
-    'rgb(253,174,97)',
-    'rgb(254,224,144)',
-    'rgb(255,255,191)',
-    'rgb(224,243,248)',
-    'rgb(171,217,233)',
-    'rgb(116,173,209)',
-    'rgb(69,117,180)',
-    'rgb(49,54,149)'
-  ],
-  'Spectral': [
-    'rgb(158,1,66)',
-    'rgb(213,62,79)',
-    'rgb(244,109,67)',
-    'rgb(253,174,97)',
-    'rgb(254,224,139)',
-    'rgb(255,255,191)',
-    'rgb(230,245,152)',
-    'rgb(171,221,164)',
-    'rgb(102,194,165)',
-    'rgb(50,136,189)',
-    'rgb(94,79,162)'
-  ],
-  'PuOr': [
-    'rgb(127,59,8)',
-    'rgb(179,88,6)',
-    'rgb(224,130,20)',
-    'rgb(253,184,99)',
-    'rgb(254,224,182)',
-    'rgb(247,247,247)',
-    'rgb(216,218,235)',
-    'rgb(178,171,210)',
-    'rgb(128,115,172)',
-    'rgb(84,39,136)',
-    'rgb(45,0,75)'
-  ],
-  'RdGy': [
-    'rgb(103,0,31)',
-    'rgb(178,24,43)',
-    'rgb(214,96,77)',
-    'rgb(244,165,130)',
-    'rgb(253,219,199)',
-    'rgb(255,255,255)',
-    'rgb(224,224,224)',
-    'rgb(186,186,186)',
-    'rgb(135,135,135)',
-    'rgb(77,77,77)',
-    'rgb(26,26,26)'
-  ]
-};
-
-// Add type for color maps
-type ColorMapKey = keyof typeof COLOR_MAPS;
 
 export function NpyViewer() {
   const {
     state,
-    setTexture,
-    setError,
     addPoint,
     updatePoint,
     removePoint,
@@ -120,16 +18,12 @@ export function NpyViewer() {
     setColorMap,
     setImageTransform,
     setAxisLimits,
-    setOriginalData,
-    setAxisData,
     loadNpyFile,
-    setPoints,
-    setLoading
   } = useNpyViewer();
 
   // Use the state and functions from context instead of local state
   const {
-    texture,
+    textureData,
     error,
     isLoading,
     points,
@@ -140,118 +34,43 @@ export function NpyViewer() {
     imageTransform,
     axisLimits,
     originalData,
-    xAxis,
-    yAxis,
   } = state;
 
   // Add lastFileRef
   const lastFileRef = useRef<File | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [texture, setTexture] = useState<Texture | null>(null);
   // Add transform function that works with stored data
-  const applyTransformations = useCallback(async () => {
-    if (!originalData) return;
+  const createTexture = (
+    transformedData: Float32Array, 
+    dimensions: { width: number; height: number },
+    dataRange: { min: number; max: number },
+    colorMap: string[]
+  ) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = dimensions.width;
+    canvas.height = dimensions.height;
+    const ctx = canvas.getContext("2d")!;
+
+    const rgba = new Uint8ClampedArray(canvas.width * canvas.height * 4);
     
-    setLoading(true);
-    try {
-      console.log("Processing Image...");
-      const { data, shape } = originalData;
-      const [height, width] = shape;
-      const transformed = new Float32Array(data.length);
-
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          let dstX = x;
-          let dstY = y;
-
-          // Apply counter-clockwise rotation (90° CCW)
-          if (imageTransform.rotationCounterClockwise) {
-            [dstX, dstY] = [dstY, width - 1 - dstX];
-          }
-
-          // Apply clockwise rotation (90° CW)
-          if (imageTransform.rotationClockwise) {
-            [dstX, dstY] = [height - 1 - dstY, dstX];
-          }
-
-          // Apply flips after rotations
-          const isRotated = imageTransform.rotationCounterClockwise || imageTransform.rotationClockwise;
-          const currentWidth = isRotated ? height : width;
-          const currentHeight = isRotated ? width : height;
-
-          if (imageTransform.flipHorizontal) {
-            dstX = currentWidth - 1 - dstX;
-          }
-          if (imageTransform.flipVertical) {
-            dstY = currentHeight - 1 - dstY;
-          }
-
-          const srcIndex = y * width + x;
-          const dstIndex = dstY * (isRotated ? height : width) + dstX;
-          transformed[dstIndex] = Number(data[srcIndex]);
-        }
-      }
-
-      // Create canvas with appropriate dimensions
-      const canvas = document.createElement("canvas");
-      const isRotated = imageTransform.rotationCounterClockwise || imageTransform.rotationClockwise;
-      canvas.width = isRotated ? height : width;
-      canvas.height = isRotated ? width : height;
-      const ctx = canvas.getContext("2d")!;
-
-      // Create ImageData with color mapping
-      const rgba = new Uint8ClampedArray(canvas.width * canvas.height * 4);
-      const { min, max } = originalData;
-      const colorMap = COLOR_MAPS[selectedColorMap];
-
-      for (let i = 0; i < transformed.length; i++) {
-        const normalizedValue = (transformed[i] - min) / (max - min);
-        const color = getColorFromMap(normalizedValue, colorMap);
-        const idx = i * 4;
-        rgba[idx] = color.r;
-        rgba[idx + 1] = color.g;
-        rgba[idx + 2] = color.b;
-        rgba[idx + 3] = 255;
-      }
-
-      const imgData = new ImageData(rgba, canvas.width, canvas.height);
-      ctx.putImageData(imgData, 0, 0);
-
-      // Create texture
-      const newTexture = Texture.from(canvas);
-      setTexture(newTexture);
-    } catch (error) {
-      console.error("Error processing image:", error);
-      setError(error instanceof Error ? error.message : "Failed to process image");
-    } finally {
-      setLoading(false);
+    for (let i = 0; i < transformedData.length; i++) {
+      const normalizedValue = (transformedData[i] - dataRange.min) / (dataRange.max - dataRange.min);
+      const color = getColorFromMap(normalizedValue, colorMap);
+      const idx = i * 4;
+      rgba[idx] = color.r;
+      rgba[idx + 1] = color.g;
+      rgba[idx + 2] = color.b;
+      rgba[idx + 3] = 255;
     }
-  }, [imageTransform, selectedColorMap, originalData, setTexture, setError, setLoading]);
 
-  // Update container size effect
-  useEffect(() => {
-    if (!texture) return;
+    const imgData = new ImageData(rgba, canvas.width, canvas.height);
+    ctx.putImageData(imgData, 0, 0);
 
-    // Use exact dimensions from NPY data
-    // setContainerSize({
-    //   width: texture.width + 50,  // Add 50px for axis
-    //   height: texture.height + 50
-    // });
-
-    // Scale is 1 since we're using exact dimensions
-    // setScale(1);
-  }, [texture]);
-
-  // Add function to convert screen coordinates to axis coordinates
-  // const screenToAxisCoords = (screenX: number, screenY: number) => {
-  //   const xRange = axisLimits.xmax - axisLimits.xmin;
-  //   const yRange = axisLimits.ymax - axisLimits.ymin;
-
-  //   // Convert screen coordinates to axis values
-  //   const x = axisLimits.xmin + (screenX / texture!.width) * xRange;
-  //   const y = axisLimits.ymax - (screenY / texture!.height) * yRange; // Invert Y axis
-
-  //   return { x, y };
-  // };
+    const texture = Texture.from(canvas);
+    canvas.remove();
+    return texture;
+  };
 
   // Add helper function to clamp coordinates
   const clampCoordinates = (x: number, y: number) => {
@@ -296,18 +115,6 @@ export function NpyViewer() {
     }
   }, [texture, points]);
 
-  // Add this useEffect for global pointer up handling
-  useEffect(() => {
-    const handleGlobalPointerUp = () => {
-      // Reset all states when pointer is released anywhere
-      setIsDragging(false);
-      setDraggedPoint(null);
-      setHoveredPoint(null);
-    };
-
-    window.addEventListener('pointerup', handleGlobalPointerUp);
-    return () => window.removeEventListener('pointerup', handleGlobalPointerUp);
-  }, []);
 
   // Update handlePointerUp to handle both normal and outside cases
   const handlePointerUp = useCallback(() => {
@@ -365,37 +172,8 @@ export function NpyViewer() {
     const file = event.target.files?.[0];
     if (!file) return;
     lastFileRef.current = file;
-
-    try {
-      setError(null);
-      setPoints([]);
-
-      const npyjs = new NpyJs();
-      const arrayBuffer = await file.arrayBuffer();
-      const npyData = await npyjs.load(arrayBuffer);
-
-      // Find min/max values
-      let min = Number(npyData.data[0]);
-      let max = min;
-      for (let i = 1; i < npyData.data.length; i++) {
-        const val = Number(npyData.data[i]);
-        if (val < min) min = val;
-        if (val > max) max = val;
-      }
-
-      console.log("npyData:", npyData);
-
-      setOriginalData({
-        data: npyData.data,
-        shape: npyData.shape,
-        min,
-        max
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load NPY file");
-      setTexture(null);
-    }
-  }, []);
+    await loadNpyFile(file, 'data');
+  }, [lastFileRef, loadNpyFile]);
 
   // Update handleAxisLimitChange to handle immediate updates
   const handleAxisLimitChange = (
@@ -441,37 +219,32 @@ export function NpyViewer() {
     URL.revokeObjectURL(url);
   }, [points, calculateDisplayValues]);
 
-  // Add tick marks for better visualization
-  // const drawAxes = (g: Graphics) => {
-  //   g.clear();
-  //   g.lineStyle(1, 0x000000);
+    // Add this useEffect for global pointer up handling
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      // Reset all states when pointer is released anywhere
+      setIsDragging(false);
+      setDraggedPoint(null);
+      setHoveredPoint(null);
+    };
 
-  //   // Draw border
-  //   g.drawRect(0, 0, texture!.width, texture!.height);
-
-  //   // Y-axis ticks (0 to 20, step by 5)
-  //   for (let y = 0; y <= 20; y += 5) {
-  //     const yPos = texture!.height - (y / 20) * texture!.height;
-  //     g.moveTo(-5, yPos);
-  //     g.lineTo(0, yPos);
-  //     new Text(`${y}`, {
-  //       fontSize: 10,
-  //       fill: 0x000000,
-  //     }).position.set(-25, yPos - 5);
-  //   }
-
-  //   // X-axis ticks (0.015 to 0.030, step by 0.005)
-  //   for (let x = 0.015; x <= 0.030; x += 0.005) {
-  //     const xPos = ((x - 0.015) / 0.015) * texture!.width;
-  //     g.moveTo(xPos, texture!.height);
-  //     g.lineTo(xPos, texture!.height + 5);
-  //     new Text(`${x.toFixed(3)}`, {
-  //       fontSize: 10,
-  //       fill: 0x000000,
-  //     }).position.set(xPos - 15, texture!.height + 10);
-  //   }
-  // };
-
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    return () => window.removeEventListener('pointerup', handleGlobalPointerUp);
+  }, []);
+  
+  useEffect(() => {
+    // Create the texture with the current color map
+    if (!textureData || !originalData) return;
+    const texture = createTexture(
+      textureData.transformed,
+      textureData.dimensions,
+      { min: originalData.min, max: originalData.max },
+      [...COLOR_MAPS[state.selectedColorMap]]
+    );
+    
+    setTexture(texture);
+  }, [textureData])
+  
   // Add window-level pointer up handler using useEffect
   useEffect(() => {
     const handleGlobalPointerUp = (e: PointerEvent) => {
@@ -500,22 +273,8 @@ export function NpyViewer() {
     return () => window.removeEventListener('pointerup', handleGlobalPointerUp);
   }, [points, draggedPoint]);
 
-
-  // Add effect to apply transformations when state changes
-  useEffect(() => {
-    console.log("Original Data:", originalData);
-    
-    if (originalData) {
-      setLoading(true);
-      applyTransformations();
-    }
-  }, [imageTransform, selectedColorMap, originalData, applyTransformations]);
-
   return (
-    <div className="flex flex-col items-center relative"> {/* Added relative positioning */}
-      {/* Add transformation controls */}
-
-
+    <div className="flex flex-col items-center relative">
       {/* File Input - Fixed position */}
       <div className="w-full max-w-xl mb-8">
         <div className="grid grid-cols-1 gap-4">
