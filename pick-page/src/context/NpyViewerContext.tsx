@@ -484,6 +484,10 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     }
   }, [state.imageTransform, state.selectedColorMap, state.originalData, applyTransformations]);
 
+  useEffect(() => {
+    console.log("Frequency Data:", state.frequencyData, "Slowness Data:", state.slownessData);
+  }, [state.frequencyData, state.slownessData]);
+
   return (
     <NpyViewerContext.Provider
       value={{
