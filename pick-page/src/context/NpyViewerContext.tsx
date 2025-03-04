@@ -5,8 +5,8 @@ import NpyJs from 'npyjs';
 interface Point {
   x: number;
   y: number;
-  axisX: number;
-  axisY: number;
+  
+ 
   value: number;
   color: number;
 }
@@ -266,7 +266,6 @@ interface NpyViewerContextType {
   setOriginalData: (data: NpyData) => void;
   setAxisData: (xAxis: AxisData | null, yAxis: AxisData | null) => void;
   loadNpyFile: (file: File, dataType:'frequency'|'slowness'|'data') => Promise<void>;
-  calculateDisplayValues: (screenX: number, screenY: number) => { axisX: number; axisY: number };
 }
 
 // Create context
@@ -348,8 +347,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
   const loadNpyFile = useCallback(async (file: File, dataType:'frequency'|'slowness'|'data') => {
     try {
       setError(null);
-      setLoading(true);
-
+      
       const npyjs = new NpyJs();
       const arrayBuffer = await file.arrayBuffer();
       const npyData = await npyjs.load(arrayBuffer);
@@ -394,20 +392,8 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
       // Additional processing as needed...
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load NPY file");
-    } finally {
-      setLoading(false);
     }
   }, [setError, setLoading, setPoints, setOriginalData]);
-
-  const calculateDisplayValues = useCallback((screenX: number, screenY: number) => {
-    const xRatio = (800 - screenX) / 800;
-    const axisX = state.axisLimits.xmin + xRatio * (state.axisLimits.xmax - state.axisLimits.xmin);
-
-    const yRatio = (400 - screenY) / 400;
-    const axisY = state.axisLimits.ymin + yRatio * (state.axisLimits.ymax - state.axisLimits.ymin);
-
-    return { axisX, axisY };
-  }, [state.axisLimits]);
 
   const processImageData = useCallback((originalData: NpyData, imageTransform: ImageTransform) => {
     const { data, shape } = originalData;
@@ -461,20 +447,23 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     
     setLoading(true);
     try {
+      // Process the image data in the next frame to allow loading state to render
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      
       console.log("Processing Image...");
       
       // Process the image data
       const { transformed, dimensions } = processImageData(state.originalData, state.imageTransform);
       
       setTextureData({transformed, dimensions});
-
+      
     } catch (error) {
       console.error("Error processing image:", error);
       setError(error instanceof Error ? error.message : "Failed to process image");
     } finally {
       setLoading(false);
     }
-  }, [state.imageTransform, state.selectedColorMap, state.originalData, setTextureData, setError, setLoading]);
+  }, [state.imageTransform, state.originalData, setTextureData, setError, setLoading]);
 
   useEffect(() => {
     console.log("Original Data:", state.originalData);
@@ -482,7 +471,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     if (state.originalData) {
       applyTransformations();
     }
-  }, [state.imageTransform, state.selectedColorMap, state.originalData, applyTransformations]);
+  }, [state.imageTransform, state.originalData, applyTransformations]);
 
   useEffect(() => {
     console.log("Frequency Data:", state.frequencyData, "Slowness Data:", state.slownessData);
@@ -508,7 +497,6 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         setOriginalData,
         setAxisData,
         loadNpyFile,
-        calculateDisplayValues,
       }}
     >
       {children}
