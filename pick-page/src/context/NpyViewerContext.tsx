@@ -456,8 +456,6 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  
-
   const applyTransformations = useCallback(async () => {
     if (!state.originalData) return;
     

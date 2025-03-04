@@ -167,12 +167,12 @@ export function NpyViewer() {
   }, [texture, isDragging, draggedPoint, points]);
 
   // Update handleFileSelect to store original data
-  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>, dataType: 'frequency'|'slowness'|'data') => {
     console.log("handleFileSelect:", event.target.files);
     const file = event.target.files?.[0];
     if (!file) return;
     lastFileRef.current = file;
-    await loadNpyFile(file, 'data');
+    await loadNpyFile(file, dataType);
   }, [lastFileRef, loadNpyFile]);
 
   // Update handleAxisLimitChange to handle immediate updates
@@ -285,7 +285,7 @@ export function NpyViewer() {
             <input
               type="file"
               accept=".npy"
-              onChange={handleFileSelect}
+              onChange={(e) => handleFileSelect(e, 'data')}
               className="block w-full text-sm text-gray-500
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-full file:border-0
@@ -301,6 +301,7 @@ export function NpyViewer() {
             <input
               type="file"
               accept=".npy"
+              onChange={(e) => handleFileSelect(e, 'frequency')}
               className="block w-full text-sm text-gray-500
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-full file:border-0
@@ -316,6 +317,7 @@ export function NpyViewer() {
             <input
               type="file"
               accept=".npy"
+              onChange={(e) => handleFileSelect(e, 'slowness')}
               className="block w-full text-sm text-gray-500
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-full file:border-0
