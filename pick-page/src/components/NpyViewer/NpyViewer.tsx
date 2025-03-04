@@ -1,5 +1,5 @@
 import { Container, Sprite, Graphics, Text, Texture } from "pixi.js";
-import { useCallback, useRef, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import { extend } from "@pixi/react";
 import { useNpyViewer, COLOR_MAPS, type ColorMapKey, getColorFromMap } from '../../context/NpyViewerContext';
 import { BasePlot } from '../controls/BasePlot';
@@ -40,8 +40,64 @@ export function NpyViewer() {
   const lastFileRef = useRef<File | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
   const [texture, setTexture] = useState<Texture | null>(null);
-
+  const [plotDimensions, setPlotDimensions] = useState({
+    width: 640,
+    height: 480,
+  });
   // Add transform function that works with stored data
+  const handleDimensionChange = useCallback(
+    (dimensions: { width: number; height: number }) => {
+      setPlotDimensions(dimensions);
+    },
+    []
+  );
+
+  const coordinateHelpers = useMemo(
+    () => ({
+      toScreenX: (value: number) => {
+        // Add 10px offset for the left margin
+        return (
+          ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
+            (plotDimensions.width - 20) +
+          10
+        );
+      },
+      fromScreenX: (x: number) => {
+        // Subtract the 10px offset and adjust for margin
+        const adjustedX = Math.max(0, x - 10);
+        if (adjustedX <= 0) return axisLimits.xmin;
+
+        const value =
+          axisLimits.xmin +
+          (adjustedX / (plotDimensions.width - 20)) *
+            (axisLimits.xmax - axisLimits.xmin);
+
+        return Math.round(value * 10000) / 10000;
+      },
+      toScreenY: (value: number) => {
+        // Add 10px offset for the top margin and subtract from height for bottom margin
+        return (
+          ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
+            (plotDimensions.height - 20) +
+          10
+        );
+      },
+      fromScreenY: (y: number) => {
+        // Subtract the 10px offset and adjust for margins
+        const adjustedY = Math.max(0, y - 10);
+        if (adjustedY <= 0) return axisLimits.ymin;
+
+        const value =
+          axisLimits.ymin +
+          (adjustedY / (plotDimensions.height - 20)) *
+            (axisLimits.ymax - axisLimits.ymin);
+
+        return Math.round(value * 10000) / 10000;
+      },
+    }),
+    [axisLimits, plotDimensions]
+  );
+
   const createTexture = (
     transformedData: Float32Array, 
     dimensions: { width: number; height: number },
@@ -377,6 +433,7 @@ export function NpyViewer() {
             yMin={axisLimits.ymin}
             yMax={axisLimits.ymax}
             display={(value) => value.toFixed(3)}
+            onDimensionChange={handleDimensionChange}
             tooltipContent={hoveredPoint ? 
               `(${calculateDisplayValues(hoveredPoint.x, hoveredPoint.y).axisX.toFixed(3)}, 
                 ${calculateDisplayValues(hoveredPoint.x, hoveredPoint.y).axisY.toFixed(3)})` 
@@ -388,8 +445,6 @@ export function NpyViewer() {
             <pixiContainer>
               <pixiSprite
                 texture={texture}
-                width={800}
-                height={400}
               />
               {points.map((point, index) => {
                 if (point === draggedPoint || point === hoveredPoint) return null;
