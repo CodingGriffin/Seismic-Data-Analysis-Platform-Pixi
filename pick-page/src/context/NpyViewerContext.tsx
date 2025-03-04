@@ -69,6 +69,8 @@ const initialState = {
     ymax: 20
   },
   originalData: null as NpyData | null,
+  frequencyData: null as NpyData | null,
+  slownessData: null as NpyData | null,
   xAxis: null as AxisData | null,
   yAxis: null as AxisData | null,
 };
@@ -89,6 +91,9 @@ type Action =
   | { type: 'SET_IMAGE_TRANSFORM'; payload: Partial<ImageTransform> }
   | { type: 'SET_AXIS_LIMITS'; payload: Partial<AxisLimits> }
   | { type: 'SET_ORIGINAL_DATA'; payload: NpyData }
+  | { type: 'SET_ORIGINAL_DATA'; payload: NpyData }
+  | { type: 'SET_FREQUENCY_DATA'; payload: NpyData }
+  | { type: 'SET_SLOWNESS_DATA'; payload: NpyData }
   | { type: 'SET_AXIS_DATA'; payload: { xAxis: AxisData | null; yAxis: AxisData | null } };
 
 // Reducer
@@ -136,6 +141,10 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
       };
     case 'SET_ORIGINAL_DATA':
       return { ...state, originalData: action.payload };
+    case 'SET_FREQUENCY_DATA':
+      return { ...state, frequencyData: action.payload };
+    case 'SET_SLOWNESS_DATA':
+      return { ...state, slownessData: action.payload };
     case 'SET_AXIS_DATA':
       return {
         ...state,
@@ -165,7 +174,7 @@ interface NpyViewerContextType {
   setAxisLimits: (limits: Partial<AxisLimits>) => void;
   setOriginalData: (data: NpyData) => void;
   setAxisData: (xAxis: AxisData | null, yAxis: AxisData | null) => void;
-  loadNpyFile: (file: File) => Promise<void>;
+  loadNpyFile: (file: File, dataType:'frequency'|'slowness'|'data') => Promise<void>;
   calculateDisplayValues: (screenX: number, screenY: number) => { axisX: number; axisY: number };
 }
 
@@ -233,15 +242,22 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_ORIGINAL_DATA', payload: data });
   }, []);
 
+  const setFrequencyData = useCallback((data: NpyData) => {
+    dispatch({ type: 'SET_FREQUENCY_DATA', payload: data });
+  }, []);
+
+  const setSlownessData = useCallback((data: NpyData) => {
+    dispatch({ type: 'SET_SLOWNESS_DATA', payload: data });
+  }, []);
+
   const setAxisData = useCallback((xAxis: AxisData | null, yAxis: AxisData | null) => {
     dispatch({ type: 'SET_AXIS_DATA', payload: { xAxis, yAxis } });
   }, []);
 
-  const loadNpyFile = useCallback(async (file: File) => {
+  const loadNpyFile = useCallback(async (file: File, dataType:'frequency'|'slowness'|'data') => {
     try {
       setError(null);
       setLoading(true);
-      setPoints([]);
 
       const npyjs = new NpyJs();
       const arrayBuffer = await file.arrayBuffer();
@@ -255,12 +271,34 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         if (val > max) max = val;
       }
 
-      setOriginalData({
-        data: npyData.data,
-        shape: npyData.shape,
-        min,
-        max
-      });
+      switch (dataType) {
+        case 'frequency':
+          setFrequencyData({
+            data: npyData.data,
+            shape: npyData.shape,
+            min,
+            max
+          });
+          break;
+        case 'slowness':
+          setSlownessData({
+            data: npyData.data,
+            shape: npyData.shape,
+            min,
+            max
+          });
+          break;
+        case 'data':
+          setOriginalData({
+            data: npyData.data,
+            shape: npyData.shape,
+            min,
+            max
+          });
+          break;
+        default:
+          break;
+      }
 
       // Additional processing as needed...
     } catch (err) {
