@@ -155,6 +155,7 @@ const initialState = {
   originalData: null as NpyData | null,
   frequencyData: null as NpyData | null,
   slownessData: null as NpyData | null,
+  plotData:[] as Point[]
 };
 
 // Action types
@@ -176,6 +177,7 @@ type Action =
   | { type: 'SET_ORIGINAL_DATA'; payload: NpyData }
   | { type: 'SET_FREQUENCY_DATA'; payload: NpyData }
   | { type: 'SET_SLOWNESS_DATA'; payload: NpyData }
+  | { type: 'SET_PLOT_DATA'; payload:Point[]}
 
 // Reducer
 function reducer(state: typeof initialState, action: Action): typeof initialState {
@@ -226,6 +228,8 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
       return { ...state, frequencyData: action.payload };
     case 'SET_SLOWNESS_DATA':
       return { ...state, slownessData: action.payload };
+    case 'SET_PLOT_DATA':
+      return { ...state, plotData: action.payload};
     default:
       return state;
   }
@@ -250,6 +254,8 @@ interface NpyViewerContextType {
   setOriginalData: (data: NpyData) => void;
   loadNpyFile: (file: File, dataType:'frequency'|'slowness'|'data') => Promise<void>;
   applyTransformations:() => Promise<void>;
+  setPlotData:(data:Point[]) => void;
+  updateData:() => void;
 }
 
 // Create context
@@ -324,6 +330,10 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_SLOWNESS_DATA', payload: data });
   }, []);
 
+  const setPlotData = useCallback((data:Point[]) => {
+    dispatch({type: 'SET_PLOT_DATA', payload:data})
+  }, [])
+
   const loadNpyFile = useCallback(async (file: File, dataType:'frequency'|'slowness'|'data') => {
     try {
       setError(null);
@@ -374,6 +384,39 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
       setError(err instanceof Error ? err.message : "Failed to load NPY file");
     }
   }, [setError, setLoading, setPoints, setOriginalData, setSlownessData, setFrequencyData]);
+
+  const updateData = useCallback(() => {
+    if (!state.originalData || !state.frequencyData || !state.slownessData){
+      return
+    } else {
+      const { data, shape } = state.originalData;
+      const [width, height] = shape;
+      console.log("state.frequencyData.data.length", state.frequencyData.data.length)
+      console.log("height, widht", height, width);
+      // Validate dimensions
+      if (state.frequencyData.data.length !== height || state.slownessData.data.length !== width) {
+        throw new Error('Axis data dimensions do not match the original data');
+      }
+
+      let plotData = new Array<Point>(width*height);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const yData = state.frequencyData.data[y];
+          const xData = state.slownessData.data[x]
+          const value = data[y * width + x];
+
+          plotData.push({
+            x: Number(xData),
+            y: Number(yData),
+            value: Number(value),
+            color: 0xff0000
+          });
+        }
+      }
+      setPlotData(plotData)
+    }
+      
+  }, [state.originalData, state.frequencyData, state.slownessData])
 
   const processImageData = useCallback((originalData: NpyData, imageTransform: ImageTransform) => {
     const { data, shape } = originalData;
@@ -449,7 +492,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     if (state.originalData && state.frequencyData && state.slownessData) {
       applyTransformations();
     }
-  }, [state.imageTransform, state.selectedColorMap, applyTransformations]);
+  }, [state.imageTransform, state.selectedColorMap]);
 
   useEffect(() => {
     console.log("Frequency Data:", state.frequencyData);
@@ -457,9 +500,14 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
   }, [state.frequencyData]);
 
   useEffect(() => {
+    console.log("Slowness Data:", state.slownessData);
     setAxisLimits({xmax: state.slownessData?.max, xmin: state.slownessData?.min})
   }, [state.slownessData]);
 
+  useEffect(() => {
+    console.log("Plot Data", state.plotData)
+  }, [state.plotData])
+  
   return (
     <NpyViewerContext.Provider
       value={{
@@ -479,7 +527,9 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         setAxisLimits,
         setOriginalData,
         loadNpyFile,
-        applyTransformations
+        applyTransformations,
+        updateData,
+        setPlotData
       }}
     >
       {children}

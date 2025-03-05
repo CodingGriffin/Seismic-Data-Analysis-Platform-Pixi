@@ -32,6 +32,7 @@ export function NpyViewer() {
     setAxisLimits,
     loadNpyFile,
     setLoading,
+    updateData
   } = useNpyViewer();
 
   const {
@@ -234,9 +235,15 @@ export function NpyViewer() {
       dataType: "frequency" | "slowness" | "data"
     ) => {
       const file = event.target.files?.[0];
+      console.log("File:", file, dataType)
       if (!file) return;
-      lastFileRef.current = file;
-      await loadNpyFile(file, dataType);
+      if ((dataType ==="data" && file.name.startsWith("grid")) || dataType.startsWith(file.name.split("_")[0])) {
+        lastFileRef.current = file;
+        await loadNpyFile(file, dataType);
+      } else {
+        console.log("Load correct file!", file)
+        return
+      }
     },
     [loadNpyFile]
   );
@@ -267,6 +274,7 @@ export function NpyViewer() {
   const handleUpdateData = useCallback(() => {
     if (!originalData || !frequencyData || !slownessData) return;
     // applyTransformations()
+    updateData();
   }, [originalData, frequencyData, slownessData])
 
   // Add download function
@@ -335,11 +343,11 @@ export function NpyViewer() {
           />
           <FileInput
             label="X-Axis Data (NPY)"
-            onChange={(e) => handleFileSelect(e, "frequency")}
+            onChange={(e) => handleFileSelect(e, "slowness")}
           />
           <FileInput
             label="Y-Axis Data (NPY)"
-            onChange={(e) => handleFileSelect(e, "slowness")}
+            onChange={(e) => handleFileSelect(e, "frequency")}
           />
         </div>
 
@@ -350,8 +358,8 @@ export function NpyViewer() {
             {texture ? (
               <BasePlot
                 ref={plotRef}
-                xLabel="Frequency"
-                yLabel="Slowness"
+                xLabel="Slowness"
+                yLabel="Frequency"
                 xMin={axisLimits.xmin}
                 xMax={axisLimits.xmax}
                 yMin={axisLimits.ymin}
