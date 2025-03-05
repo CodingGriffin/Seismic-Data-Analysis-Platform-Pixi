@@ -266,6 +266,7 @@ interface NpyViewerContextType {
   setOriginalData: (data: NpyData) => void;
   setAxisData: (xAxis: AxisData | null, yAxis: AxisData | null) => void;
   loadNpyFile: (file: File, dataType:'frequency'|'slowness'|'data') => Promise<void>;
+  applyTransformations:() => Promise<void>;
 }
 
 // Create context
@@ -393,7 +394,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load NPY file");
     }
-  }, [setError, setLoading, setPoints, setOriginalData]);
+  }, [setError, setLoading, setPoints, setOriginalData, setSlownessData, setFrequencyData]);
 
   const processImageData = useCallback((originalData: NpyData, imageTransform: ImageTransform) => {
     const { data, shape } = originalData;
@@ -466,16 +467,19 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
   }, [state.imageTransform, state.originalData, setTextureData, setError, setLoading]);
 
   useEffect(() => {
-    console.log("Original Data:", state.originalData);
-    
-    if (state.originalData) {
+    if (state.originalData && state.frequencyData && state.slownessData) {
       applyTransformations();
     }
-  }, [state.imageTransform, state.originalData, state.selectedColorMap, applyTransformations]);
+  }, [state.imageTransform, state.selectedColorMap, applyTransformations]);
 
   useEffect(() => {
-    console.log("Frequency Data:", state.frequencyData, "Slowness Data:", state.slownessData);
-  }, [state.frequencyData, state.slownessData]);
+    console.log("Frequency Data:", state.frequencyData);
+    setAxisLimits({ymax: state.frequencyData?.max, ymin: state.frequencyData?.min})
+  }, [state.frequencyData]);
+
+  useEffect(() => {
+    setAxisLimits({xmax: state.slownessData?.max, xmin: state.slownessData?.min})
+  }, [state.slownessData]);
 
   return (
     <NpyViewerContext.Provider
@@ -497,6 +501,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         setOriginalData,
         setAxisData,
         loadNpyFile,
+        applyTransformations
       }}
     >
       {children}

@@ -32,6 +32,7 @@ export function NpyViewer() {
     setAxisLimits,
     loadNpyFile,
     setLoading,
+    applyTransformations
   } = useNpyViewer();
 
   const {
@@ -45,6 +46,8 @@ export function NpyViewer() {
     imageTransform,
     axisLimits,
     originalData,
+    frequencyData,
+    slownessData
   } = state;
 
   const lastFileRef = useRef<File | null>(null);
@@ -249,13 +252,23 @@ export function NpyViewer() {
       const newLimits = { ...state.axisLimits, [axis]: numValue };
       if (
         newLimits.xmin >= newLimits.xmax ||
-        newLimits.ymin >= newLimits.ymax
+        newLimits.ymin >= newLimits.ymax||
+        newLimits.xmin < 0 ||
+        newLimits.ymin < 0 ||
+        newLimits.xmax < 0 ||
+        newLimits.ymax < 0
       ) {
         return; // Don't update if invalid
       }
       setAxisLimits(newLimits);
     }
   };
+  
+  //Draw function
+  const handleDraw = useCallback(() => {
+    if (!originalData || !frequencyData || !slownessData) return;
+    applyTransformations()
+  }, [originalData, frequencyData, slownessData])
 
   // Add download function
   const handleDownloadPoints = useCallback(() => {
@@ -416,6 +429,13 @@ export function NpyViewer() {
                   <li>• Alt + Click: Remove point</li>
                   <li>• Hover: View coordinates</li>
                 </ul>
+                <button
+                  onClick={handleDraw}
+                  className="w-full mt-3 px-4 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={(originalData === null) && (slownessData === null) && (frequencyData === null)}
+                >
+                  Draw
+                </button>
                 <button
                   onClick={handleDownloadPoints}
                   className="w-full mt-3 px-4 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
