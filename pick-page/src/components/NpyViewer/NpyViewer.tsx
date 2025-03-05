@@ -1,9 +1,20 @@
-import { Container, Sprite, Graphics, Text, Texture, SCALE_MODES } from "pixi.js";
+import {
+  Container,
+  Sprite,
+  Graphics,
+  Text,
+  Texture,
+} from "pixi.js";
 import { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import { extend } from "@pixi/react";
-import { useNpyViewer, COLOR_MAPS, type ColorMapKey, getColorFromMap } from '../../context/NpyViewerContext';
-import { BasePlot } from '../controls/BasePlot';
-import { FileInput } from '../controls/FileInput';
+import {
+  useNpyViewer,
+  COLOR_MAPS,
+  type ColorMapKey,
+  getColorFromMap,
+} from "../../context/NpyViewerContext";
+import { BasePlot } from "../controls/BasePlot";
+import { FileInput } from "../controls/FileInput";
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -20,12 +31,11 @@ export function NpyViewer() {
     setImageTransform,
     setAxisLimits,
     loadNpyFile,
-    setLoading
+    setLoading,
   } = useNpyViewer();
 
   const {
     textureData,
-    error,
     isLoading,
     points,
     hoveredPoint,
@@ -58,18 +68,18 @@ export function NpyViewer() {
         // Add 10px offset for the left margin
         return (
           ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
-            (plotDimensions.width - 20) +
+            plotDimensions.width +
           10
         );
       },
       fromScreenX: (x: number) => {
         // Subtract the 10px offset and adjust for margin
-        const adjustedX = Math.max(0, x - 10);
+        const adjustedX = Math.max(0, x);
         if (adjustedX <= 0) return axisLimits.xmin;
 
         const value =
           axisLimits.xmin +
-          (adjustedX / (plotDimensions.width - 20)) *
+          (adjustedX / plotDimensions.width) *
             (axisLimits.xmax - axisLimits.xmin);
 
         return Math.round(value * 10000) / 10000;
@@ -78,18 +88,18 @@ export function NpyViewer() {
         // Add 10px offset for the top margin and subtract from height for bottom margin
         return (
           ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
-            (plotDimensions.height - 20) +
+            plotDimensions.height +
           10
         );
       },
       fromScreenY: (y: number) => {
         // Subtract the 10px offset and adjust for margins
-        const adjustedY = Math.max(0, y - 10);
+        const adjustedY = Math.max(0, y);
         if (adjustedY <= 0) return axisLimits.ymin;
 
         const value =
           axisLimits.ymin +
-          (adjustedY / (plotDimensions.height - 20)) *
+          (adjustedY / plotDimensions.height) *
             (axisLimits.ymax - axisLimits.ymin);
 
         return Math.round(value * 10000) / 10000;
@@ -99,7 +109,7 @@ export function NpyViewer() {
   );
 
   const createTexture = (
-    transformedData: Float32Array, 
+    transformedData: Float32Array,
     dimensions: { width: number; height: number },
     dataRange: { min: number; max: number },
     colorMap: string[]
@@ -110,9 +120,10 @@ export function NpyViewer() {
     const ctx = canvas.getContext("2d")!;
 
     const rgba = new Uint8ClampedArray(canvas.width * canvas.height * 4);
-    
+
     for (let i = 0; i < transformedData.length; i++) {
-      const normalizedValue = (transformedData[i] - dataRange.min) / (dataRange.max - dataRange.min);
+      const normalizedValue =
+        (transformedData[i] - dataRange.min) / (dataRange.max - dataRange.min);
       const color = getColorFromMap(normalizedValue, colorMap);
       const idx = i * 4;
       rgba[idx] = color.r;
@@ -125,44 +136,45 @@ export function NpyViewer() {
     ctx.putImageData(imgData, 0, 0);
 
     const texture = Texture.from(canvas);
-    texture.baseTexture.scaleMode = SCALE_MODES.LINEAR; // Add smooth scaling
     canvas.remove();
     return texture;
   };
 
-  const handlePointerDown = useCallback((event: React.PointerEvent) => {
-    if (!texture) return;
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent) => {
+      if (!texture) return;
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
 
-    // Add new point with Shift first, regardless of hover state
-    if (event.shiftKey) {
-      const newPoint = { x, y, value: 0, color: 0xFF0000 };
-      addPoint(newPoint);
-      return;
-    }
-
-    // Check for existing point for other interactions
-    const clickedPoint = points.find(point => {
-      const dx = point.x - x;
-      const dy = point.y - y;
-      return Math.sqrt(dx * dx + dy * dy) < 10;
-    });
-
-    if (clickedPoint) {
-      setHoveredPoint(null);
-      if (event.altKey) {
-        // Remove point
-        removePoint(points.indexOf(clickedPoint));
-      } else {
-        setIsDragging(true);
-        setDraggedPoint(clickedPoint);
+      // Add new point with Shift first, regardless of hover state
+      if (event.shiftKey) {
+        const newPoint = { x, y, value: 0, color: 0xff0000 };
+        addPoint(newPoint);
+        return;
       }
-    }
-  }, [texture, points]);
 
+      // Check for existing point for other interactions
+      const clickedPoint = points.find((point) => {
+        const dx = point.x - x;
+        const dy = point.y - y;
+        return Math.sqrt(dx * dx + dy * dy) < 10;
+      });
+
+      if (clickedPoint) {
+        setHoveredPoint(null);
+        if (event.altKey) {
+          // Remove point
+          removePoint(points.indexOf(clickedPoint));
+        } else {
+          setIsDragging(true);
+          setDraggedPoint(clickedPoint);
+        }
+      }
+    },
+    [texture, points]
+  );
 
   // Update handlePointerUp to handle both normal and outside cases
   const handlePointerUp = useCallback(() => {
@@ -175,51 +187,57 @@ export function NpyViewer() {
   }, [texture]);
 
   // Update handlePointerMove to check isDragging state more strictly
-  const handlePointerMove = useCallback((event: React.PointerEvent) => {
-    if (!texture) return;
+  const handlePointerMove = useCallback(
+    (event: React.PointerEvent) => {
+      if (!texture) return;
 
-    const rect = plotRef.current?.getBoundingClientRect();
-    if (!rect) return;
+      const rect = plotRef.current?.getBoundingClientRect();
+      if (!rect) return;
 
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
 
-    // Only process drag if we're actually in dragging state and have a dragged point
-    if (isDragging && draggedPoint && event.buttons > 0) { 
-      const updatedPoint = {
-        ...draggedPoint,
-        x,
-        y
-      };
+      // Only process drag if we're actually in dragging state and have a dragged point
+      if (isDragging && draggedPoint && event.buttons > 0) {
+        const updatedPoint = {
+          ...draggedPoint,
+          x,
+          y,
+        };
 
-      updatePoint(points.indexOf(draggedPoint), updatedPoint);
-      setDraggedPoint(updatedPoint);
-    } else {
-      const hoveredPoint = points.find(point => {
-        const dx = point.x - x;
-        const dy = point.y - y;
-        return Math.sqrt(dx * dx + dy * dy) < 10;
-      });
-      setHoveredPoint(hoveredPoint || null);
+        updatePoint(points.indexOf(draggedPoint), updatedPoint);
+        setDraggedPoint(updatedPoint);
+      } else {
+        const hoveredPoint = points.find((point) => {
+          const dx = point.x - x;
+          const dy = point.y - y;
+          return Math.sqrt(dx * dx + dy * dy) < 10;
+        });
+        setHoveredPoint(hoveredPoint || null);
 
-      // If we were dragging but button is no longer pressed, reset drag state
-      if (isDragging && event.buttons === 0) {
-        setIsDragging(false);
-        setDraggedPoint(null);
+        // If we were dragging but button is no longer pressed, reset drag state
+        if (isDragging && event.buttons === 0) {
+          setIsDragging(false);
+          setDraggedPoint(null);
+        }
       }
-    }
-  }, [texture, isDragging, draggedPoint, points]);
+    },
+    [texture, isDragging, draggedPoint, points]
+  );
 
   // Update handleFileSelect to store original data
-  const handleFileSelect = useCallback(async (
-    event: React.ChangeEvent<HTMLInputElement>,
-    dataType: 'frequency' | 'slowness' | 'data'
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    lastFileRef.current = file;
-    await loadNpyFile(file, dataType);
-  }, [loadNpyFile]);
+  const handleFileSelect = useCallback(
+    async (
+      event: React.ChangeEvent<HTMLInputElement>,
+      dataType: "frequency" | "slowness" | "data"
+    ) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      lastFileRef.current = file;
+      await loadNpyFile(file, dataType);
+    },
+    [loadNpyFile]
+  );
 
   // Update handleAxisLimitChange to handle immediate updates
   const handleAxisLimitChange = (
@@ -229,33 +247,35 @@ export function NpyViewer() {
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       const newLimits = { ...state.axisLimits, [axis]: numValue };
-      if (newLimits.xmin >= newLimits.xmax || newLimits.ymin >= newLimits.ymax) {
+      if (
+        newLimits.xmin >= newLimits.xmax ||
+        newLimits.ymin >= newLimits.ymax
+      ) {
         return; // Don't update if invalid
       }
       setAxisLimits(newLimits);
     }
   };
 
-  
   // Add download function
   const handleDownloadPoints = useCallback(() => {
     // Sort points by x-axis value and format with display values
     const pointsData = points
-      .map(point => {
-        const x = coordinateHelpers.fromScreenX(point.x)
-        const y = coordinateHelpers.fromScreenY(point.y)
+      .map((point) => {
+        const x = coordinateHelpers.fromScreenX(point.x);
+        const y = coordinateHelpers.fromScreenY(point.y);
         return { x, y };
       })
-      .sort((a, b) => a.x - b.x)  // Sort in descending order (right to left)
-      .map(point => `${point.x.toFixed(3)}, ${point.y.toFixed(3)}`)
-      .join('\n');
+      .sort((a, b) => a.x - b.x) // Sort in descending order (right to left)
+      .map((point) => `${point.x.toFixed(3)}, ${point.y.toFixed(3)}`)
+      .join("\n");
 
     // Create blob and download link
-    const blob = new Blob([pointsData], { type: 'text/plain' });
+    const blob = new Blob([pointsData], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = 'plotted_points.txt';
+    link.download = "plotted_points.txt";
 
     // Trigger download
     document.body.appendChild(link);
@@ -265,7 +285,7 @@ export function NpyViewer() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }, [points]);
-  
+
   useEffect(() => {
     // Create the texture with the current color map
     if (!textureData || !originalData) return;
@@ -275,13 +295,13 @@ export function NpyViewer() {
       { min: originalData.min, max: originalData.max },
       [...COLOR_MAPS[state.selectedColorMap]]
     );
-    
+
     setTexture(texture);
-  }, [textureData])
-  
+  }, [textureData]);
+
   useEffect(() => {
     setLoading(false);
-  }, [texture])
+  }, [texture]);
 
   return (
     <div className="relative w-full h-full">
@@ -293,235 +313,255 @@ export function NpyViewer() {
           </div>
         </div>
       )}
-      
-      <div className="flex flex-col items-center w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <div className="flex flex-col h-full gap-4 p-4">
         {/* File Input Section */}
-        <div className="w-full max-w-2xl mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FileInput
-              label="Main Data (NPY)"
-              onChange={(e) => handleFileSelect(e, 'data')}
-            />
-            <FileInput
-              label="X-Axis Data (NPY)"
-              onChange={(e) => handleFileSelect(e, 'frequency')}
-            />
-            <FileInput
-              label="Y-Axis Data (NPY)"
-              onChange={(e) => handleFileSelect(e, 'slowness')}
-            />
-          </div>
-          
-          {/* Color Map Buttons */}
-          <div className="flex flex-wrap gap-2 justify-center mt-6">
-            {(Object.keys(COLOR_MAPS) as ColorMapKey[]).map(mapName => (
-              <button
-                key={mapName}
-                onClick={() => setColorMap(mapName)}
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  selectedColorMap === mapName
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                }`}
-              >
-                {mapName}
-              </button>
-            ))}
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <FileInput
+            label="Main Data (NPY)"
+            onChange={(e) => handleFileSelect(e, "data")}
+          />
+          <FileInput
+            label="X-Axis Data (NPY)"
+            onChange={(e) => handleFileSelect(e, "frequency")}
+          />
+          <FileInput
+            label="Y-Axis Data (NPY)"
+            onChange={(e) => handleFileSelect(e, "slowness")}
+          />
         </div>
 
-        {/* Axis Inputs */}
-        <div className="w-full mb-8">
-          <div className="min-h-[52px]">
-            {texture && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 justify-items-center">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-600 whitespace-nowrap">Y Max (Top Left):</label>
-                  <input
-                    type="number"
-                    value={axisLimits.ymax}
-                    onChange={(e) => handleAxisLimitChange("ymax", e.target.value)}
-                    className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                    step="1"
+        {/* Main Content Area */}
+        <div className="flex flex-col lg:flex-row flex-1 gap-4 min-h-0">
+          {/* Left Side - Plot */}
+          <div className="flex-1 min-h-[400px] lg:min-h-0 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+            {texture ? (
+              <BasePlot
+                ref={plotRef}
+                xLabel="Frequency"
+                yLabel="Slowness"
+                xMin={axisLimits.xmin}
+                xMax={axisLimits.xmax}
+                yMin={axisLimits.ymin}
+                yMax={axisLimits.ymax}
+                display={(value) => value.toFixed(3)}
+                tooltipContent={
+                  hoveredPoint
+                    ? `(Freq:${coordinateHelpers
+                        .fromScreenX(hoveredPoint.x)
+                        .toFixed(3)}, 
+                    Slow:${coordinateHelpers
+                      .fromScreenY(hoveredPoint.y)
+                      .toFixed(3)})`
+                    : draggedPoint
+                    ? `(Freq:${coordinateHelpers
+                        .fromScreenX(draggedPoint.x)
+                        .toFixed(3)}
+                    Slow:${coordinateHelpers
+                      .fromScreenY(draggedPoint.y)
+                      .toFixed(3)}`
+                    : undefined
+                }
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onDimensionChange={handleDimensionChange}
+              >
+                <pixiContainer>
+                  {texture && (
+                    <pixiSprite
+                      texture={texture}
+                      width={plotDimensions.width}
+                      height={plotDimensions.height}
+                      anchor={0}
+                    />
+                  )}
+                  <pixiGraphics
+                    draw={(g) => {
+                      g.clear();
+
+                      // Draw points
+                      points.forEach((point) => {
+                        const isHovered = hoveredPoint === point;
+                        const isDragged = draggedPoint === point;
+
+                        g.setFillStyle({
+                          color: isHovered || isDragged ? 0x00ff00 : 0xff0000,
+                          alpha: 0.8,
+                        });
+                        g.circle(
+                          point.x,
+                          point.y,
+                          isHovered || isDragged ? 6 : 4
+                        );
+                        g.fill();
+                      });
+                    }}
                   />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-600 whitespace-nowrap">Y Min (Bottom Left):</label>
-                  <input
-                    type="number"
-                    value={axisLimits.ymin}
-                    onChange={(e) => handleAxisLimitChange("ymin", e.target.value)}
-                    className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                    step="1"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-600 whitespace-nowrap">X Max (Bottom Left):</label>
-                  <input
-                    type="number"
-                    value={axisLimits.xmax}
-                    onChange={(e) => handleAxisLimitChange("xmax", e.target.value)}
-                    className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                    step="1"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-600 whitespace-nowrap">X Min (Bottom Right):</label>
-                  <input
-                    type="number"
-                    value={axisLimits.xmin}
-                    onChange={(e) => handleAxisLimitChange("xmin", e.target.value)}
-                    className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                    step="1"
-                  />
-                </div>
-              </div>
+                </pixiContainer>
+              </BasePlot>
+            ) : (
+              <p className="text-gray-500">Load an NPY file to view</p>
             )}
           </div>
-        </div>
 
-        {/* Viewer Container */}
-        <div className="w-full aspect-[2/1] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-          {texture ? (
-            <BasePlot
-              ref={plotRef}
-              xLabel="Frequency"
-              yLabel="Slowness"
-              xMin={axisLimits.xmin}
-              xMax={axisLimits.xmax}
-              yMin={axisLimits.ymin}
-              yMax={axisLimits.ymax}
-              display={(value) => value.toFixed(3)}
-              tooltipContent={hoveredPoint ? 
-                `(Freq:${coordinateHelpers.fromScreenX(hoveredPoint.x).toFixed(3)}, 
-                  Slow:${coordinateHelpers.fromScreenY(hoveredPoint.y).toFixed(3)})` 
-                : draggedPoint? `(Freq:${coordinateHelpers.fromScreenX(draggedPoint.x).toFixed(3)}
-                  Slow:${coordinateHelpers.fromScreenY(draggedPoint.y).toFixed(3)}`:undefined}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onDimensionChange={handleDimensionChange}
-            >
-              <pixiContainer>
-                {texture && (
-                  <pixiSprite
-                    texture={texture}
-                    width={plotDimensions.width} // Account for plot margins
-                    height={plotDimensions.height}
-                    anchor={0}
-                  />
-                )}
-                <pixiGraphics
-                  draw={(g) => {
-                    g.clear();
-                    
-                    // Draw points
-                    points.forEach((point) => {
-                      const isHovered = hoveredPoint === point;
-                      const isDragged = draggedPoint === point;
-                      
-                      g.setFillStyle({ 
-                        color: isHovered || isDragged ? 0x00FF00 : 0xFF0000,
-                        alpha: 0.8 
+          {/* Right Side - Controls */}
+          <div className="lg:w-80 flex flex-col gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+              {/* Controls Info */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium text-gray-700 mb-2">Controls</h3>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• Shift + Click: Add point</li>
+                  <li>• Alt + Click: Remove point</li>
+                  <li>• Hover: View coordinates</li>
+                </ul>
+                <button
+                  onClick={handleDownloadPoints}
+                  className="w-full mt-3 px-4 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={points.length === 0}
+                >
+                  Download Points
+                </button>
+              </div>
+              {/* Axis Controls */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium text-gray-700 mb-3">Axis Limits</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 w-24">Y Max:</label>
+                    <input
+                      type="number"
+                      value={axisLimits.ymax}
+                      onChange={(e) => handleAxisLimitChange("ymax", e.target.value)}
+                      className="flex-1 px-2 py-1 text-sm border rounded"
+                      step="1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 w-24">Y Min:</label>
+                    <input
+                      type="number"
+                      value={axisLimits.ymin}
+                      onChange={(e) => handleAxisLimitChange("ymin", e.target.value)}
+                      className="flex-1 px-2 py-1 text-sm border rounded"
+                      step="1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 w-24">X Max:</label>
+                    <input
+                      type="number"
+                      value={axisLimits.xmax}
+                      onChange={(e) => handleAxisLimitChange("xmax", e.target.value)}
+                      className="flex-1 px-2 py-1 text-sm border rounded"
+                      step="1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 w-24">X Min:</label>
+                    <input
+                      type="number"
+                      value={axisLimits.xmin}
+                      onChange={(e) => handleAxisLimitChange("xmin", e.target.value)}
+                      className="flex-1 px-2 py-1 text-sm border rounded"
+                      step="1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Transform Controls */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium text-gray-700 mb-3">Transform</h3>
+                <div className="flex gap-2 justify-center">
+                  <button
+                    onClick={() => {
+                      setImageTransform({
+                        rotationCounterClockwise: !state.imageTransform.rotationCounterClockwise,
+                        rotationClockwise: false,
                       });
-                      g.circle(point.x, point.y, isHovered || isDragged ? 6 : 4);
-                      g.fill();
-                    });
-                  }}
-                />
-              </pixiContainer>
-            </BasePlot>
-          ) : (
-            <div className="w-full aspect-[2/1] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-              <p className="text-gray-500">Load an NPY file to view</p>
+                    }}
+                    className={`w-10 h-10 rounded-md flex items-center justify-center ${
+                      imageTransform.rotationCounterClockwise
+                        ? "bg-blue-600 text-white"
+                        : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    }`}
+                    title="Rotate Counter-clockwise"
+                  >
+                     ↺
+                  </button>
+                  <button
+                    onClick={() => {
+                      setImageTransform({
+                        rotationClockwise: !state.imageTransform.rotationClockwise,
+                        rotationCounterClockwise: false,
+                      });
+                    }}
+                    className={`w-10 h-10 rounded-md flex items-center justify-center ${
+                      imageTransform.rotationClockwise
+                        ? "bg-blue-600 text-white"
+                        : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    }`}
+                    title="Rotate Clockwise"
+                  >
+                    ↻
+                  </button>
+                  <button
+                    onClick={() => {
+                      setImageTransform({
+                        flipHorizontal: !state.imageTransform.flipHorizontal,
+                      });
+                    }}
+                    className={`w-10 h-10 rounded-md flex items-center justify-center ${
+                      imageTransform.flipHorizontal
+                        ? "bg-blue-600 text-white"
+                        : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    }`}
+                    title="Flip Horizontal"
+                  >
+                    ↔
+                  </button>
+                  <button
+                    onClick={() => {
+                      setImageTransform({
+                        flipVertical: !state.imageTransform.flipVertical,
+                      });
+                    }}
+                    className={`w-10 h-10 rounded-md flex items-center justify-center ${
+                      imageTransform.flipVertical
+                        ? "bg-blue-600 text-white"
+                        : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    }`}
+                    title="Flip Vertical"
+                  >
+                    ↕
+                  </button>
+                </div>
+              </div>
+
+              {/* Color Maps */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-medium text-gray-700 mb-3">Color Map</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(COLOR_MAPS) as ColorMapKey[]).map((mapName) => (
+                    <button
+                      key={mapName}
+                      onClick={() => setColorMap(mapName)}
+                      className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                        selectedColorMap === mapName
+                          ? "bg-blue-600 text-white"
+                          : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                      }`}
+                    >
+                      {mapName}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* Transform Controls */}
-        {texture && (
-          <div className="flex flex-wrap gap-4 justify-center mt-6">
-            <button
-              onClick={() => {
-                setImageTransform({
-                  rotationCounterClockwise: !state.imageTransform.rotationCounterClockwise,
-                  rotationClockwise: false
-                });
-              }}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                imageTransform.rotationCounterClockwise
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-              }`}
-            >
-              Rotate Counter-clockwise
-            </button>
-            <button
-              onClick={() => {
-                setImageTransform({
-                  rotationClockwise: !state.imageTransform.rotationClockwise,
-                  rotationCounterClockwise: false
-                });
-              }}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                imageTransform.rotationClockwise
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-              }`}
-            >
-              Rotate Clockwise
-            </button>
-            <button
-              onClick={() => {
-                setImageTransform({
-                  flipHorizontal: !state.imageTransform.flipHorizontal
-                });
-              }}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                imageTransform.flipHorizontal
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-              }`}
-            >
-              Flip Horizontal
-            </button>
-            <button
-              onClick={() => {
-                setImageTransform({flipVertical: !state.imageTransform.flipVertical});
-              }}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                imageTransform.flipVertical
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-              }`}
-            >
-              Flip Vertical
-            </button>
-          </div>
-        )}
-
-        {/* Controls Info */}
-        <div className="w-full max-w-md mt-8 p-4 bg-gray-50 rounded-lg">
-          <h3 className="font-semibold mb-2 text-center">Controls:</h3>
-          <ul className="space-y-1 text-sm text-gray-600 text-center">
-            <li>Shift + Click: Add point</li>
-            <li>Alt + Click: Remove point</li>
-            <li>Hover over points to see coordinates</li>
-          </ul>
-          <div className="mt-4 flex justify-center">
-            <button
-              onClick={handleDownloadPoints}
-              className="px-4 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={points.length === 0}
-            >
-              Download Points
-            </button>
           </div>
         </div>
-
-        {error && (
-          <div className="mt-4 text-center text-red-600">{error}</div>
-        )}
       </div>
     </div>
   );

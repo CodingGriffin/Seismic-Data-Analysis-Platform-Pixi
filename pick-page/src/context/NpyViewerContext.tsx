@@ -471,7 +471,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     if (state.originalData) {
       applyTransformations();
     }
-  }, [state.imageTransform, state.originalData, applyTransformations]);
+  }, [state.imageTransform, state.originalData, state.selectedColorMap, applyTransformations]);
 
   useEffect(() => {
     console.log("Frequency Data:", state.frequencyData, "Slowness Data:", state.slownessData);
