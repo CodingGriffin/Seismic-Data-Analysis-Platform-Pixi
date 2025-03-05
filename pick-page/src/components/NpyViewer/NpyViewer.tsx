@@ -32,7 +32,6 @@ export function NpyViewer() {
     setAxisLimits,
     loadNpyFile,
     setLoading,
-    applyTransformations
   } = useNpyViewer();
 
   const {
@@ -265,9 +264,9 @@ export function NpyViewer() {
   };
   
   //Draw function
-  const handleDraw = useCallback(() => {
+  const handleUpdateData = useCallback(() => {
     if (!originalData || !frequencyData || !slownessData) return;
-    applyTransformations()
+    // applyTransformations()
   }, [originalData, frequencyData, slownessData])
 
   // Add download function
@@ -430,11 +429,11 @@ export function NpyViewer() {
                   <li>• Hover: View coordinates</li>
                 </ul>
                 <button
-                  onClick={handleDraw}
+                  onClick={handleUpdateData}
                   className="w-full mt-3 px-4 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={(originalData === null) && (slownessData === null) && (frequencyData === null)}
                 >
-                  Draw
+                  Update Data
                 </button>
                 <button
                   onClick={handleDownloadPoints}

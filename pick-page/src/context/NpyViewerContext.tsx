@@ -5,8 +5,6 @@ import NpyJs from 'npyjs';
 interface Point {
   x: number;
   y: number;
-  
- 
   value: number;
   color: number;
 }
@@ -15,11 +13,6 @@ interface RGB {
   r: number;
   g: number;
   b: number;
-}
-
-interface AxisData {
-  data: Float32Array | Float64Array;
-  shape: number[];
 }
 
 interface NpyData {
@@ -162,8 +155,6 @@ const initialState = {
   originalData: null as NpyData | null,
   frequencyData: null as NpyData | null,
   slownessData: null as NpyData | null,
-  xAxis: null as AxisData | null,
-  yAxis: null as AxisData | null,
 };
 
 // Action types
@@ -185,7 +176,6 @@ type Action =
   | { type: 'SET_ORIGINAL_DATA'; payload: NpyData }
   | { type: 'SET_FREQUENCY_DATA'; payload: NpyData }
   | { type: 'SET_SLOWNESS_DATA'; payload: NpyData }
-  | { type: 'SET_AXIS_DATA'; payload: { xAxis: AxisData | null; yAxis: AxisData | null } };
 
 // Reducer
 function reducer(state: typeof initialState, action: Action): typeof initialState {
@@ -236,12 +226,6 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
       return { ...state, frequencyData: action.payload };
     case 'SET_SLOWNESS_DATA':
       return { ...state, slownessData: action.payload };
-    case 'SET_AXIS_DATA':
-      return {
-        ...state,
-        xAxis: action.payload.xAxis,
-        yAxis: action.payload.yAxis,
-      };
     default:
       return state;
   }
@@ -264,7 +248,6 @@ interface NpyViewerContextType {
   setImageTransform: (transform: Partial<ImageTransform>) => void;
   setAxisLimits: (limits: Partial<AxisLimits>) => void;
   setOriginalData: (data: NpyData) => void;
-  setAxisData: (xAxis: AxisData | null, yAxis: AxisData | null) => void;
   loadNpyFile: (file: File, dataType:'frequency'|'slowness'|'data') => Promise<void>;
   applyTransformations:() => Promise<void>;
 }
@@ -339,10 +322,6 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
 
   const setSlownessData = useCallback((data: NpyData) => {
     dispatch({ type: 'SET_SLOWNESS_DATA', payload: data });
-  }, []);
-
-  const setAxisData = useCallback((xAxis: AxisData | null, yAxis: AxisData | null) => {
-    dispatch({ type: 'SET_AXIS_DATA', payload: { xAxis, yAxis } });
   }, []);
 
   const loadNpyFile = useCallback(async (file: File, dataType:'frequency'|'slowness'|'data') => {
@@ -499,7 +478,6 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         setImageTransform,
         setAxisLimits,
         setOriginalData,
-        setAxisData,
         loadNpyFile,
         applyTransformations
       }}
