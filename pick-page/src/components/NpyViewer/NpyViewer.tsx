@@ -112,7 +112,7 @@ export function NpyViewer() {
   );
 
   const createTexture = (
-    transformedData: Float32Array,
+    transformedData: number[],
     dimensions: { width: number; height: number },
     dataRange: { min: number; max: number },
     colorMap: string[]
@@ -452,7 +452,7 @@ export function NpyViewer() {
                     <label className="text-sm text-gray-600 w-24">Y Max:</label>
                     <input
                       type="number"
-                      value={axisLimits.ymax}
+                      value={axisLimits.ymax ?? 0}  // Provide default value
                       onChange={(e) => handleAxisLimitChange("ymax", e.target.value)}
                       className="flex-1 px-2 py-1 text-sm border rounded"
                       step="1"
@@ -462,7 +462,7 @@ export function NpyViewer() {
                     <label className="text-sm text-gray-600 w-24">Y Min:</label>
                     <input
                       type="number"
-                      value={axisLimits.ymin}
+                      value={axisLimits.ymin ?? 0}  // Provide default value
                       onChange={(e) => handleAxisLimitChange("ymin", e.target.value)}
                       className="flex-1 px-2 py-1 text-sm border rounded"
                       step="1"
@@ -472,7 +472,7 @@ export function NpyViewer() {
                     <label className="text-sm text-gray-600 w-24">X Max:</label>
                     <input
                       type="number"
-                      value={axisLimits.xmax}
+                      value={axisLimits.xmax ?? 0}  // Provide default value
                       onChange={(e) => handleAxisLimitChange("xmax", e.target.value)}
                       className="flex-1 px-2 py-1 text-sm border rounded"
                       step="1"
@@ -482,7 +482,7 @@ export function NpyViewer() {
                     <label className="text-sm text-gray-600 w-24">X Min:</label>
                     <input
                       type="number"
-                      value={axisLimits.xmin}
+                      value={axisLimits.xmin ?? 0}  // Provide default value
                       onChange={(e) => handleAxisLimitChange("xmin", e.target.value)}
                       className="flex-1 px-2 py-1 text-sm border rounded"
                       step="1"

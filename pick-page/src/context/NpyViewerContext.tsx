@@ -23,11 +23,64 @@ interface AxisData {
 }
 
 interface NpyData {
-  data: Float32Array | Float64Array | Uint8Array | Uint16Array | Int8Array | Int16Array | Int32Array | BigUint64Array | BigInt64Array;
+  data: number[][];
   shape: number[];
   min: number;
   max: number;
 }
+
+const npArrayToJS = (flatArray: number[] , shape: number[]) => {
+  const [rows, cols] = shape;
+  let result: number[][] = [];
+
+  for (let i = 0; i < rows; i++) {
+      result.push(Array.from(flatArray.slice(i * cols, (i + 1) * cols), value => Number(value)));
+  }
+
+  return { matrix: result, shape };
+};
+
+const rotateClockwise = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+  const rows = matrix.length;
+  const cols = matrix[0].length;
+
+  let rotated: number[][] = Array.from({ length: cols }, () => Array(rows));
+
+  for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+          rotated[c][rows - 1 - r] = matrix[r][c];
+      }
+  }
+
+  return { matrix: rotated, shape: [cols, rows] };
+};
+
+const rotateCounterClockwise = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+  const rows = matrix.length;
+  const cols = matrix[0].length;
+
+  let rotated: number[][] = Array.from({ length: cols }, () => Array(rows));
+
+  for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+          rotated[cols - 1 - c][r] = matrix[r][c];
+      }
+  }
+
+  return { matrix: rotated, shape: [cols, rows] };
+};
+
+
+const flipVertical = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+  let flipped = [...matrix].reverse();
+  return { matrix: flipped, shape: [matrix.length, matrix[0].length] };
+};
+
+const flipHorizontal = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+  let flipped = matrix.map(row => [...row].reverse());
+  return { matrix: flipped, shape: [matrix.length, matrix[0].length] };
+};
+
 
 export const COLOR_MAPS = {
   'RdYlBu': [
@@ -101,7 +154,7 @@ interface AxisLimits {
 }
 
 interface TextureData {
-  transformed: Float32Array;
+  transformed: number[];
   dimensions: { width: number; height: number };
 }
 // Parse RGB string to RGB object
@@ -353,6 +406,11 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
       const arrayBuffer = await file.arrayBuffer();
       const npyData = await npyjs.load(arrayBuffer);
 
+      const data = new Array(npyData.data.length);
+      for (let i = 0; i < npyData.data.length; i++) {
+        data[i] = Number(npyData.data[i]);
+      }
+
       let min = Number(npyData.data[0]);
       let max = min;
       for (let i = 1; i < npyData.data.length; i++) {
@@ -364,7 +422,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
       switch (dataType) {
         case 'frequency':
           setFrequencyData({
-            data: npyData.data,
+            data,
             shape: npyData.shape,
             min,
             max
@@ -372,16 +430,21 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
           break;
         case 'slowness':
           setSlownessData({
-            data: npyData.data,
+            data,
             shape: npyData.shape,
             min,
             max
           });
           break;
         case 'data':
+          const { matrix: jsMatrix } = npArrayToJS(data, npyData.shape);
+          let { matrix: rotated } = rotateClockwise(jsMatrix);
+          let { matrix: transformed, shape: transformedShape } = flipVertical(rotated);
+          console.log(transformed, transformedShape)
+          // Use the converted data
           setOriginalData({
-            data: npyData.data,
-            shape: npyData.shape,
+            data: transformed,
+            shape: transformedShape,
             min,
             max
           });
@@ -397,48 +460,29 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
   }, [setError, setLoading, setPoints, setOriginalData, setSlownessData, setFrequencyData]);
 
   const processImageData = useCallback((originalData: NpyData, imageTransform: ImageTransform) => {
-    const { data, shape } = originalData;
-    const [height, width] = shape;
-    const transformed = new Float32Array(data.length);
-
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        let dstX = x;
-        let dstY = y;
-
-        // Apply counter-clockwise rotation (90° CCW)
-        if (imageTransform.rotationCounterClockwise) {
-          [dstX, dstY] = [dstY, width - 1 - dstX];
-        }
-
-        // Apply clockwise rotation (90° CW)
-        if (imageTransform.rotationClockwise) {
-          [dstX, dstY] = [height - 1 - dstY, dstX];
-        }
-
-        // Apply flips after rotations
-        const isRotated = imageTransform.rotationCounterClockwise || imageTransform.rotationClockwise;
-        const currentWidth = isRotated ? height : width;
-        const currentHeight = isRotated ? width : height;
-
-        if (imageTransform.flipHorizontal) {
-          dstX = currentWidth - 1 - dstX;
-        }
-        if (imageTransform.flipVertical) {
-          dstY = currentHeight - 1 - dstY;
-        }
-
-        const srcIndex = y * width + x;
-        const dstIndex = dstY * (isRotated ? height : width) + dstX;
-        transformed[dstIndex] = Number(data[srcIndex]);
-      }
+    const { data } = originalData;
+    let transformed = data;
+    // Apply transformations in sequence
+    if (imageTransform.rotationCounterClockwise) {
+      transformed= rotateCounterClockwise(data).matrix;
+    }
+    if (imageTransform.rotationClockwise) {
+      transformed= rotateClockwise(data).matrix;
+    }
+    if (imageTransform.flipHorizontal) {
+      transformed= flipHorizontal(data).matrix;
+    }
+    if (imageTransform.flipVertical) {
+      transformed= flipVertical(data).matrix;
     }
 
+    const finalShape = [transformed.length, transformed[0].length];
+
     return {
-      transformed,
+      transformed:transformed.flat(),
       dimensions: {
-        width: imageTransform.rotationCounterClockwise || imageTransform.rotationClockwise ? height : width,
-        height: imageTransform.rotationCounterClockwise || imageTransform.rotationClockwise ? width : height
+        width: finalShape[1],
+        height: finalShape[0]
       }
     };
   }, []);
@@ -461,9 +505,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error processing image:", error);
       setError(error instanceof Error ? error.message : "Failed to process image");
-    } finally {
-      setLoading(false);
-    }
+    } 
   }, [state.imageTransform, state.originalData, setTextureData, setError, setLoading]);
 
   useEffect(() => {
