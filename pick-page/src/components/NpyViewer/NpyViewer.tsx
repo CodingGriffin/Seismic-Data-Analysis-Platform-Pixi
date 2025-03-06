@@ -15,6 +15,7 @@ import {
 } from "../../context/NpyViewerContext";
 import { BasePlot } from "../controls/BasePlot";
 import { FileInput } from "../controls/FileInput";
+import { ErrorTip } from '../controls/ErrorTip';
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -32,7 +33,8 @@ export function NpyViewer() {
     setAxisLimits,
     loadNpyFile,
     setLoading,
-    applyTransformations
+    applyTransformations,
+    setError,
   } = useNpyViewer();
 
   const {
@@ -47,7 +49,8 @@ export function NpyViewer() {
     axisLimits,
     originalData,
     frequencyData,
-    slownessData
+    slownessData,
+    error
   } = state;
 
   const lastFileRef = useRef<File | null>(null);
@@ -236,10 +239,16 @@ export function NpyViewer() {
     ) => {
       const file = event.target.files?.[0];
       if (!file) return;
-      lastFileRef.current = file;
-      await loadNpyFile(file, dataType);
+      if ((dataType ==="data" && file.name.startsWith("grid")) || dataType.startsWith(file.name.split("_")[0])) {
+        lastFileRef.current = file;
+        await loadNpyFile(file, dataType);
+      } else {
+        setError(`Invalid file for ${dataType}`);
+        lastFileRef.current = null
+        return
+      }
     },
-    [loadNpyFile]
+    [loadNpyFile, setError]
   );
 
   // Update handleAxisLimitChange to handle immediate updates
@@ -330,19 +339,28 @@ export function NpyViewer() {
       <div className="flex flex-col h-full gap-4 p-4">
         {/* File Input Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FileInput
-            label="Main Data (NPY)"
-            onChange={(e) => handleFileSelect(e, "data")}
-          />
-          <FileInput
-            label="X-Axis Data (NPY)"
-            onChange={(e) => handleFileSelect(e, "frequency")}
-          />
-          <FileInput
-            label="Y-Axis Data (NPY)"
-            onChange={(e) => handleFileSelect(e, "slowness")}
-          />
+          <div>
+            <FileInput
+              label="Main Data (NPY)"
+              onChange={(e) => handleFileSelect(e, "data")}
+            />
+          </div>
+          <div>
+            <FileInput
+              label="X-Axis Data (NPY)"
+              onChange={(e) => handleFileSelect(e, "slowness")}
+            />
+          </div>
+          <div>
+            <FileInput
+              label="Y-Axis Data (NPY)"
+              onChange={(e) => handleFileSelect(e, "frequency")}
+            />
+          </div>
         </div>
+
+        {/* Add the global error tip outside the grid */}
+        <ErrorTip message={error} />
 
         {/* Main Content Area */}
         <div className="flex flex-col lg:flex-row flex-1 gap-4 min-h-0">
@@ -351,8 +369,10 @@ export function NpyViewer() {
             {texture ? (
               <BasePlot
                 ref={plotRef}
-                xLabel="Frequency"
-                yLabel="Slowness"
+                xLabel={imageTransform.rotationClockwise || imageTransform.rotationCounterClockwise ?
+                  "Frequency":"Slowness"}
+                yLabel={imageTransform.rotationClockwise || imageTransform.rotationCounterClockwise ?
+                  "Slowness":"Frequency"}
                 xMin={axisLimits.xmin}
                 xMax={axisLimits.xmax}
                 yMin={axisLimits.ymin}
