@@ -23,3 +23,4 @@ export function FileInput({ label, onChange }: FileInputProps) {
     </div>
   );
 }
+

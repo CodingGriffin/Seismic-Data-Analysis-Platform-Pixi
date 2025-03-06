@@ -32,7 +32,7 @@ export function NpyViewer() {
     setAxisLimits,
     loadNpyFile,
     setLoading,
-    updateData
+    applyTransformations
   } = useNpyViewer();
 
   const {
@@ -47,7 +47,7 @@ export function NpyViewer() {
     axisLimits,
     originalData,
     frequencyData,
-    slownessData
+    slownessData,
   } = state;
 
   const lastFileRef = useRef<File | null>(null);
@@ -111,37 +111,46 @@ export function NpyViewer() {
     [axisLimits, plotDimensions]
   );
 
-  const createTexture = (
+  const createTexture = useCallback(async (
     transformedData: Float32Array,
     dimensions: { width: number; height: number },
     dataRange: { min: number; max: number },
     colorMap: string[]
   ) => {
+    if (!originalData || !frequencyData || !slownessData) return;
     const canvas = document.createElement("canvas");
-    canvas.width = dimensions.width;
-    canvas.height = dimensions.height;
+    canvas.width = plotDimensions.width;
+    canvas.height = plotDimensions.height;
     const ctx = canvas.getContext("2d")!;
+    
+    // Clear the canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const rgba = new Uint8ClampedArray(canvas.width * canvas.height * 4);
-
-    for (let i = 0; i < transformedData.length; i++) {
-      const normalizedValue =
-        (transformedData[i] - dataRange.min) / (dataRange.max - dataRange.min);
-      const color = getColorFromMap(normalizedValue, colorMap);
-      const idx = i * 4;
-      rgba[idx] = color.r;
-      rgba[idx + 1] = color.g;
-      rgba[idx + 2] = color.b;
-      rgba[idx + 3] = 255;
+    // Map each data point to screen coordinates and color
+    for (let j = 0; j < frequencyData.data.length; j++) {
+      for (let i = 0; i < slownessData.data.length; i++) {
+        const idx = (j * slownessData.data.length + i);
+        const normalizedValue = (transformedData[idx] - dataRange.min) / (dataRange.max - dataRange.min);
+        const color = getColorFromMap(normalizedValue, colorMap);
+        
+        // Convert data coordinates to screen coordinates
+        const x = Math.floor(coordinateHelpers.toScreenX(Number(slownessData.data[i])));
+        const y = Math.floor(coordinateHelpers.toScreenY(Number(frequencyData.data[j])));
+        
+        // Skip if outside canvas bounds
+        if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
+        
+        // Set fill style and draw rectangle
+        ctx.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+        ctx.fillRect(x, y, 0.1, 0.1);
+      }
     }
 
-    const imgData = new ImageData(rgba, canvas.width, canvas.height);
-    ctx.putImageData(imgData, 0, 0);
-
+    // Create PIXI texture from canvas
     const texture = Texture.from(canvas);
     canvas.remove();
     return texture;
-  };
+  }, [originalData, frequencyData, slownessData, plotDimensions, coordinateHelpers]);
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent) => {
@@ -273,8 +282,7 @@ export function NpyViewer() {
   //Draw function
   const handleUpdateData = useCallback(() => {
     if (!originalData || !frequencyData || !slownessData) return;
-    // applyTransformations()
-    updateData();
+    applyTransformations()
   }, [originalData, frequencyData, slownessData])
 
   // Add download function
@@ -309,14 +317,17 @@ export function NpyViewer() {
   useEffect(() => {
     // Create the texture with the current color map
     if (!textureData || !originalData) return;
-    const texture = createTexture(
+    (async () => {
+      const texture = await createTexture(
       textureData.transformed,
       textureData.dimensions,
       { min: originalData.min, max: originalData.max },
       [...COLOR_MAPS[state.selectedColorMap]]
     );
 
-    setTexture(texture);
+    setTexture(texture || null);
+    })();
+    console.log("TextureData Changed:", textureData)
   }, [textureData]);
 
   useEffect(() => {
@@ -388,14 +399,38 @@ export function NpyViewer() {
                 onDimensionChange={handleDimensionChange}
               >
                 <pixiContainer>
-                  {texture && (
-                    <pixiSprite
-                      texture={texture}
+                  {/* {textureData && slownessData && frequencyData && (
+                    <pixiGraphics
                       width={plotDimensions.width}
                       height={plotDimensions.height}
-                      anchor={0}
+                      draw={(g) => {
+                        console.log("Drawing...", textureData)
+                        g.clear();
+                        for (let j = 0; j < textureData.dimensions.height; j++) {
+                          for (let i = 0; i < textureData.dimensions.width; i++) {
+                            const value = textureData.transformed[j * textureData.dimensions.width + i];
+                            const color = getColorFromMap(
+                              value,
+                              [...COLOR_MAPS[selectedColorMap]]
+                            );
+                            g.setFillStyle({color});
+                            g.rect(
+                              coordinateHelpers.toScreenX(Number(slownessData?.data[i])),
+                              coordinateHelpers.toScreenY(Number(frequencyData?.data[j])),
+                              1,
+                              1
+                            );
+                            g.fill();
+                          }
+                        }
+                      }}
                     />
-                  )}
+                  )} */}
+                  <pixiSprite
+                    texture={texture}
+                    width={plotDimensions.width}
+                    height={plotDimensions.height}
+                  />
                   <pixiGraphics
                     draw={(g) => {
                       g.clear();
