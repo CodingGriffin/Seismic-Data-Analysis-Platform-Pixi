@@ -71,36 +71,32 @@ export function NpyViewer() {
   const coordinateHelpers = useMemo(
     () => ({
       toScreenX: (value: number) => {
-        // Add 10px offset for the left margin
         return (
-          ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
-            plotDimensions.width +
-          10
+          plotDimensions.width - ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
+            plotDimensions.width
         );
       },
       fromScreenX: (x: number) => {
         // Subtract the 10px offset and adjust for margin
-        const adjustedX = Math.max(0, x);
+        const adjustedX = plotDimensions.width - Math.max(0, x);
         if (adjustedX <= 0) return axisLimits.xmin;
 
         const value =
-          axisLimits.xmin +
+         axisLimits.xmin +
           (adjustedX / plotDimensions.width) *
             (axisLimits.xmax - axisLimits.xmin);
 
-        return Math.round(value * 10000) / 10000;
+        return  Math.round(value * 10000) / 10000;
       },
       toScreenY: (value: number) => {
         // Add 10px offset for the top margin and subtract from height for bottom margin
         return (
-          ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
-            plotDimensions.height +
-          10
+           ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
+            plotDimensions.height
         );
       },
       fromScreenY: (y: number) => {
-        // Subtract the 10px offset and adjust for margins
-        const adjustedY = Math.max(0, y);
+        const adjustedY = plotDimensions.height - Math.max(0, y);
         if (adjustedY <= 0) return axisLimits.ymin;
 
         const value =
@@ -373,8 +369,8 @@ export function NpyViewer() {
                   "Frequency":"Slowness"}
                 yLabel={imageTransform.rotationClockwise || imageTransform.rotationCounterClockwise ?
                   "Slowness":"Frequency"}
-                xMin={axisLimits.xmin}
-                xMax={axisLimits.xmax}
+                xMax={axisLimits.xmin}
+                xMin={axisLimits.xmax}
                 yMin={axisLimits.ymin}
                 yMax={axisLimits.ymax}
                 display={(value) => value.toFixed(3)}
@@ -399,6 +395,9 @@ export function NpyViewer() {
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onDimensionChange={handleDimensionChange}
+                axesSwapped={imageTransform.rotationClockwise || imageTransform.rotationCounterClockwise}
+                xAxisReversed={imageTransform.flipHorizontal}
+                yAxisReversed={imageTransform.flipVertical}
               >
                 <pixiContainer>
                   {texture && (
