@@ -543,7 +543,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         setOriginalData,
         setAxisData,
         loadNpyFile,
-        applyTransformations
+        applyTransformations,
       }}
     >
       {children}
