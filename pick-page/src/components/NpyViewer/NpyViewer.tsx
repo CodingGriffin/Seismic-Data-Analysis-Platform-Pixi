@@ -33,8 +33,8 @@ export function NpyViewer() {
     setAxisLimits,
     loadNpyFile,
     setLoading,
-    applyTransformations,
     setError,
+    drawOrigin
   } = useNpyViewer();
 
   const {
@@ -45,9 +45,8 @@ export function NpyViewer() {
     isDragging,
     draggedPoint,
     selectedColorMap,
-    imageTransform,
     axisLimits,
-    originalData,
+    gridData,
     frequencyData,
     slownessData,
     error
@@ -72,36 +71,34 @@ export function NpyViewer() {
     () => ({
       toScreenX: (value: number) => {
         return (
-          plotDimensions.width - ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
-            plotDimensions.width
+          ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
+            (plotDimensions.width)
         );
       },
       fromScreenX: (x: number) => {
-        // Subtract the 10px offset and adjust for margin
-        const adjustedX = plotDimensions.width - Math.max(0, x);
+        const adjustedX = Math.max(0, x );
         if (adjustedX <= 0) return axisLimits.xmin;
 
         const value =
-         axisLimits.xmin +
-          (adjustedX / plotDimensions.width) *
+          axisLimits.xmin +
+          (adjustedX / (plotDimensions.width)) *
             (axisLimits.xmax - axisLimits.xmin);
 
-        return  Math.round(value * 10000) / 10000;
+        return Math.round(value * 10000) / 10000;
       },
       toScreenY: (value: number) => {
-        // Add 10px offset for the top margin and subtract from height for bottom margin
         return (
-           ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
-            plotDimensions.height
+          ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
+            (plotDimensions.height)
         );
       },
       fromScreenY: (y: number) => {
-        const adjustedY = plotDimensions.height - Math.max(0, y);
+        const adjustedY = Math.max(0, y );
         if (adjustedY <= 0) return axisLimits.ymin;
 
         const value =
           axisLimits.ymin +
-          (adjustedY / plotDimensions.height) *
+          (adjustedY / (plotDimensions.height)) *
             (axisLimits.ymax - axisLimits.ymin);
 
         return Math.round(value * 10000) / 10000;
@@ -152,7 +149,8 @@ export function NpyViewer() {
 
       // Add new point with Shift first, regardless of hover state
       if (event.shiftKey) {
-        const newPoint = { x, y, value: 0, color: 0xff0000 };
+        const newPoint = { x:coordinateHelpers.fromScreenX(x), y:coordinateHelpers.fromScreenY(y), value: 0, color: 0xff0000 };
+
         addPoint(newPoint);
         return;
       }
@@ -270,10 +268,9 @@ export function NpyViewer() {
   };
   
   //Draw function
-  const handleDraw = useCallback(() => {
-    if (!originalData || !frequencyData || !slownessData) return;
-    applyTransformations()
-  }, [originalData, frequencyData, slownessData])
+  const handleDraw = () => {
+    drawOrigin()
+  }
 
   // Add download function
   const handleDownloadPoints = useCallback(() => {
@@ -306,11 +303,12 @@ export function NpyViewer() {
 
   useEffect(() => {
     // Create the texture with the current color map
-    if (!textureData || !originalData) return;
+    if (!textureData || !gridData) return;
+    setLoading(true)
     const texture = createTexture(
-      textureData.transformed,
+      textureData.transformed.flat(),
       textureData.dimensions,
-      { min: originalData.min, max: originalData.max },
+      { min: gridData.min, max: gridData.max },
       [...COLOR_MAPS[state.selectedColorMap]]
     );
 
@@ -365,10 +363,8 @@ export function NpyViewer() {
             {texture ? (
               <BasePlot
                 ref={plotRef}
-                xLabel={imageTransform.rotationClockwise || imageTransform.rotationCounterClockwise ?
-                  "Frequency":"Slowness"}
-                yLabel={imageTransform.rotationClockwise || imageTransform.rotationCounterClockwise ?
-                  "Slowness":"Frequency"}
+                xLabel={"Slowness"}
+                yLabel={"Frequency"}
                 xMax={axisLimits.xmin}
                 xMin={axisLimits.xmax}
                 yMin={axisLimits.ymin}
@@ -395,9 +391,6 @@ export function NpyViewer() {
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onDimensionChange={handleDimensionChange}
-                axesSwapped={imageTransform.rotationClockwise || imageTransform.rotationCounterClockwise}
-                xAxisReversed={imageTransform.flipHorizontal}
-                yAxisReversed={imageTransform.flipVertical}
               >
                 <pixiContainer>
                   {texture && (
@@ -451,7 +444,7 @@ export function NpyViewer() {
                 <button
                   onClick={handleDraw}
                   className="w-full mt-3 px-4 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={(originalData === null) && (slownessData === null) && (frequencyData === null)}
+                  disabled={(gridData === null) && (slownessData === null) && (frequencyData === null)}
                 >
                   Draw
                 </button>
@@ -515,63 +508,29 @@ export function NpyViewer() {
                 <h3 className="font-medium text-gray-700 mb-3">Transform</h3>
                 <div className="flex gap-2 justify-center">
                   <button
-                    onClick={() => {
-                      setImageTransform({
-                        rotationCounterClockwise: !state.imageTransform.rotationCounterClockwise,
-                        rotationClockwise: false,
-                      });
-                    }}
-                    className={`w-10 h-10 rounded-md flex items-center justify-center ${
-                      imageTransform.rotationCounterClockwise
-                        ? "bg-blue-600 text-white"
-                        : "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    }`}
+                    onClick={() => setImageTransform('rotationCounterClockwise')}
+                    className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
                     title="Rotate Counter-clockwise"
                   >
                      ↺
                   </button>
                   <button
-                    onClick={() => {
-                      setImageTransform({
-                        rotationClockwise: !state.imageTransform.rotationClockwise,
-                        rotationCounterClockwise: false,
-                      });
-                    }}
-                    className={`w-10 h-10 rounded-md flex items-center justify-center ${
-                      imageTransform.rotationClockwise
-                        ? "bg-blue-600 text-white"
-                        : "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    }`}
+                    onClick={() => setImageTransform('rotationClockwise')}
+                    className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
                     title="Rotate Clockwise"
                   >
                     ↻
                   </button>
                   <button
-                    onClick={() => {
-                      setImageTransform({
-                        flipHorizontal: !state.imageTransform.flipHorizontal,
-                      });
-                    }}
-                    className={`w-10 h-10 rounded-md flex items-center justify-center ${
-                      imageTransform.flipHorizontal
-                        ? "bg-blue-600 text-white"
-                        : "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    }`}
+                    onClick={() => setImageTransform('flipHorizontal')}
+                    className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
                     title="Flip Horizontal"
                   >
                     ↔
                   </button>
                   <button
-                    onClick={() => {
-                      setImageTransform({
-                        flipVertical: !state.imageTransform.flipVertical,
-                      });
-                    }}
-                    className={`w-10 h-10 rounded-md flex items-center justify-center ${
-                      imageTransform.flipVertical
-                        ? "bg-blue-600 text-white"
-                        : "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    }`}
+                    onClick={() => setImageTransform('flipVertical')}
+                    className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
                     title="Flip Vertical"
                   >
                     ↕

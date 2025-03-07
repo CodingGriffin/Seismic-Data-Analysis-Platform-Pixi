@@ -139,12 +139,7 @@ export const COLOR_MAPS = {
 
 export type ColorMapKey = keyof typeof COLOR_MAPS;
 
-interface ImageTransform {
-  flipHorizontal: boolean;
-  flipVertical: boolean;
-  rotationCounterClockwise: boolean;
-  rotationClockwise: boolean;
-}
+type ImageTransform = 'flipHorizontal'|'flipVertical'|'rotationCounterClockwise'|'rotationClockwise';
 
 interface AxisLimits {
   xmin: number;
@@ -154,7 +149,7 @@ interface AxisLimits {
 }
 
 interface TextureData {
-  transformed: number[];
+  transformed: number[][];
   dimensions: { width: number; height: number };
 }
 // Parse RGB string to RGB object
@@ -200,19 +195,13 @@ const initialState = {
   isDragging: false,
   draggedPoint: null as Point | null,
   selectedColorMap: 'RdYlBu' as ColorMapKey,
-  imageTransform: {
-    flipHorizontal: false,
-    flipVertical: false,
-    rotationCounterClockwise: false,
-    rotationClockwise: false
-  },
   axisLimits: {
     xmin: 0,
     xmax: 0.015,
     ymin: 0,
     ymax: 20
   },
-  originalData: null as NpyData | null,
+  gridData: null as NpyData | null,
   frequencyData: null as NpyData | null,
   slownessData: null as NpyData | null,
   xAxis: null as AxisData | null,
@@ -234,8 +223,7 @@ type Action =
   | { type: 'SET_COLOR_MAP'; payload: ColorMapKey }
   | { type: 'SET_IMAGE_TRANSFORM'; payload: Partial<ImageTransform> }
   | { type: 'SET_AXIS_LIMITS'; payload: Partial<AxisLimits> }
-  | { type: 'SET_ORIGINAL_DATA'; payload: NpyData }
-  | { type: 'SET_ORIGINAL_DATA'; payload: NpyData }
+  | { type: 'SET_GRID_DATA'; payload: NpyData }
   | { type: 'SET_FREQUENCY_DATA'; payload: NpyData }
   | { type: 'SET_SLOWNESS_DATA'; payload: NpyData }
   | { type: 'SET_AXIS_DATA'; payload: { xAxis: AxisData | null; yAxis: AxisData | null } };
@@ -274,17 +262,40 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
     case 'SET_COLOR_MAP':
       return { ...state, selectedColorMap: action.payload };
     case 'SET_IMAGE_TRANSFORM':
+      if (!state.textureData) return { ... state}
+      let transformedData;
+      switch (action.payload) {
+        case 'flipHorizontal':
+          transformedData = flipHorizontal(state.textureData.transformed);
+          break;
+        case 'flipVertical':
+          transformedData = flipVertical(state.textureData.transformed);
+          break;
+        case 'rotationClockwise':
+          transformedData = rotateClockwise(state.textureData.transformed);
+          break;
+        case 'rotationCounterClockwise':
+          transformedData = rotateCounterClockwise(state.textureData.transformed);
+          break;
+      }
+      
       return {
         ...state,
-        imageTransform: { ...state.imageTransform, ...action.payload },
+        textureData:{
+            transformed:transformedData.matrix,
+            dimensions: {
+              width: transformedData.shape[1],
+              height: transformedData.shape[0]
+            }
+        }
       };
     case 'SET_AXIS_LIMITS':
       return {
         ...state,
         axisLimits: { ...state.axisLimits, ...action.payload },
       };
-    case 'SET_ORIGINAL_DATA':
-      return { ...state, originalData: action.payload };
+    case 'SET_GRID_DATA':
+      return { ...state, gridData: action.payload };
     case 'SET_FREQUENCY_DATA':
       return { ...state, frequencyData: action.payload };
     case 'SET_SLOWNESS_DATA':
@@ -316,10 +327,10 @@ interface NpyViewerContextType {
   setColorMap: (colorMap: ColorMapKey) => void;
   setImageTransform: (transform: Partial<ImageTransform>) => void;
   setAxisLimits: (limits: Partial<AxisLimits>) => void;
-  setOriginalData: (data: NpyData) => void;
+  setGridData: (data: NpyData) => void;
   setAxisData: (xAxis: AxisData | null, yAxis: AxisData | null) => void;
   loadNpyFile: (file: File, dataType:'frequency'|'slowness'|'data') => Promise<void>;
-  applyTransformations:() => Promise<void>;
+  drawOrigin:() => void;
 }
 
 // Create context
@@ -382,8 +393,8 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_AXIS_LIMITS', payload: limits });
   }, []);
 
-  const setOriginalData = useCallback((data: NpyData) => {
-    dispatch({ type: 'SET_ORIGINAL_DATA', payload: data });
+  const setGridData = useCallback((data: NpyData) => {
+    dispatch({ type: 'SET_GRID_DATA', payload: data });
   }, []);
 
   const setFrequencyData = useCallback((data: NpyData) => {
@@ -437,14 +448,10 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
           });
           break;
         case 'data':
-          const { matrix: jsMatrix } = npArrayToJS(data, npyData.shape);
-          let { matrix: rotated } = rotateClockwise(jsMatrix);
-          let { matrix: transformed, shape: transformedShape } = flipVertical(rotated);
-          console.log(transformed, transformedShape)
-          // Use the converted data
-          setOriginalData({
-            data: transformed,
-            shape: transformedShape,
+          const { matrix: jsMatrix, shape } = npArrayToJS(data, npyData.shape);
+          setGridData({
+            data: jsMatrix,
+            shape: shape,
             min,
             max
           });
@@ -457,62 +464,22 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load NPY file");
     }
-  }, [setError, setLoading, setPoints, setOriginalData, setSlownessData, setFrequencyData]);
+  }, [setError, setLoading, setPoints, setGridData, setSlownessData, setFrequencyData]);
 
-  const processImageData = useCallback((originalData: NpyData, imageTransform: ImageTransform) => {
-    const { data } = originalData;
-    let transformed = data;
-    // Apply transformations in sequence
-    if (imageTransform.rotationCounterClockwise) {
-      transformed= rotateCounterClockwise(data).matrix;
-    }
-    if (imageTransform.rotationClockwise) {
-      transformed= rotateClockwise(data).matrix;
-    }
-    if (imageTransform.flipHorizontal) {
-      transformed= flipHorizontal(data).matrix;
-    }
-    if (imageTransform.flipVertical) {
-      transformed= flipVertical(data).matrix;
-    }
+  const drawOrigin = useCallback(() => {
+    if (!state.gridData) return
 
-    const finalShape = [transformed.length, transformed[0].length];
+    let { matrix: rotated } = rotateClockwise(state.gridData.data);
+    let { matrix: transformed, shape} = flipVertical(rotated);
 
-    return {
-      transformed:transformed.flat(),
+    setTextureData({
+      transformed,
       dimensions: {
-        width: finalShape[1],
-        height: finalShape[0]
+        width:shape[1],
+        height:shape[0]
       }
-    };
-  }, []);
-
-  const applyTransformations = useCallback(async () => {
-    if (!state.originalData) return;
-    
-    setLoading(true);
-    try {
-      // Process the image data in the next frame to allow loading state to render
-      await new Promise(resolve => requestAnimationFrame(resolve));
-      
-      console.log("Processing Image...");
-      
-      // Process the image data
-      const { transformed, dimensions } = processImageData(state.originalData, state.imageTransform);
-      
-      setTextureData({transformed, dimensions});
-      
-    } catch (error) {
-      console.error("Error processing image:", error);
-      setError(error instanceof Error ? error.message : "Failed to process image");
-    } 
-  }, [state.imageTransform, state.originalData, setTextureData, setError, setLoading]);
-
-  useEffect(() => {
-    if (state.originalData && state.frequencyData && state.slownessData) {
-      applyTransformations();
-    }
-  }, [state.imageTransform, state.selectedColorMap, applyTransformations]);
+    })
+  }, [state.gridData])
 
   useEffect(() => {
     console.log("Frequency Data:", state.frequencyData);
@@ -523,6 +490,9 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     setAxisLimits({xmax: state.slownessData?.max, xmin: state.slownessData?.min})
   }, [state.slownessData]);
 
+  useEffect(() => {
+    
+  }, [state.gridData])
   return (
     <NpyViewerContext.Provider
       value={{
@@ -540,10 +510,10 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         setColorMap,
         setImageTransform,
         setAxisLimits,
-        setOriginalData,
+        setGridData,
         setAxisData,
         loadNpyFile,
-        applyTransformations,
+        drawOrigin
       }}
     >
       {children}
