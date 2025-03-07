@@ -1,33 +1,6 @@
 import { createContext, useContext, useReducer, useCallback, ReactNode, useEffect } from 'react';
 import NpyJs from 'npyjs';
-
-// Types
-interface Point {
-  x: number;
-  y: number;
-  
- 
-  value: number;
-  color: number;
-}
-
-interface RGB {
-  r: number;
-  g: number;
-  b: number;
-}
-
-interface AxisData {
-  data: Float32Array | Float64Array;
-  shape: number[];
-}
-
-interface NpyData {
-  data: number[][];
-  shape: number[];
-  min: number;
-  max: number;
-}
+import { NpyData, RGB, Point, AxisData, Matrix } from '../types';
 
 const npArrayToJS = (flatArray: number[] , shape: number[]) => {
   const [rows, cols] = shape;
@@ -40,7 +13,7 @@ const npArrayToJS = (flatArray: number[] , shape: number[]) => {
   return { matrix: result, shape };
 };
 
-const rotateClockwise = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+const rotateClockwise = (matrix: number[][]): Matrix => {
   const rows = matrix.length;
   const cols = matrix[0].length;
 
@@ -55,7 +28,7 @@ const rotateClockwise = (matrix: number[][]): { matrix: number[][], shape: [numb
   return { matrix: rotated, shape: [cols, rows] };
 };
 
-const rotateCounterClockwise = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+const rotateCounterClockwise = (matrix: number[][]): Matrix => {
   const rows = matrix.length;
   const cols = matrix[0].length;
 
@@ -71,12 +44,12 @@ const rotateCounterClockwise = (matrix: number[][]): { matrix: number[][], shape
 };
 
 
-const flipVertical = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+const flipVertical = (matrix: number[][]): Matrix => {
   let flipped = [...matrix].reverse();
   return { matrix: flipped, shape: [matrix.length, matrix[0].length] };
 };
 
-const flipHorizontal = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+const flipHorizontal = (matrix: number[][]): Matrix => {
   let flipped = matrix.map(row => [...row].reverse());
   return { matrix: flipped, shape: [matrix.length, matrix[0].length] };
 };
@@ -139,7 +112,13 @@ export const COLOR_MAPS = {
 
 export type ColorMapKey = keyof typeof COLOR_MAPS;
 
-type ImageTransform = 'flipHorizontal'|'flipVertical'|'rotationCounterClockwise'|'rotationClockwise';
+export interface ImageTransform {
+  type:'flipHorizontal'|'flipVertical'|'rotationCounterClockwise'|'rotationClockwise';
+  rectSize:{
+    width:number,
+    height:number
+  }
+}
 
 interface AxisLimits {
   xmin: number;
@@ -263,25 +242,33 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
     case 'SET_COLOR_MAP':
       return { ...state, selectedColorMap: action.payload };
     case 'SET_IMAGE_TRANSFORM':
-      if (!state.textureData) return { ... state}
-      let transformedData;
-      let newCoordinate;
-      switch (action.payload) {
+      if (!state.textureData ||!action.payload.rectSize||!action.payload.type) return { ... state}
+      let transformedData:Matrix = {matrix:[], shape:[0,0]};
+      let newCoordinate:Matrix = {matrix:[], shape:[0,0]};
+      let points:Point[] = [];
+      const {width, height} = action.payload.rectSize;
+      const rate = width/height;
+
+      switch (action.payload.type) {
         case 'flipHorizontal':
           transformedData = flipHorizontal(state.textureData.transformed);
           newCoordinate = flipHorizontal(state.coordinateMatrix);
+          points = state.points.map((point:Point) => ({...point, x:width - point.x}))
           break;
         case 'flipVertical':
           transformedData = flipVertical(state.textureData.transformed);
           newCoordinate = flipVertical(state.coordinateMatrix);
+          points = state.points.map((point:Point) => ({...point, y:height - point.y}))
           break;
         case 'rotationClockwise':
           transformedData = rotateClockwise(state.textureData.transformed);
           newCoordinate = rotateClockwise(state.coordinateMatrix);
+          points = state.points.map((point:Point) => ({...point, x:(height - point.y)*rate, y:point.x/rate}))
           break;
         case 'rotationCounterClockwise':
           transformedData = rotateCounterClockwise(state.textureData.transformed);
           newCoordinate = rotateCounterClockwise(state.coordinateMatrix);
+          points = state.points.map((point:Point) => ({...point, x:point.y*rate, y:(width - point.x)/rate}))
           break;
       }
       
@@ -294,7 +281,8 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
               height: transformedData.shape[0]
             }        
         },
-        coordinateMatrix:newCoordinate.matrix
+        coordinateMatrix:newCoordinate.matrix,
+        points
       };
     case 'SET_AXIS_LIMITS':
       return {
@@ -354,6 +342,11 @@ interface NpyViewerContextType {
   setAxisData: (xAxis: AxisData | null, yAxis: AxisData | null) => void;
   loadNpyFile: (file: File, dataType:'frequency'|'slowness'|'data') => Promise<void>;
   drawOrigin:() => void;
+  top: () => number;
+  bottom: () => number;
+  left: () => number;
+  right: () => number;
+  isAxisSwapped: () => boolean;
 }
 
 // Create context
@@ -504,6 +497,12 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     })
   }, [state.gridData])
 
+  const top = () => state.coordinateMatrix[0][1];
+  const bottom = () => state.coordinateMatrix[2][1];
+  const left = () => state.coordinateMatrix[1][0];
+  const right = () => state.coordinateMatrix[1][2];
+  const isAxisSwapped = () => !state.coordinateMatrix[0][0];
+
   useEffect(() => {
     console.log("Frequency Data:", state.frequencyData);
     setAxisLimits({ymax: state.frequencyData?.max, ymin: state.frequencyData?.min})
@@ -536,7 +535,12 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         setGridData,
         setAxisData,
         loadNpyFile,
-        drawOrigin
+        drawOrigin,
+        top,
+        bottom,
+        left,
+        right,
+        isAxisSwapped
       }}
     >
       {children}
