@@ -206,6 +206,7 @@ const initialState = {
   slownessData: null as NpyData | null,
   xAxis: null as AxisData | null,
   yAxis: null as AxisData | null,
+  coordinateMatrix:[[1,0,0],[0,0,0],[0,0,1]]
 };
 
 // Action types
@@ -264,18 +265,23 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
     case 'SET_IMAGE_TRANSFORM':
       if (!state.textureData) return { ... state}
       let transformedData;
+      let newCoordinate;
       switch (action.payload) {
         case 'flipHorizontal':
           transformedData = flipHorizontal(state.textureData.transformed);
+          newCoordinate = flipHorizontal(state.coordinateMatrix);
           break;
         case 'flipVertical':
           transformedData = flipVertical(state.textureData.transformed);
+          newCoordinate = flipVertical(state.coordinateMatrix);
           break;
         case 'rotationClockwise':
           transformedData = rotateClockwise(state.textureData.transformed);
+          newCoordinate = rotateClockwise(state.coordinateMatrix);
           break;
         case 'rotationCounterClockwise':
           transformedData = rotateCounterClockwise(state.textureData.transformed);
+          newCoordinate = rotateCounterClockwise(state.coordinateMatrix);
           break;
       }
       
@@ -286,8 +292,9 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
             dimensions: {
               width: transformedData.shape[1],
               height: transformedData.shape[0]
-            }
-        }
+            }        
+        },
+        coordinateMatrix:newCoordinate.matrix
       };
     case 'SET_AXIS_LIMITS':
       return {
@@ -297,9 +304,25 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
     case 'SET_GRID_DATA':
       return { ...state, gridData: action.payload };
     case 'SET_FREQUENCY_DATA':
-      return { ...state, frequencyData: action.payload };
+      let newMatrixF = state.coordinateMatrix;
+      newMatrixF[0][1] = action.payload.max;
+      newMatrixF[2][1] = action.payload.min;
+
+      return { 
+        ...state, 
+        frequencyData: action.payload,
+        coordinateMatrix:newMatrixF
+       };
     case 'SET_SLOWNESS_DATA':
-      return { ...state, slownessData: action.payload };
+      let newMatrixS = state.coordinateMatrix;
+      newMatrixS[1][0] = action.payload.max;
+      newMatrixS[1][2] = action.payload.min;
+
+      return { 
+        ...state, 
+        slownessData: action.payload,
+        coordinateMatrix:newMatrixS
+      };
     case 'SET_AXIS_DATA':
       return {
         ...state,
