@@ -33,7 +33,7 @@ export function NpyViewer() {
     bottom,
     left,
     right,
-    isAxisSwapped
+    isAxisSwapped,
   } = useNpyViewer();
 
   const {
@@ -49,7 +49,7 @@ export function NpyViewer() {
     frequencyData,
     slownessData,
     error,
-    coordinateMatrix
+    coordinateMatrix,
   } = state;
 
   const lastFileRef = useRef<File | null>(null);
@@ -76,14 +76,11 @@ export function NpyViewer() {
         );
       },
       fromScreenX: (x: number) => {
-        const adjustedX = Math.max(0, x);
-        // if (adjustedX <= 0) return axisLimits.xmin;
-        if (adjustedX <= 0) return axisLimits.xmin;
-
         const value =
-          axisLimits.xmin +
-          (adjustedX / plotDimensions.width) *
-            (axisLimits.xmax - axisLimits.xmin);
+          left() > right()
+            ? right() + ((plotDimensions.width - x) / plotDimensions.width) * (left() - right())
+            : left() +
+              ( x / plotDimensions.width) * (right() - left());
 
         return Math.round(value * 10000) / 10000;
       },
@@ -94,13 +91,11 @@ export function NpyViewer() {
         );
       },
       fromScreenY: (y: number) => {
-        const adjustedY = Math.max(0, y);
-        if (adjustedY <= 0) return axisLimits.ymin;
-
         const value =
-          axisLimits.ymin +
-          (adjustedY / plotDimensions.height) *
-            (axisLimits.ymax - axisLimits.ymin);
+          top() > bottom()
+            ? bottom() + (y / plotDimensions.height) * (top() - bottom())
+            : top() +
+              ((plotDimensions.height - y) / plotDimensions.height) * (bottom() - top());
 
         return Math.round(value * 10000) / 10000;
       },
@@ -329,8 +324,8 @@ export function NpyViewer() {
   }, [texture]);
 
   useEffect(() => {
-    console.log(coordinateMatrix)
-  }, [coordinateMatrix])
+    console.log("coordinates:",coordinateMatrix);
+  }, [coordinateMatrix]);
   return (
     <>
       {isLoading && (
@@ -375,8 +370,8 @@ export function NpyViewer() {
               {texture ? (
                 <BasePlot
                   ref={plotRef}
-                  xLabel={isAxisSwapped()?"Slowness":"Frequency"}
-                  yLabel={isAxisSwapped()?"Frequency":"Slowness"}
+                  xLabel={!isAxisSwapped() ? "Slowness" : "Frequency"}
+                  yLabel={!isAxisSwapped() ? "Frequency" : "Slowness"}
                   xMax={right()}
                   xMin={left()}
                   yMin={bottom()}
@@ -545,8 +540,8 @@ export function NpyViewer() {
                       onClick={() => {
                         setLoading(true);
                         setImageTransform({
-                          type:"rotationCounterClockwise",
-                          rectSize:plotDimensions
+                          type: "rotationCounterClockwise",
+                          rectSize: plotDimensions,
                         });
                       }}
                       className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
@@ -558,8 +553,8 @@ export function NpyViewer() {
                       onClick={() => {
                         setLoading(true);
                         setImageTransform({
-                          type:"rotationClockwise",
-                          rectSize:plotDimensions
+                          type: "rotationClockwise",
+                          rectSize: plotDimensions,
                         });
                       }}
                       className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
@@ -571,8 +566,8 @@ export function NpyViewer() {
                       onClick={() => {
                         setLoading(true);
                         setImageTransform({
-                          type:"flipHorizontal",
-                          rectSize:plotDimensions
+                          type: "flipHorizontal",
+                          rectSize: plotDimensions,
                         });
                       }}
                       className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
@@ -584,8 +579,8 @@ export function NpyViewer() {
                       onClick={() => {
                         setLoading(true);
                         setImageTransform({
-                          type:"flipVertical",
-                          rectSize:plotDimensions
+                          type: "flipVertical",
+                          rectSize: plotDimensions,
                         });
                       }}
                       className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"

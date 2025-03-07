@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useCallback, ReactNode, useEffect } from 'react';
 import NpyJs from 'npyjs';
-import { NpyData, RGB, Point, AxisData, Matrix } from '../types';
+import { NpyData, RGB, Point, AxisData, PickData, Matrix } from '../types';
 
 const npArrayToJS = (flatArray: number[] , shape: number[]) => {
   const [rows, cols] = shape;
@@ -185,7 +185,8 @@ const initialState = {
   slownessData: null as NpyData | null,
   xAxis: null as AxisData | null,
   yAxis: null as AxisData | null,
-  coordinateMatrix:[[1,0,0],[0,0,0],[0,0,1]]
+  coordinateMatrix:[[1,0,0],[0,0,0],[0,0,1]],
+  pickData:[] as PickData[]
 };
 
 // Action types
@@ -206,8 +207,11 @@ type Action =
   | { type: 'SET_GRID_DATA'; payload: NpyData }
   | { type: 'SET_FREQUENCY_DATA'; payload: NpyData }
   | { type: 'SET_SLOWNESS_DATA'; payload: NpyData }
-  | { type: 'SET_AXIS_DATA'; payload: { xAxis: AxisData | null; yAxis: AxisData | null } };
-
+  | { type: 'SET_AXIS_DATA'; payload: { xAxis: AxisData | null; yAxis: AxisData | null } }
+  | { type: 'SET_PICK_DATA'; payload: PickData[] }
+  | { type: 'ADD_PICK_DATA'; payload:  PickData}
+  | { type: 'UPDATE_PICK_DATA'; payload: { index: number; data:PickData  } }
+  | { type: 'REMOVE_PICK_DATA'; payload: number };
 // Reducer
 function reducer(state: typeof initialState, action: Action): typeof initialState {
   switch (action.type) {
@@ -232,6 +236,22 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
       return {
         ...state,
         points: state.points.filter((_, index) => index !== action.payload),
+      };
+    case 'SET_PICK_DATA':
+      return { ...state, pickData: action.payload };
+    case 'ADD_PICK_DATA':
+      return { ...state, pickData: [...state.pickData, action.payload] };
+    case 'UPDATE_PICK_DATA':
+      return {
+        ...state,
+        pickData: state.pickData.map((data, index) =>
+          index === action.payload.index ? action.payload.data : data
+        ),
+      };
+    case 'REMOVE_PICK_DATA':
+      return {
+        ...state,
+        pickData: state.pickData.filter((_, index) => index !== action.payload),
       };
     case 'SET_HOVERED_POINT':
       return { ...state, hoveredPoint: action.payload };
