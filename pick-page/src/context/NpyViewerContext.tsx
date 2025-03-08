@@ -211,7 +211,8 @@ type Action =
   | { type: 'SET_PICK_DATA'; payload: PickData[] }
   | { type: 'ADD_PICK_DATA'; payload:  PickData}
   | { type: 'UPDATE_PICK_DATA'; payload: { index: number; data:PickData  } }
-  | { type: 'REMOVE_PICK_DATA'; payload: number };
+  | { type: 'REMOVE_PICK_DATA'; payload: number }
+  | { type: 'SET_COORDINATE_MATRIX'; payload: []}
 // Reducer
 function reducer(state: typeof initialState, action: Action): typeof initialState {
   switch (action.type) {
@@ -271,23 +272,23 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
 
       switch (action.payload.type) {
         case 'flipHorizontal':
-          transformedData = flipHorizontal(state.textureData.transformed);
-          newCoordinate = flipHorizontal(state.coordinateMatrix);
+          transformedData = flipHorizontal([...state.textureData.transformed]);
+          newCoordinate = flipHorizontal([...state.coordinateMatrix]);
           points = state.points.map((point:Point) => ({...point, x:width - point.x}))
           break;
         case 'flipVertical':
-          transformedData = flipVertical(state.textureData.transformed);
-          newCoordinate = flipVertical(state.coordinateMatrix);
+          transformedData = flipVertical([...state.textureData.transformed]);
+          newCoordinate = flipVertical([...state.coordinateMatrix]);
           points = state.points.map((point:Point) => ({...point, y:height - point.y}))
           break;
         case 'rotationClockwise':
-          transformedData = rotateClockwise(state.textureData.transformed);
-          newCoordinate = rotateClockwise(state.coordinateMatrix);
+          transformedData = rotateClockwise([...state.textureData.transformed]);
+          newCoordinate = rotateClockwise([...state.coordinateMatrix]);
           points = state.points.map((point:Point) => ({...point, x:(height - point.y)*rate, y:point.x/rate}))
           break;
         case 'rotationCounterClockwise':
-          transformedData = rotateCounterClockwise(state.textureData.transformed);
-          newCoordinate = rotateCounterClockwise(state.coordinateMatrix);
+          transformedData = rotateCounterClockwise([...state.textureData.transformed]);
+          newCoordinate = rotateCounterClockwise([...state.coordinateMatrix]);
           points = state.points.map((point:Point) => ({...point, x:point.y*rate, y:(width - point.x)/rate}))
           break;
       }
@@ -312,7 +313,8 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
     case 'SET_GRID_DATA':
       return { ...state, gridData: action.payload };
     case 'SET_FREQUENCY_DATA':
-      let newMatrixF = state.coordinateMatrix;
+      console.log("Setting Frequency data...")
+      let newMatrixF = [...state.coordinateMatrix];
       newMatrixF[0][1] = action.payload.max;
       newMatrixF[2][1] = action.payload.min;
 
@@ -322,7 +324,8 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
         coordinateMatrix:newMatrixF
        };
     case 'SET_SLOWNESS_DATA':
-      let newMatrixS = state.coordinateMatrix;
+      console.log("Setting Slowness data...")
+      let newMatrixS = [...state.coordinateMatrix];
       newMatrixS[1][0] = action.payload.max;
       newMatrixS[1][2] = action.payload.min;
 
@@ -337,6 +340,11 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
         xAxis: action.payload.xAxis,
         yAxis: action.payload.yAxis,
       };
+    case 'SET_COORDINATE_MATRIX':
+      return {
+        ...state,
+        coordinateMatrix:action.payload
+      }
     default:
       return state;
   }
@@ -367,6 +375,7 @@ interface NpyViewerContextType {
   left: () => number;
   right: () => number;
   isAxisSwapped: () => boolean;
+  setCoordinateMatrix: (data:[]) => void;
 }
 
 // Create context
@@ -445,6 +454,10 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_AXIS_DATA', payload: { xAxis, yAxis } });
   }, []);
 
+  const setCoordinateMatrix = useCallback((data:[]) => {
+    dispatch({ type: 'SET_COORDINATE_MATRIX', payload: data})
+  }, [])
+
   const loadNpyFile = useCallback(async (file: File, dataType:'frequency'|'slowness'|'data') => {
     try {
       setError(null);
@@ -500,7 +513,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load NPY file");
     }
-  }, [setError, setLoading, setPoints, setGridData, setSlownessData, setFrequencyData]);
+  }, [setError, setLoading, setPoints, setGridData, setSlownessData, setFrequencyData, setCoordinateMatrix]);
 
   const drawOrigin = useCallback(() => {
     if (!state.gridData) return
@@ -522,6 +535,40 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
   const left = () => state.coordinateMatrix[1][0];
   const right = () => state.coordinateMatrix[1][2];
   const isAxisSwapped = () => !state.coordinateMatrix[0][0];
+
+  const coordinateHelpers = {
+    toScreenX: (value: number) => {
+      return (
+        ((value - state.axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
+        state.plotDimensions.width
+      );
+    },
+    fromScreenX: (x: number) => {
+      console.log("Coordinates:", coordinateMatrix, left(), right())
+      const value =
+        left() > right()
+          ? right() + ((state.plotDimensions.width - x) / state.plotDimensions.width) * (left() - right())
+          : left() +
+            ( (state.plotDimensions.width - x) / state.plotDimensions.width) * (right() - left());
+
+      return Math.round(value * 10000) / 10000;
+    },
+    toScreenY: (value: number) => {
+      return (
+        ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
+        state.plotDimensions.height
+      );
+    },
+    fromScreenY: (y: number) => {
+      const value =
+        top() > bottom()
+          ? bottom() + ((state.plotDimensions.height - y)  / state.plotDimensions.height) * (top() - bottom())
+          : top() +
+            ((state.plotDimensions.height - y)/ state.plotDimensions.height) * (bottom() - top());
+
+      return Math.round(value * 10000) / 10000;
+    },
+  };
 
   useEffect(() => {
     console.log("Frequency Data:", state.frequencyData);
@@ -560,7 +607,8 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         bottom,
         left,
         right,
-        isAxisSwapped
+        isAxisSwapped,
+        setCoordinateMatrix
       }}
     >
       {children}

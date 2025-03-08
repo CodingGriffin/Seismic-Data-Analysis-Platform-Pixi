@@ -67,42 +67,6 @@ export function NpyViewer() {
     []
   );
 
-  const coordinateHelpers = useMemo(
-    () => ({
-      toScreenX: (value: number) => {
-        return (
-          ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
-          plotDimensions.width
-        );
-      },
-      fromScreenX: (x: number) => {
-        const value =
-          left() > right()
-            ? right() + ((plotDimensions.width - x) / plotDimensions.width) * (left() - right())
-            : left() +
-              ( x / plotDimensions.width) * (right() - left());
-
-        return Math.round(value * 10000) / 10000;
-      },
-      toScreenY: (value: number) => {
-        return (
-          ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
-          plotDimensions.height
-        );
-      },
-      fromScreenY: (y: number) => {
-        const value =
-          top() > bottom()
-            ? bottom() + (y / plotDimensions.height) * (top() - bottom())
-            : top() +
-              ((plotDimensions.height - y) / plotDimensions.height) * (bottom() - top());
-
-        return Math.round(value * 10000) / 10000;
-      },
-    }),
-    [axisLimits, plotDimensions]
-  );
-
   const createTexture = (
     transformedData: number[],
     dimensions: { width: number; height: number },
@@ -325,7 +289,46 @@ export function NpyViewer() {
 
   useEffect(() => {
     console.log("coordinates:",coordinateMatrix);
+    console.log(left(), right(), top(), bottom())
   }, [coordinateMatrix]);
+
+  const coordinateHelpers = useMemo(
+    () => ({
+      toScreenX: (value: number) => {
+        return (
+          ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
+          plotDimensions.width
+        );
+      },
+      fromScreenX: (x: number) => {
+        console.log("Coordinates Hover:", coordinateMatrix, left(), right())
+        const value =
+          left() > right()
+            ? right() + ((plotDimensions.width - x) / plotDimensions.width) * (left() - right())
+            : left() +
+              ( (x) / plotDimensions.width) * (right() - left());
+
+        return Math.round(value * 10000) / 10000;
+      },
+      toScreenY: (value: number) => {
+        return (
+          ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
+          plotDimensions.height
+        );
+      },
+      fromScreenY: (y: number) => {
+        const value =
+          top() > bottom()
+            ? bottom() + ((plotDimensions.height - y)  / plotDimensions.height) * (top() - bottom())
+            : top() +
+              ((y)/ plotDimensions.height) * (bottom() - top());
+
+        return Math.round(value * 10000) / 10000;
+      },
+    }),
+    [axisLimits, plotDimensions, coordinateMatrix]
+  );
+
   return (
     <>
       {isLoading && (
