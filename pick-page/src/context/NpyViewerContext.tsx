@@ -157,9 +157,6 @@ export const getColorFromMap = (normalizedValue: number, colorMap: string[]): RG
   const segments = rgbColors.length - 1;
   const segment = Math.min(Math.floor(normalizedValue * segments), segments - 1);
   const segmentRatio = (normalizedValue * segments) - segment;
-  // console.log("segments:", segments)
-  // console.log("segment:", segment)
-  // console.log("segmentRatio:", segmentRatio)
 
   return interpolateRGB(rgbColors[segment], rgbColors[segment + 1], segmentRatio);
 };
@@ -319,7 +316,6 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
     case 'SET_GRID_DATA':
       return { ...state, gridData: action.payload };
     case 'SET_FREQUENCY_DATA':
-      console.log("Setting Frequency data...")
       let newMatrixF = [...state.coordinateMatrix];
       newMatrixF[0][2] = action.payload.max;
       newMatrixF[4][2] = action.payload.min;
@@ -330,7 +326,6 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
         coordinateMatrix:newMatrixF
        };
     case 'SET_SLOWNESS_DATA':
-      console.log("Setting Slowness data...")
       let newMatrixS = [...state.coordinateMatrix];
       newMatrixS[2][0] = action.payload.max;
       newMatrixS[2][4] = action.payload.min;
@@ -374,7 +369,7 @@ interface NpyViewerContextType {
   setAxisLimits: (limits: Partial<AxisLimits>) => void;
   setGridData: (data: NpyData) => void;
   setAxisData: (xAxis: AxisData | null, yAxis: AxisData | null) => void;
-  loadNpyFile: (file: File, dataType:'frequency'|'slowness'|'data') => Promise<void>;
+  loadNpyFile: (file: File, dataType:'freq'|'slow'|'grid') => Promise<void>;
   drawOrigin:() => void;
   top: () => number;
   bottom: () => number;
@@ -464,7 +459,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_COORDINATE_MATRIX', payload: data})
   }, [])
 
-  const loadNpyFile = useCallback(async (file: File, dataType:'frequency'|'slowness'|'data') => {
+  const loadNpyFile = useCallback(async (file: File, dataType:'freq'|'slow'|'grid') => {
     try {
       setError(null);
       
@@ -486,7 +481,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
       }
 
       switch (dataType) {
-        case 'frequency':
+        case 'freq':
           setFrequencyData({
             data,
             shape: npyData.shape,
@@ -494,7 +489,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
             max
           });
           break;
-        case 'slowness':
+        case 'slow':
           setSlownessData({
             data,
             shape: npyData.shape,
@@ -502,7 +497,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
             max
           });
           break;
-        case 'data':
+        case 'grid':
           const { matrix: jsMatrix, shape } = npArrayToJS(data, npyData.shape);
           setGridData({
             data: jsMatrix,
@@ -543,7 +538,6 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
   const isAxisSwapped = () => !state.coordinateMatrix[1][2];
 
   useEffect(() => {
-    console.log("Frequency Data:", state.frequencyData);
     setAxisLimits({ymax: state.frequencyData?.max, ymin: state.frequencyData?.min})
   }, [state.frequencyData]);
 

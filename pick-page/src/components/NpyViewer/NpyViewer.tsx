@@ -194,13 +194,12 @@ export function NpyViewer() {
   const handleFileSelect = useCallback(
     async (
       event: React.ChangeEvent<HTMLInputElement>,
-      dataType: "frequency" | "slowness" | "data"
+      dataType: "freq" | "slow" | "grid"
     ) => {
       const file = event.target.files?.[0];
       if (!file) return;
       if (
-        (dataType === "data" && file.name.startsWith("grid")) ||
-        dataType.startsWith(file.name.split("_")[0])
+        file.name.includes(dataType)
       ) {
         lastFileRef.current = file;
         await loadNpyFile(file, dataType);
@@ -287,11 +286,6 @@ export function NpyViewer() {
     setLoading(false);
   }, [texture]);
 
-  useEffect(() => {
-    console.log("coordinates:",coordinateMatrix);
-    console.log(left(), right(), top(), bottom())
-  }, [coordinateMatrix]);
-
   const coordinateHelpers = useMemo(
     () => ({
       toScreenX: (value: number) => {
@@ -301,7 +295,6 @@ export function NpyViewer() {
         );
       },
       fromScreenX: (x: number) => {
-        console.log("Coordinates Hover:", coordinateMatrix, left(), right())
         const value =
           left() > right()
             ? right() + ((plotDimensions.width - x) / plotDimensions.width) * (left() - right())
@@ -346,19 +339,19 @@ export function NpyViewer() {
             <div>
               <FileInput
                 label="Main Data (NPY)"
-                onChange={(e) => handleFileSelect(e, "data")}
+                onChange={(e) => handleFileSelect(e, "grid")}
               />
             </div>
             <div>
               <FileInput
                 label="X-Axis Data (NPY)"
-                onChange={(e) => handleFileSelect(e, "slowness")}
+                onChange={(e) => handleFileSelect(e, "slow")}
               />
             </div>
             <div>
               <FileInput
                 label="Y-Axis Data (NPY)"
-                onChange={(e) => handleFileSelect(e, "frequency")}
+                onChange={(e) => handleFileSelect(e, "freq")}
               />
             </div>
           </div>
