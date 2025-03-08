@@ -185,7 +185,13 @@ const initialState = {
   slownessData: null as NpyData | null,
   xAxis: null as AxisData | null,
   yAxis: null as AxisData | null,
-  coordinateMatrix:[[1,0,0],[0,0,0],[0,0,1]],
+  coordinateMatrix:[
+    [0,0,0,0,0],//top
+    [0,0,1,0,0],//y-axis is freq
+    [0,0,0,0,0],//left, right
+    [0,0,1,0,0],
+    [0,0,0,0,0]//bottom
+  ],
   pickData:[] as PickData[]
 };
 
@@ -315,8 +321,8 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
     case 'SET_FREQUENCY_DATA':
       console.log("Setting Frequency data...")
       let newMatrixF = [...state.coordinateMatrix];
-      newMatrixF[0][1] = action.payload.max;
-      newMatrixF[2][1] = action.payload.min;
+      newMatrixF[0][2] = action.payload.max;
+      newMatrixF[4][2] = action.payload.min;
 
       return { 
         ...state, 
@@ -326,8 +332,8 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
     case 'SET_SLOWNESS_DATA':
       console.log("Setting Slowness data...")
       let newMatrixS = [...state.coordinateMatrix];
-      newMatrixS[1][0] = action.payload.max;
-      newMatrixS[1][2] = action.payload.min;
+      newMatrixS[2][0] = action.payload.max;
+      newMatrixS[2][4] = action.payload.min;
 
       return { 
         ...state, 
@@ -530,45 +536,11 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     })
   }, [state.gridData])
 
-  const top = () => state.coordinateMatrix[0][1];
-  const bottom = () => state.coordinateMatrix[2][1];
-  const left = () => state.coordinateMatrix[1][0];
-  const right = () => state.coordinateMatrix[1][2];
-  const isAxisSwapped = () => !state.coordinateMatrix[0][0];
-
-  const coordinateHelpers = {
-    toScreenX: (value: number) => {
-      return (
-        ((value - state.axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
-        state.plotDimensions.width
-      );
-    },
-    fromScreenX: (x: number) => {
-      console.log("Coordinates:", coordinateMatrix, left(), right())
-      const value =
-        left() > right()
-          ? right() + ((state.plotDimensions.width - x) / state.plotDimensions.width) * (left() - right())
-          : left() +
-            ( (state.plotDimensions.width - x) / state.plotDimensions.width) * (right() - left());
-
-      return Math.round(value * 10000) / 10000;
-    },
-    toScreenY: (value: number) => {
-      return (
-        ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
-        state.plotDimensions.height
-      );
-    },
-    fromScreenY: (y: number) => {
-      const value =
-        top() > bottom()
-          ? bottom() + ((state.plotDimensions.height - y)  / state.plotDimensions.height) * (top() - bottom())
-          : top() +
-            ((state.plotDimensions.height - y)/ state.plotDimensions.height) * (bottom() - top());
-
-      return Math.round(value * 10000) / 10000;
-    },
-  };
+  const top = () => state.coordinateMatrix[0][2];
+  const bottom = () => state.coordinateMatrix[4][2];
+  const left = () => state.coordinateMatrix[2][0];
+  const right = () => state.coordinateMatrix[2][4];
+  const isAxisSwapped = () => !state.coordinateMatrix[1][2];
 
   useEffect(() => {
     console.log("Frequency Data:", state.frequencyData);
