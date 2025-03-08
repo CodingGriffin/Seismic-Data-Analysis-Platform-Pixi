@@ -1,33 +1,6 @@
 import { createContext, useContext, useReducer, useCallback, ReactNode, useEffect } from 'react';
 import NpyJs from 'npyjs';
-
-// Types
-interface Point {
-  x: number;
-  y: number;
-  
- 
-  value: number;
-  color: number;
-}
-
-interface RGB {
-  r: number;
-  g: number;
-  b: number;
-}
-
-interface AxisData {
-  data: Float32Array | Float64Array;
-  shape: number[];
-}
-
-interface NpyData {
-  data: number[][];
-  shape: number[];
-  min: number;
-  max: number;
-}
+import { NpyData, RGB, Point, AxisData, PickData, Matrix } from '../types';
 
 const npArrayToJS = (flatArray: number[] , shape: number[]) => {
   const [rows, cols] = shape;
@@ -40,7 +13,7 @@ const npArrayToJS = (flatArray: number[] , shape: number[]) => {
   return { matrix: result, shape };
 };
 
-const rotateClockwise = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+const rotateClockwise = (matrix: number[][]): Matrix => {
   const rows = matrix.length;
   const cols = matrix[0].length;
 
@@ -55,7 +28,7 @@ const rotateClockwise = (matrix: number[][]): { matrix: number[][], shape: [numb
   return { matrix: rotated, shape: [cols, rows] };
 };
 
-const rotateCounterClockwise = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+const rotateCounterClockwise = (matrix: number[][]): Matrix => {
   const rows = matrix.length;
   const cols = matrix[0].length;
 
@@ -71,12 +44,12 @@ const rotateCounterClockwise = (matrix: number[][]): { matrix: number[][], shape
 };
 
 
-const flipVertical = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+const flipVertical = (matrix: number[][]): Matrix => {
   let flipped = [...matrix].reverse();
   return { matrix: flipped, shape: [matrix.length, matrix[0].length] };
 };
 
-const flipHorizontal = (matrix: number[][]): { matrix: number[][], shape: [number, number] } => {
+const flipHorizontal = (matrix: number[][]): Matrix => {
   let flipped = matrix.map(row => [...row].reverse());
   return { matrix: flipped, shape: [matrix.length, matrix[0].length] };
 };
@@ -139,7 +112,13 @@ export const COLOR_MAPS = {
 
 export type ColorMapKey = keyof typeof COLOR_MAPS;
 
-type ImageTransform = 'flipHorizontal'|'flipVertical'|'rotationCounterClockwise'|'rotationClockwise';
+export interface ImageTransform {
+  type:'flipHorizontal'|'flipVertical'|'rotationCounterClockwise'|'rotationClockwise';
+  rectSize:{
+    width:number,
+    height:number
+  }
+}
 
 interface AxisLimits {
   xmin: number;
@@ -206,7 +185,8 @@ const initialState = {
   slownessData: null as NpyData | null,
   xAxis: null as AxisData | null,
   yAxis: null as AxisData | null,
-  coordinateMatrix:[[1,0,0],[0,0,0],[0,0,1]]
+  coordinateMatrix:[[1,0,0],[0,0,0],[0,0,1]],
+  pickData:[] as PickData[]
 };
 
 // Action types
@@ -227,8 +207,12 @@ type Action =
   | { type: 'SET_GRID_DATA'; payload: NpyData }
   | { type: 'SET_FREQUENCY_DATA'; payload: NpyData }
   | { type: 'SET_SLOWNESS_DATA'; payload: NpyData }
-  | { type: 'SET_AXIS_DATA'; payload: { xAxis: AxisData | null; yAxis: AxisData | null } };
-
+  | { type: 'SET_AXIS_DATA'; payload: { xAxis: AxisData | null; yAxis: AxisData | null } }
+  | { type: 'SET_PICK_DATA'; payload: PickData[] }
+  | { type: 'ADD_PICK_DATA'; payload:  PickData}
+  | { type: 'UPDATE_PICK_DATA'; payload: { index: number; data:PickData  } }
+  | { type: 'REMOVE_PICK_DATA'; payload: number }
+  | { type: 'SET_COORDINATE_MATRIX'; payload: []}
 // Reducer
 function reducer(state: typeof initialState, action: Action): typeof initialState {
   switch (action.type) {
@@ -254,6 +238,22 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
         ...state,
         points: state.points.filter((_, index) => index !== action.payload),
       };
+    case 'SET_PICK_DATA':
+      return { ...state, pickData: action.payload };
+    case 'ADD_PICK_DATA':
+      return { ...state, pickData: [...state.pickData, action.payload] };
+    case 'UPDATE_PICK_DATA':
+      return {
+        ...state,
+        pickData: state.pickData.map((data, index) =>
+          index === action.payload.index ? action.payload.data : data
+        ),
+      };
+    case 'REMOVE_PICK_DATA':
+      return {
+        ...state,
+        pickData: state.pickData.filter((_, index) => index !== action.payload),
+      };
     case 'SET_HOVERED_POINT':
       return { ...state, hoveredPoint: action.payload };
     case 'SET_IS_DRAGGING':
@@ -263,25 +263,33 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
     case 'SET_COLOR_MAP':
       return { ...state, selectedColorMap: action.payload };
     case 'SET_IMAGE_TRANSFORM':
-      if (!state.textureData) return { ... state}
-      let transformedData;
-      let newCoordinate;
-      switch (action.payload) {
+      if (!state.textureData ||!action.payload.rectSize||!action.payload.type) return { ... state}
+      let transformedData:Matrix = {matrix:[], shape:[0,0]};
+      let newCoordinate:Matrix = {matrix:[], shape:[0,0]};
+      let points:Point[] = [];
+      const {width, height} = action.payload.rectSize;
+      const rate = width/height;
+
+      switch (action.payload.type) {
         case 'flipHorizontal':
-          transformedData = flipHorizontal(state.textureData.transformed);
-          newCoordinate = flipHorizontal(state.coordinateMatrix);
+          transformedData = flipHorizontal([...state.textureData.transformed]);
+          newCoordinate = flipHorizontal([...state.coordinateMatrix]);
+          points = state.points.map((point:Point) => ({...point, x:width - point.x}))
           break;
         case 'flipVertical':
-          transformedData = flipVertical(state.textureData.transformed);
-          newCoordinate = flipVertical(state.coordinateMatrix);
+          transformedData = flipVertical([...state.textureData.transformed]);
+          newCoordinate = flipVertical([...state.coordinateMatrix]);
+          points = state.points.map((point:Point) => ({...point, y:height - point.y}))
           break;
         case 'rotationClockwise':
-          transformedData = rotateClockwise(state.textureData.transformed);
-          newCoordinate = rotateClockwise(state.coordinateMatrix);
+          transformedData = rotateClockwise([...state.textureData.transformed]);
+          newCoordinate = rotateClockwise([...state.coordinateMatrix]);
+          points = state.points.map((point:Point) => ({...point, x:(height - point.y)*rate, y:point.x/rate}))
           break;
         case 'rotationCounterClockwise':
-          transformedData = rotateCounterClockwise(state.textureData.transformed);
-          newCoordinate = rotateCounterClockwise(state.coordinateMatrix);
+          transformedData = rotateCounterClockwise([...state.textureData.transformed]);
+          newCoordinate = rotateCounterClockwise([...state.coordinateMatrix]);
+          points = state.points.map((point:Point) => ({...point, x:point.y*rate, y:(width - point.x)/rate}))
           break;
       }
       
@@ -294,7 +302,8 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
               height: transformedData.shape[0]
             }        
         },
-        coordinateMatrix:newCoordinate.matrix
+        coordinateMatrix:newCoordinate.matrix,
+        points
       };
     case 'SET_AXIS_LIMITS':
       return {
@@ -304,7 +313,8 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
     case 'SET_GRID_DATA':
       return { ...state, gridData: action.payload };
     case 'SET_FREQUENCY_DATA':
-      let newMatrixF = state.coordinateMatrix;
+      console.log("Setting Frequency data...")
+      let newMatrixF = [...state.coordinateMatrix];
       newMatrixF[0][1] = action.payload.max;
       newMatrixF[2][1] = action.payload.min;
 
@@ -314,7 +324,8 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
         coordinateMatrix:newMatrixF
        };
     case 'SET_SLOWNESS_DATA':
-      let newMatrixS = state.coordinateMatrix;
+      console.log("Setting Slowness data...")
+      let newMatrixS = [...state.coordinateMatrix];
       newMatrixS[1][0] = action.payload.max;
       newMatrixS[1][2] = action.payload.min;
 
@@ -329,6 +340,11 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
         xAxis: action.payload.xAxis,
         yAxis: action.payload.yAxis,
       };
+    case 'SET_COORDINATE_MATRIX':
+      return {
+        ...state,
+        coordinateMatrix:action.payload
+      }
     default:
       return state;
   }
@@ -354,6 +370,12 @@ interface NpyViewerContextType {
   setAxisData: (xAxis: AxisData | null, yAxis: AxisData | null) => void;
   loadNpyFile: (file: File, dataType:'frequency'|'slowness'|'data') => Promise<void>;
   drawOrigin:() => void;
+  top: () => number;
+  bottom: () => number;
+  left: () => number;
+  right: () => number;
+  isAxisSwapped: () => boolean;
+  setCoordinateMatrix: (data:[]) => void;
 }
 
 // Create context
@@ -432,6 +454,10 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_AXIS_DATA', payload: { xAxis, yAxis } });
   }, []);
 
+  const setCoordinateMatrix = useCallback((data:[]) => {
+    dispatch({ type: 'SET_COORDINATE_MATRIX', payload: data})
+  }, [])
+
   const loadNpyFile = useCallback(async (file: File, dataType:'frequency'|'slowness'|'data') => {
     try {
       setError(null);
@@ -487,7 +513,7 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load NPY file");
     }
-  }, [setError, setLoading, setPoints, setGridData, setSlownessData, setFrequencyData]);
+  }, [setError, setLoading, setPoints, setGridData, setSlownessData, setFrequencyData, setCoordinateMatrix]);
 
   const drawOrigin = useCallback(() => {
     if (!state.gridData) return
@@ -503,6 +529,46 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
       }
     })
   }, [state.gridData])
+
+  const top = () => state.coordinateMatrix[0][1];
+  const bottom = () => state.coordinateMatrix[2][1];
+  const left = () => state.coordinateMatrix[1][0];
+  const right = () => state.coordinateMatrix[1][2];
+  const isAxisSwapped = () => !state.coordinateMatrix[0][0];
+
+  const coordinateHelpers = {
+    toScreenX: (value: number) => {
+      return (
+        ((value - state.axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
+        state.plotDimensions.width
+      );
+    },
+    fromScreenX: (x: number) => {
+      console.log("Coordinates:", coordinateMatrix, left(), right())
+      const value =
+        left() > right()
+          ? right() + ((state.plotDimensions.width - x) / state.plotDimensions.width) * (left() - right())
+          : left() +
+            ( (state.plotDimensions.width - x) / state.plotDimensions.width) * (right() - left());
+
+      return Math.round(value * 10000) / 10000;
+    },
+    toScreenY: (value: number) => {
+      return (
+        ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
+        state.plotDimensions.height
+      );
+    },
+    fromScreenY: (y: number) => {
+      const value =
+        top() > bottom()
+          ? bottom() + ((state.plotDimensions.height - y)  / state.plotDimensions.height) * (top() - bottom())
+          : top() +
+            ((state.plotDimensions.height - y)/ state.plotDimensions.height) * (bottom() - top());
+
+      return Math.round(value * 10000) / 10000;
+    },
+  };
 
   useEffect(() => {
     console.log("Frequency Data:", state.frequencyData);
@@ -536,7 +602,13 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         setGridData,
         setAxisData,
         loadNpyFile,
-        drawOrigin
+        drawOrigin,
+        top,
+        bottom,
+        left,
+        right,
+        isAxisSwapped,
+        setCoordinateMatrix
       }}
     >
       {children}

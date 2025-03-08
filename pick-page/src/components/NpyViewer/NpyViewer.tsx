@@ -29,6 +29,11 @@ export function NpyViewer() {
     setLoading,
     setError,
     drawOrigin,
+    top,
+    bottom,
+    left,
+    right,
+    isAxisSwapped,
   } = useNpyViewer();
 
   const {
@@ -44,7 +49,7 @@ export function NpyViewer() {
     frequencyData,
     slownessData,
     error,
-    coordinateMatrix
+    coordinateMatrix,
   } = state;
 
   const lastFileRef = useRef<File | null>(null);
@@ -60,46 +65,6 @@ export function NpyViewer() {
       setPlotDimensions(dimensions);
     },
     []
-  );
-
-  const coordinateHelpers = useMemo(
-    () => ({
-      toScreenX: (value: number) => {
-        return (
-          ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
-          plotDimensions.width
-        );
-      },
-      fromScreenX: (x: number) => {
-        const adjustedX = Math.max(0, x);
-        if (adjustedX <= 0) return axisLimits.xmin;
-
-        const value =
-          axisLimits.xmin +
-          (adjustedX / plotDimensions.width) *
-            (axisLimits.xmax - axisLimits.xmin);
-
-        return Math.round(value * 10000) / 10000;
-      },
-      toScreenY: (value: number) => {
-        return (
-          ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
-          plotDimensions.height
-        );
-      },
-      fromScreenY: (y: number) => {
-        const adjustedY = Math.max(0, y);
-        if (adjustedY <= 0) return axisLimits.ymin;
-
-        const value =
-          axisLimits.ymin +
-          (adjustedY / plotDimensions.height) *
-            (axisLimits.ymax - axisLimits.ymin);
-
-        return Math.round(value * 10000) / 10000;
-      },
-    }),
-    [axisLimits, plotDimensions]
   );
 
   const createTexture = (
@@ -145,8 +110,8 @@ export function NpyViewer() {
       // Add new point with Shift first, regardless of hover state
       if (event.shiftKey) {
         const newPoint = {
-          x: coordinateHelpers.fromScreenX(x),
-          y: coordinateHelpers.fromScreenY(y),
+          x: x,
+          y: y,
           value: 0,
           color: 0xff0000,
         };
@@ -323,8 +288,47 @@ export function NpyViewer() {
   }, [texture]);
 
   useEffect(() => {
-    console.log(coordinateMatrix)
-  }, [coordinateMatrix])
+    console.log("coordinates:",coordinateMatrix);
+    console.log(left(), right(), top(), bottom())
+  }, [coordinateMatrix]);
+
+  const coordinateHelpers = useMemo(
+    () => ({
+      toScreenX: (value: number) => {
+        return (
+          ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
+          plotDimensions.width
+        );
+      },
+      fromScreenX: (x: number) => {
+        console.log("Coordinates Hover:", coordinateMatrix, left(), right())
+        const value =
+          left() > right()
+            ? right() + ((plotDimensions.width - x) / plotDimensions.width) * (left() - right())
+            : left() +
+              ( (x) / plotDimensions.width) * (right() - left());
+
+        return Math.round(value * 10000) / 10000;
+      },
+      toScreenY: (value: number) => {
+        return (
+          ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
+          plotDimensions.height
+        );
+      },
+      fromScreenY: (y: number) => {
+        const value =
+          top() > bottom()
+            ? bottom() + ((plotDimensions.height - y)  / plotDimensions.height) * (top() - bottom())
+            : top() +
+              ((y)/ plotDimensions.height) * (bottom() - top());
+
+        return Math.round(value * 10000) / 10000;
+      },
+    }),
+    [axisLimits, plotDimensions, coordinateMatrix]
+  );
+
   return (
     <>
       {isLoading && (
@@ -369,12 +373,12 @@ export function NpyViewer() {
               {texture ? (
                 <BasePlot
                   ref={plotRef}
-                  xLabel={coordinateMatrix[0][0]?"Slowness":"Frequency"}
-                  yLabel={coordinateMatrix[0][0]?"Frequency":"Slowness"}
-                  xMax={coordinateMatrix[1][2]}
-                  xMin={coordinateMatrix[1][0]}
-                  yMin={coordinateMatrix[2][1]}
-                  yMax={coordinateMatrix[0][1]}
+                  xLabel={!isAxisSwapped() ? "Slowness" : "Frequency"}
+                  yLabel={!isAxisSwapped() ? "Frequency" : "Slowness"}
+                  xMax={right()}
+                  xMin={left()}
+                  yMin={bottom()}
+                  yMax={top()}
                   display={(value) => value.toFixed(3)}
                   tooltipContent={
                     hoveredPoint
@@ -538,7 +542,10 @@ export function NpyViewer() {
                     <button
                       onClick={() => {
                         setLoading(true);
-                        setImageTransform("rotationCounterClockwise");
+                        setImageTransform({
+                          type: "rotationCounterClockwise",
+                          rectSize: plotDimensions,
+                        });
                       }}
                       className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
                       title="Rotate Counter-clockwise"
@@ -548,7 +555,10 @@ export function NpyViewer() {
                     <button
                       onClick={() => {
                         setLoading(true);
-                        setImageTransform("rotationClockwise");
+                        setImageTransform({
+                          type: "rotationClockwise",
+                          rectSize: plotDimensions,
+                        });
                       }}
                       className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
                       title="Rotate Clockwise"
@@ -558,7 +568,10 @@ export function NpyViewer() {
                     <button
                       onClick={() => {
                         setLoading(true);
-                        setImageTransform("flipHorizontal");
+                        setImageTransform({
+                          type: "flipHorizontal",
+                          rectSize: plotDimensions,
+                        });
                       }}
                       className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
                       title="Flip Horizontal"
@@ -568,7 +581,10 @@ export function NpyViewer() {
                     <button
                       onClick={() => {
                         setLoading(true);
-                        setImageTransform("flipVertical");
+                        setImageTransform({
+                          type: "flipVertical",
+                          rectSize: plotDimensions,
+                        });
                       }}
                       className="w-10 h-10 rounded-md flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white"
                       title="Flip Vertical"
