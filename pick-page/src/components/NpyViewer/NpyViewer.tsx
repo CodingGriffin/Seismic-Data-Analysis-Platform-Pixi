@@ -10,6 +10,7 @@ import {
 import { BasePlot } from "../controls/BasePlot";
 import { FileInput } from "../controls/FileInput";
 import { ErrorTip } from "../controls/ErrorTip";
+import { PickData } from "../../types";
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -245,10 +246,20 @@ export function NpyViewer() {
       .map((point) => {
         const x = coordinateHelpers.fromScreenX(point.x);
         const y = coordinateHelpers.fromScreenY(point.y);
-        return { x, y };
+        const slowness = isAxisSwapped() ? y:x;
+        const frequency = isAxisSwapped() ? x:y;
+        return {
+          d1: 0,
+          d2: 0,
+          frequency,
+          d3: 0,
+          slowness,
+          d4:0,
+          d5:0,
+        }
       })
-      .sort((a, b) => a.x - b.x) // Sort in descending order (right to left)
-      .map((point) => `${point.x.toFixed(3)}, ${point.y.toFixed(3)}`)
+      .sort((a, b) => a.frequency - b.frequency) // Sort in descending order (right to left)
+      .map((point) => `${point.d1.toFixed(3)}, ${point.d2.toFixed(3)}, ${point.frequency.toFixed(3)}, ${point.d3.toFixed(3)}, ${point.slowness.toFixed(3)}, ${point.d4.toFixed(3)}, ${point.d5.toFixed(3)}`)
       .join("\n");
 
     // Create blob and download link
@@ -256,7 +267,7 @@ export function NpyViewer() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "plotted_points.txt";
+    link.download = "plotted_points.pck";
 
     // Trigger download
     document.body.appendChild(link);
