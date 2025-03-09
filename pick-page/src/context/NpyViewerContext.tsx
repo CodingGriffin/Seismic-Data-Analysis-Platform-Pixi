@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useCallback, ReactNode, useEffect } from 'react';
 import NpyJs from 'npyjs';
-import { NpyData, RGB, Point, AxisData, PickData, Matrix } from '../types';
+import { NpyData, RGB, Point, ColorStop, AxisData, PickData, Matrix } from '../types';
 
 const npArrayToJS = (flatArray: number[] , shape: number[]) => {
   const [rows, cols] = shape;
@@ -56,18 +56,26 @@ const flipHorizontal = (matrix: number[][]): Matrix => {
 
 
 export const COLOR_MAPS = {
+  // 'RdYlBu': [
+  //   'rgb(165,0,38)',
+  //   'rgb(215,48,39)',
+  //   'rgb(244,109,67)',
+  //   'rgb(253,174,97)',
+  //   'rgb(254,224,144)',
+  //   'rgb(255,255,191)',
+  //   'rgb(224,243,248)',
+  //   'rgb(171,217,233)',
+  //   'rgb(116,173,209)',
+  //   'rgb(69,117,180)',
+  //   'rgb(49,54,149)'
+  // ],
   'RdYlBu': [
-    'rgb(165,0,38)',
-    'rgb(215,48,39)',
-    'rgb(244,109,67)',
-    'rgb(253,174,97)',
-    'rgb(254,224,144)',
-    'rgb(255,255,191)',
-    'rgb(224,243,248)',
-    'rgb(171,217,233)',
-    'rgb(116,173,209)',
-    'rgb(69,117,180)',
-    'rgb(49,54,149)'
+    'rgb(165,0,38, 0.0)',
+    'rgb(215,48,39, 0.2)',
+    'rgb(253,174,97, 0.5)',
+    'rgb(224,243,248, 0.8)',
+    'rgb(171,217,233, 0.9)',
+    'rgb(49,54,149, 1.0)'
   ],
   'Spectral': [
     'rgb(158,1,66)',
@@ -131,14 +139,14 @@ interface TextureData {
   transformed: number[][];
   dimensions: { width: number; height: number };
 }
-// Parse RGB string to RGB object
-const parseRGB = (rgbStr: string): RGB => {
-  const matches = rgbStr.match(/rgb\((\d+),(\d+),(\d+)\)/);
-  if (!matches) throw new Error('Invalid RGB string');
+// Function to parse 'rgb(r,g,b, position)' strings
+const parseColorStop = (colorStop: string): ColorStop => {
+  const match = colorStop.match(/rgb\((\d+),(\d+),(\d+),\s*([\d.]+)\)/);
+  if (!match) throw new Error(`Invalid color stop format: ${colorStop}`);
+
   return {
-    r: parseInt(matches[1]),
-    g: parseInt(matches[2]),
-    b: parseInt(matches[3])
+    color: { r: +match[1], g: +match[2], b: +match[3] },
+    position: +match[4],
   };
 };
 
@@ -151,14 +159,26 @@ const interpolateRGB = (color1: RGB, color2: RGB, ratio: number): RGB => {
   };
 };
 
-// Get color for a normalized value using the color map
+// Get color for a normalized value using a non-uniform color map
 export const getColorFromMap = (normalizedValue: number, colorMap: string[]): RGB => {
-  const rgbColors = colorMap.map(parseRGB);
-  const segments = rgbColors.length - 1;
-  const segment = Math.min(Math.floor(normalizedValue * segments), segments - 1);
-  const segmentRatio = (normalizedValue * segments) - segment;
+  const colorStops = colorMap.map(parseColorStop);
 
-  return interpolateRGB(rgbColors[segment], rgbColors[segment + 1], segmentRatio);
+  // Find the two surrounding colors for interpolation
+  for (let i = 0; i < colorStops.length - 1; i++) {
+    const start = colorStops[i];
+    const end = colorStops[i + 1];
+
+    if (normalizedValue >= start.position && normalizedValue <= end.position) {
+      // Calculate the interpolation ratio within this segment
+      const segmentRatio = (normalizedValue - start.position) / (end.position - start.position);
+      return interpolateRGB(start.color, end.color, segmentRatio);
+    }
+  }
+
+  // If the value is out of range, return the closest boundary color
+  return normalizedValue <= colorStops[0].position
+    ? colorStops[0].color
+    : colorStops[colorStops.length - 1].color;
 };
 
 // Initial state

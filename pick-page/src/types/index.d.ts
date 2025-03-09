@@ -17,11 +17,8 @@ export interface PickData {
   d5: number;
 }
 
-export interface RGB {
-  r: number;
-  g: number;
-  b: number;
-}
+export type RGB = { r: number; g: number; b: number };
+export type ColorStop = { color: RGB; position: number };
 
 export interface AxisData {
   data: Float32Array | Float64Array;
