@@ -281,6 +281,8 @@ export function NpyViewer() {
   useEffect(() => {
     // Create the texture with the current color map
     if (!textureData || !gridData) return;
+    if (plotDimensions.width === 0 || plotDimensions.height === 0) return;
+
     const texture = createTexture(
       textureData.transformed.flat(),
       textureData.dimensions,
@@ -289,7 +291,14 @@ export function NpyViewer() {
     );
 
     setTexture(texture);
-  }, [textureData, selectedColorMap]);
+    
+    const redrawTimeout = setTimeout(() => {
+      setLoading(true);
+      setLoading(false);
+    }, 50);
+
+    return () => clearTimeout(redrawTimeout);
+  }, [textureData, selectedColorMap, plotDimensions]);
 
   useEffect(() => {
     setLoading(false);
