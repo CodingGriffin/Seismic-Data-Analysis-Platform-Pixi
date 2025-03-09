@@ -10,7 +10,6 @@ import {
 import { BasePlot } from "../controls/BasePlot";
 import { FileInput } from "../controls/FileInput";
 import { ErrorTip } from "../controls/ErrorTip";
-import { PickData } from "../../types";
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -291,7 +290,7 @@ export function NpyViewer() {
     );
 
     setTexture(texture);
-    
+
     const redrawTimeout = setTimeout(() => {
       setLoading(true);
       setLoading(false);
@@ -624,6 +623,7 @@ export function NpyViewer() {
                 {/* Color Maps */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="font-medium text-gray-700 mb-3">Color Map</h3>
+                  <div className="flex gap-4">
                   <select
                     value={selectedColorMap}
                     onChange={(e) => setColorMap(e.target.value as ColorMapKey)}
@@ -639,6 +639,17 @@ export function NpyViewer() {
                       )
                     )}
                   </select>
+                  <button
+                    className="w-full p-1 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={
+                      gridData === null &&
+                      slownessData === null &&
+                      frequencyData === null
+                    }
+                  >
+                    Edit
+                  </button>
+                  </div>
                 </div>
               </div>
             </div>
