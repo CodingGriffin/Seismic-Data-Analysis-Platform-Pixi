@@ -198,9 +198,7 @@ export function NpyViewer() {
     ) => {
       const file = event.target.files?.[0];
       if (!file) return;
-      if (
-        file.name.includes(dataType)
-      ) {
+      if (file.name.includes(dataType)) {
         lastFileRef.current = file;
         await loadNpyFile(file, dataType);
       } else {
@@ -297,9 +295,10 @@ export function NpyViewer() {
       fromScreenX: (x: number) => {
         const value =
           left() > right()
-            ? right() + ((plotDimensions.width - x) / plotDimensions.width) * (left() - right())
-            : left() +
-              ( (x) / plotDimensions.width) * (right() - left());
+            ? right() +
+              ((plotDimensions.width - x) / plotDimensions.width) *
+                (left() - right())
+            : left() + (x / plotDimensions.width) * (right() - left());
 
         return Math.round(value * 10000) / 10000;
       },
@@ -312,9 +311,10 @@ export function NpyViewer() {
       fromScreenY: (y: number) => {
         const value =
           top() > bottom()
-            ? bottom() + ((plotDimensions.height - y)  / plotDimensions.height) * (top() - bottom())
-            : top() +
-              ((y)/ plotDimensions.height) * (bottom() - top());
+            ? bottom() +
+              ((plotDimensions.height - y) / plotDimensions.height) *
+                (top() - bottom())
+            : top() + (y / plotDimensions.height) * (bottom() - top());
 
         return Math.round(value * 10000) / 10000;
       },
@@ -375,19 +375,33 @@ export function NpyViewer() {
                   display={(value) => value.toFixed(3)}
                   tooltipContent={
                     hoveredPoint
-                      ? `(Freq:${coordinateHelpers
-                          .fromScreenX(hoveredPoint.x)
-                          .toFixed(3)}, 
+                      ? isAxisSwapped()
+                        ? `(Freq:${coordinateHelpers
+                            .fromScreenX(hoveredPoint.x)
+                            .toFixed(3)}, 
                     Slow:${coordinateHelpers
                       .fromScreenY(hoveredPoint.y)
                       .toFixed(3)})`
+                        : `(Slow:${coordinateHelpers
+                            .fromScreenX(hoveredPoint.x)
+                            .toFixed(3)}, 
+                    Freq:${coordinateHelpers
+                      .fromScreenY(hoveredPoint.y)
+                      .toFixed(3)})`
                       : draggedPoint
-                      ? `(Freq:${coordinateHelpers
-                          .fromScreenX(draggedPoint.x)
-                          .toFixed(3)}
-                    Slow:${coordinateHelpers
-                      .fromScreenY(draggedPoint.y)
-                      .toFixed(3)}`
+                      ? isAxisSwapped()
+                        ? `(Freq:${coordinateHelpers
+                            .fromScreenX(draggedPoint.x)
+                            .toFixed(3)}, 
+                  Slow:${coordinateHelpers
+                    .fromScreenY(draggedPoint.y)
+                    .toFixed(3)})`
+                        : `(Slow:${coordinateHelpers
+                            .fromScreenX(draggedPoint.x)
+                            .toFixed(3)}, 
+                  Freq:${coordinateHelpers
+                    .fromScreenY(draggedPoint.y)
+                    .toFixed(3)})`
                       : undefined
                   }
                   onPointerDown={handlePointerDown}
@@ -597,11 +611,13 @@ export function NpyViewer() {
                              bg-white text-gray-700 hover:border-blue-500 focus:outline-none 
                              focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    {(Object.keys(COLOR_MAPS) as ColorMapKey[]).map((mapName) => (
-                      <option key={mapName} value={mapName}>
-                        {mapName}
-                      </option>
-                    ))}
+                    {(Object.keys(COLOR_MAPS) as ColorMapKey[]).map(
+                      (mapName) => (
+                        <option key={mapName} value={mapName}>
+                          {mapName}
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
               </div>
