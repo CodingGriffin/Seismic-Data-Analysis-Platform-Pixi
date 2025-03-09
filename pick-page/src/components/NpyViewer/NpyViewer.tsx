@@ -59,6 +59,7 @@ export function NpyViewer() {
     width: 640,
     height: 480,
   });
+  const [showColorMapEditor, setShowColorMapEditor] = useState(false);
   // Add transform function that works with stored data
   const handleDimensionChange = useCallback(
     (dimensions: { width: number; height: number }) => {
@@ -623,32 +624,34 @@ export function NpyViewer() {
                 {/* Color Maps */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="font-medium text-gray-700 mb-3">Color Map</h3>
-                  <div className="flex gap-4">
-                  <select
-                    value={selectedColorMap}
-                    onChange={(e) => setColorMap(e.target.value as ColorMapKey)}
-                    className="w-full px-3 py-1.5 text-sm rounded-md border border-gray-300 
-                             bg-white text-gray-700 hover:border-blue-500 focus:outline-none 
-                             focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {(Object.keys(COLOR_MAPS) as ColorMapKey[]).map(
-                      (mapName) => (
-                        <option key={mapName} value={mapName}>
-                          {mapName}
-                        </option>
-                      )
-                    )}
-                  </select>
-                  <button
-                    className="w-full p-1 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={
-                      gridData === null &&
-                      slownessData === null &&
-                      frequencyData === null
-                    }
-                  >
-                    Edit
-                  </button>
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedColorMap}
+                      onChange={(e) => setColorMap(e.target.value as ColorMapKey)}
+                      className="flex-grow px-3 py-1.5 text-sm rounded-md border border-gray-300 
+                               bg-white text-gray-700 hover:border-blue-500 focus:outline-none 
+                               focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {(Object.keys(COLOR_MAPS) as ColorMapKey[]).map(
+                        (mapName) => (
+                          <option key={mapName} value={mapName}>
+                            {mapName}
+                          </option>
+                        )
+                      )}
+                    </select>
+                    <button
+                      className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 
+                               transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={
+                        gridData === null &&
+                        slownessData === null &&
+                        frequencyData === null
+                      }
+                      onClick={() => setShowColorMapEditor(true)}
+                    >
+                      Edit
+                    </button>
                   </div>
                 </div>
               </div>
@@ -656,6 +659,102 @@ export function NpyViewer() {
           </div>
         </div>
       </div>
+      {/* Add the ColorMapEditor modal */}
+      {showColorMapEditor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-[800px] max-h-[90vh] overflow-hidden">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-medium">Edit Color Map: {selectedColorMap}</h3>
+              <button
+                onClick={() => setShowColorMapEditor(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <span className="sr-only">Close</span>
+                ×
+              </button>
+            </div>
+            <div className="p-4 overflow-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="p-2 border">Red</th>
+                    <th className="p-2 border">Green</th>
+                    <th className="p-2 border">Blue</th>
+                    <th className="p-2 border">Stop Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COLOR_MAPS[selectedColorMap].map((colorStop, index) => {
+                    const match = colorStop.match(/rgb\((\d+),(\d+),(\d+),\s*([\d.]+)\)/);
+                    if (!match) return null;
+                    return (
+                      <tr key={index}>
+                        <td className="p-2 border">
+                          <input
+                            type="number"
+                            min="0"
+                            max="255"
+                            className="w-full p-1 border rounded"
+                            value={match[1]}
+                            onChange={() => {}}
+                          />
+                        </td>
+                        <td className="p-2 border">
+                          <input
+                            type="number"
+                            min="0"
+                            max="255"
+                            className="w-full p-1 border rounded"
+                            value={match[2]}
+                            onChange={() => {}} 
+                          />
+                        </td>
+                        <td className="p-2 border">
+                          <input
+                            type="number"
+                            min="0"
+                            max="255"
+                            className="w-full p-1 border rounded"
+                            value={match[3]}
+                            onChange={() => {}}
+                          />
+                        </td>
+                        <td className="p-2 border">
+                          <input
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            className="w-full p-1 border rounded"
+                            value={match[4]}
+                            onChange={() => {}}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                onClick={() => setShowColorMapEditor(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowColorMapEditor(false);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
