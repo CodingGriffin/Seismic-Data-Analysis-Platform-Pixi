@@ -276,11 +276,11 @@ export function NpyViewer() {
       textureData.transformed.flat(),
       textureData.dimensions,
       { min: gridData.min, max: gridData.max },
-      [...COLOR_MAPS[state.selectedColorMap]]
+      [...COLOR_MAPS[selectedColorMap]]
     );
 
     setTexture(texture);
-  }, [textureData]);
+  }, [textureData, selectedColorMap]);
 
   useEffect(() => {
     setLoading(false);
@@ -590,23 +590,19 @@ export function NpyViewer() {
                 {/* Color Maps */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="font-medium text-gray-700 mb-3">Color Map</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(Object.keys(COLOR_MAPS) as ColorMapKey[]).map(
-                      (mapName) => (
-                        <button
-                          key={mapName}
-                          onClick={() => setColorMap(mapName)}
-                          className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                            selectedColorMap === mapName
-                              ? "bg-blue-600 text-white"
-                              : "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                          }`}
-                        >
-                          {mapName}
-                        </button>
-                      )
-                    )}
-                  </div>
+                  <select
+                    value={selectedColorMap}
+                    onChange={(e) => setColorMap(e.target.value as ColorMapKey)}
+                    className="w-full px-3 py-1.5 text-sm rounded-md border border-gray-300 
+                             bg-white text-gray-700 hover:border-blue-500 focus:outline-none 
+                             focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    {(Object.keys(COLOR_MAPS) as ColorMapKey[]).map((mapName) => (
+                      <option key={mapName} value={mapName}>
+                        {mapName}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
