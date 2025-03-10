@@ -13,6 +13,16 @@ import { ColorMapEditor } from './ColorMapEditor';
 
 extend({ Container, Sprite, Graphics, Text });
 
+interface Window {
+  showSaveFilePicker(options?: {
+    suggestedName?: string;
+    types?: Array<{
+      description: string;
+      accept: Record<string, string[]>;
+    }>;
+  }): Promise<FileSystemFileHandle>;
+}
+
 export function NpyViewer() {
   const {
     state,
@@ -267,18 +277,37 @@ export function NpyViewer() {
 
     // Create blob and download link
     const blob = new Blob([pointsData], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "plotted_points.pck";
 
-    // Trigger download
-    document.body.appendChild(link);
-    link.click();
-
-    // Cleanup
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Use showSaveFilePicker API for native file save dialog
+    try {
+      (window as unknown as Window)
+        .showSaveFilePicker({
+          suggestedName: "plotted_points.pck",
+          types: [
+            {
+              description: "Picked Points",
+              accept: {
+                "text/plain": [".pck"],
+              },
+            },
+          ],
+        })
+        .then(async (handle: any) => {
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        });
+    } catch (err) {
+      // Fallback for browsers that don't support showSaveFilePicker
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "plotted_points.pck";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   }, [points]);
 
   useEffect(() => {
