@@ -3,7 +3,6 @@ import { useCallback, useRef, useEffect, useState, useMemo } from "react";
 import { extend } from "@pixi/react";
 import {
   useNpyViewer,
-  COLOR_MAPS,
   type ColorMapKey,
   getColorFromMap,
 } from "../../context/NpyViewerContext";
@@ -51,6 +50,8 @@ export function NpyViewer() {
     slownessData,
     error,
     coordinateMatrix,
+    colorMaps,
+    
   } = state;
 
   const lastFileRef = useRef<File | null>(null);
@@ -61,7 +62,6 @@ export function NpyViewer() {
     height: 480,
   });
   const [showColorMapEditor, setShowColorMapEditor] = useState(false);
-  const [editedColorMap, setEditedColorMap] = useState<string[]>([]);
 
   // Add transform function that works with stored data
   const handleDimensionChange = useCallback(
@@ -290,7 +290,7 @@ export function NpyViewer() {
       textureData.transformed.flat(),
       textureData.dimensions,
       { min: gridData.min, max: gridData.max },
-      [...COLOR_MAPS[selectedColorMap]]
+      [...colorMaps[selectedColorMap]]
     );
 
     setTexture(texture);
@@ -301,7 +301,7 @@ export function NpyViewer() {
     }, 50);
 
     return () => clearTimeout(redrawTimeout);
-  }, [textureData, selectedColorMap, plotDimensions]);
+  }, [textureData, selectedColorMap, plotDimensions, colorMaps]);
 
   useEffect(() => {
     setLoading(false);
@@ -344,13 +344,11 @@ export function NpyViewer() {
     }),
     [axisLimits, plotDimensions, coordinateMatrix]
   );
-
-  useEffect(() => {
-    if (showColorMapEditor) {
-      setEditedColorMap([...COLOR_MAPS[selectedColorMap]]);
-    }
-  }, [showColorMapEditor, selectedColorMap]);
   
+  useEffect(() => {
+    console.log("colorMap:", state.colorMaps)
+  }, [state.colorMaps])
+
   return (
     <>
       {isLoading && (
@@ -641,7 +639,7 @@ export function NpyViewer() {
                                bg-white text-gray-700 hover:border-blue-500 focus:outline-none 
                                focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      {(Object.keys(COLOR_MAPS) as ColorMapKey[]).map(
+                      {(Object.keys(colorMaps) as ColorMapKey[]).map(
                         (mapName) => (
                           <option key={mapName} value={mapName}>
                             {mapName}
