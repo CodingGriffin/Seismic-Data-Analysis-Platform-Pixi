@@ -10,6 +10,7 @@ import {
 import { BasePlot } from "../controls/BasePlot";
 import { FileInput } from "../controls/FileInput";
 import { ErrorTip } from "../controls/ErrorTip";
+import { ColorMapEditor } from './ColorMapEditor';
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -60,6 +61,8 @@ export function NpyViewer() {
     height: 480,
   });
   const [showColorMapEditor, setShowColorMapEditor] = useState(false);
+  const [editedColorMap, setEditedColorMap] = useState<string[]>([]);
+
   // Add transform function that works with stored data
   const handleDimensionChange = useCallback(
     (dimensions: { width: number; height: number }) => {
@@ -342,6 +345,12 @@ export function NpyViewer() {
     [axisLimits, plotDimensions, coordinateMatrix]
   );
 
+  useEffect(() => {
+    if (showColorMapEditor) {
+      setEditedColorMap([...COLOR_MAPS[selectedColorMap]]);
+    }
+  }, [showColorMapEditor, selectedColorMap]);
+  
   return (
     <>
       {isLoading && (
@@ -659,102 +668,10 @@ export function NpyViewer() {
           </div>
         </div>
       </div>
-      {/* Add the ColorMapEditor modal */}
-      {showColorMapEditor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-[800px] max-h-[90vh] overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-medium">Edit Color Map: {selectedColorMap}</h3>
-              <button
-                onClick={() => setShowColorMapEditor(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <span className="sr-only">Close</span>
-                ×
-              </button>
-            </div>
-            <div className="p-4 overflow-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="p-2 border">Red</th>
-                    <th className="p-2 border">Green</th>
-                    <th className="p-2 border">Blue</th>
-                    <th className="p-2 border">Stop Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COLOR_MAPS[selectedColorMap].map((colorStop, index) => {
-                    const match = colorStop.match(/rgb\((\d+),(\d+),(\d+),\s*([\d.]+)\)/);
-                    if (!match) return null;
-                    return (
-                      <tr key={index}>
-                        <td className="p-2 border">
-                          <input
-                            type="number"
-                            min="0"
-                            max="255"
-                            className="w-full p-1 border rounded"
-                            value={match[1]}
-                            onChange={() => {}}
-                          />
-                        </td>
-                        <td className="p-2 border">
-                          <input
-                            type="number"
-                            min="0"
-                            max="255"
-                            className="w-full p-1 border rounded"
-                            value={match[2]}
-                            onChange={() => {}} 
-                          />
-                        </td>
-                        <td className="p-2 border">
-                          <input
-                            type="number"
-                            min="0"
-                            max="255"
-                            className="w-full p-1 border rounded"
-                            value={match[3]}
-                            onChange={() => {}}
-                          />
-                        </td>
-                        <td className="p-2 border">
-                          <input
-                            type="number"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            className="w-full p-1 border rounded"
-                            value={match[4]}
-                            onChange={() => {}}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
-              <button
-                onClick={() => setShowColorMapEditor(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowColorMapEditor(false);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ColorMapEditor 
+        isOpen={showColorMapEditor}
+        onClose={() => setShowColorMapEditor(false)}
+      />
     </>
   );
 }

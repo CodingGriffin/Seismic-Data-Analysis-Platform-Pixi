@@ -181,6 +181,11 @@ export const getColorFromMap = (normalizedValue: number, colorMap: string[]): RG
     : colorStops[colorStops.length - 1].color;
 };
 
+export interface ColorMap {
+  name: ColorMapKey;
+  stops: string[];
+}
+
 // Initial state
 const initialState = {
   textureData : null as TextureData | null,
@@ -209,7 +214,8 @@ const initialState = {
     [0,0,1,0,0],
     [0,0,0,0,0]//bottom
   ],
-  pickData:[] as PickData[]
+  pickData:[] as PickData[],
+  colorMaps: COLOR_MAPS,
 };
 
 // Action types
@@ -236,6 +242,7 @@ type Action =
   | { type: 'UPDATE_PICK_DATA'; payload: { index: number; data:PickData  } }
   | { type: 'REMOVE_PICK_DATA'; payload: number }
   | { type: 'SET_COORDINATE_MATRIX'; payload: []}
+  | { type: 'UPDATE_COLOR_MAP'; payload: { name: ColorMapKey; stops: string[] } }
 // Reducer
 function reducer(state: typeof initialState, action: Action): typeof initialState {
   switch (action.type) {
@@ -366,6 +373,14 @@ function reducer(state: typeof initialState, action: Action): typeof initialStat
         ...state,
         coordinateMatrix:action.payload
       }
+    case 'UPDATE_COLOR_MAP':
+      return {
+        ...state,
+        colorMaps: {
+          ...state.colorMaps,
+          [action.payload.name]: action.payload.stops,
+        },
+      };
     default:
       return state;
   }
@@ -397,6 +412,7 @@ interface NpyViewerContextType {
   right: () => number;
   isAxisSwapped: () => boolean;
   setCoordinateMatrix: (data:[]) => void;
+  updateColorMap: (name: ColorMapKey, stops: string[]) => void;
 }
 
 // Create context
@@ -557,6 +573,13 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
   const right = () => state.coordinateMatrix[2][4];
   const isAxisSwapped = () => !state.coordinateMatrix[1][2];
 
+  const updateColorMap = useCallback((name: ColorMapKey, stops: string[]) => {
+    dispatch({
+      type: 'UPDATE_COLOR_MAP',
+      payload: { name, stops },
+    });
+  }, []);
+
   useEffect(() => {
     setAxisLimits({ymax: state.frequencyData?.max, ymin: state.frequencyData?.min})
   }, [state.frequencyData]);
@@ -594,7 +617,8 @@ export function NpyViewerProvider({ children }: { children: ReactNode }) {
         left,
         right,
         isAxisSwapped,
-        setCoordinateMatrix
+        setCoordinateMatrix,
+        updateColorMap,
       }}
     >
       {children}
