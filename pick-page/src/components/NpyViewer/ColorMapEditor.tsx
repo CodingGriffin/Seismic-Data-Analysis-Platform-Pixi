@@ -24,29 +24,30 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
       if (!match) return prevMap;
 
       const [_, r, g, b, stop] = match;
-      let newValue = value;
       
-      if (field !== 'stop') {
+      if (field === 'stop') {
+        // For stop values, preserve the exact string input as long as it's a valid number
         const numValue = parseFloat(value);
         if (!isNaN(numValue)) {
-          newValue = Math.max(0, Math.min(255, numValue)).toString();
-        } else {
-          return prevMap; 
+          const clampedValue = Math.max(0, Math.min(1, numValue));
+          if (numValue === clampedValue) {
+            const values = { r, g, b, stop: value }; // Use the original string value
+            newMap[index] = `rgb(${values.r},${values.g},${values.b}, ${values.stop})`;
+            return newMap;
+          }
         }
+        return prevMap;
       } else {
         const numValue = parseFloat(value);
         if (!isNaN(numValue)) {
-          newValue = Math.max(0, Math.min(1, numValue)).toString();
-        } else {
-          return prevMap;
+          const clampedValue = Math.max(0, Math.min(255, numValue));
+          const values = { r, g, b, stop };
+          values[field] = clampedValue.toString();
+          newMap[index] = `rgb(${values.r},${values.g},${values.b}, ${values.stop})`;
+          return newMap;
         }
+        return prevMap;
       }
-
-      const values = { r, g, b, stop };
-      values[field] = newValue;
-      
-      newMap[index] = `rgb(${values.r},${values.g},${values.b}, ${values.stop})`;
-      return newMap;
     });
   };
 
@@ -133,7 +134,7 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
                         type="number"
                         min="0"
                         max="1"
-                        step="0.1"
+                        step="0.001" // Provide finer control over decimals
                         className="w-full p-1 border rounded"
                         value={match[4]}
                         onChange={(e) => handleColorChange(index, 'stop', e.target.value)}
