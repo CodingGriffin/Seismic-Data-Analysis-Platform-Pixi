@@ -277,7 +277,7 @@ export function NpyViewer() {
         }
       })
       .sort((a, b) => a.frequency - b.frequency) // Sort in descending order (right to left)
-      .map((point) => `${point.d1.toFixed(3)}, ${point.d2.toFixed(3)}, ${point.frequency.toFixed(3)}, ${point.d3.toFixed(3)}, ${point.slowness.toFixed(3)}, ${point.d4.toFixed(3)}, ${point.d5.toFixed(3)}`)
+      .map((point) => `${point.d1.toFixed(6)}, ${point.d2.toFixed(6)}, ${point.frequency.toFixed(6)}, ${point.d3.toFixed(6)}, ${point.slowness.toFixed(6)}, ${point.d4.toFixed(6)}, ${point.d5.toFixed(6)}`)
       .join("\n");
 
     // Create blob and download link
@@ -357,7 +357,7 @@ export function NpyViewer() {
                 (left() - right())
             : left() + (x / plotDimensions.width) * (right() - left());
 
-        return Math.round(value * 10000) / 10000;
+        return Math.round(value * 1000000) / 1000000;
       },
       toScreenY: (value: number) => {
         return (
@@ -373,7 +373,7 @@ export function NpyViewer() {
                 (top() - bottom())
             : top() + (y / plotDimensions.height) * (bottom() - top());
 
-        return Math.round(value * 10000) / 10000;
+        return Math.round(value * 1000000) / 1000000;
       },
     }),
     [axisLimits, plotDimensions, coordinateMatrix]
@@ -446,36 +446,36 @@ export function NpyViewer() {
                   xMin={left()}
                   yMin={bottom()}
                   yMax={top()}
-                  display={(value) => value.toFixed(3)}
+                  display={(value) => value.toFixed(6)}
                   tooltipContent={
                     hoveredPoint
                       ? isAxisSwapped()
                         ? `(Freq:${coordinateHelpers
                             .fromScreenX(hoveredPoint.x)
-                            .toFixed(3)}, 
+                            .toFixed(6)}, 
                     Slow:${coordinateHelpers
                       .fromScreenY(hoveredPoint.y)
-                      .toFixed(3)})`
+                      .toFixed(6)})`
                         : `(Slow:${coordinateHelpers
                             .fromScreenX(hoveredPoint.x)
-                            .toFixed(3)}, 
+                            .toFixed(6)}, 
                     Freq:${coordinateHelpers
                       .fromScreenY(hoveredPoint.y)
-                      .toFixed(3)})`
+                      .toFixed(6)})`
                       : draggedPoint
                       ? isAxisSwapped()
                         ? `(Freq:${coordinateHelpers
                             .fromScreenX(draggedPoint.x)
-                            .toFixed(3)}, 
+                            .toFixed(6)}, 
                   Slow:${coordinateHelpers
                     .fromScreenY(draggedPoint.y)
-                    .toFixed(3)})`
+                    .toFixed(6)})`
                         : `(Slow:${coordinateHelpers
                             .fromScreenX(draggedPoint.x)
-                            .toFixed(3)}, 
+                            .toFixed(6)}, 
                   Freq:${coordinateHelpers
                     .fromScreenY(draggedPoint.y)
-                    .toFixed(3)})`
+                    .toFixed(6)})`
                       : undefined
                   }
                   onPointerDown={handlePointerDown}
