@@ -107,7 +107,7 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-[800px] max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg shadow-xl w-[800px] max-h-[90vh] flex flex-col">
         <div className="p-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium">Edit Color Map: {selectedColorMap}</h3>
           <button
@@ -118,7 +118,7 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
             ×
           </button>
         </div>
-        <div className="p-4 overflow-auto">
+        <div className="p-4 flex-1 overflow-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-50">
@@ -179,7 +179,7 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
                         onChange={(e) => handleColorChange(index, 'stop', e.target.value)}
                       />
                     </td>
-                    <td className="p-2 border">
+                    <td className="p-2 border flex justify-center">
                       <button
                         onClick={() => handleRemoveRow(index)}
                         className="px-2 py-1 bg-red-50 text-red-700 rounded hover:bg-red-100"
