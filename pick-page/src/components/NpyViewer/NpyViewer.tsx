@@ -117,12 +117,17 @@ export function NpyViewer() {
     (event: React.PointerEvent) => {
       if (!texture) return;
 
-      const rect = event.currentTarget.getBoundingClientRect();
+      const rect = plotRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
       // Add new point with Shift first, regardless of hover state
       if (event.shiftKey) {
+        event.preventDefault(); 
+        event.stopPropagation();
+
         const newPoint = {
           x: x,
           y: y,
@@ -377,6 +382,19 @@ export function NpyViewer() {
   useEffect(() => {
     console.log("colorMap:", state.colorMaps)
   }, [state.colorMaps])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.shiftKey) {
+        e.preventDefault();
+      }
+    };
+  
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   return (
     <>
