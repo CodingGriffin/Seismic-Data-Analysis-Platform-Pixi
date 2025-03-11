@@ -573,20 +573,6 @@ export function NpyViewer() {
                     </div>
                     <div className="flex items-center gap-2">
                       <label className="text-sm text-gray-600 w-24">
-                        Y Min:
-                      </label>
-                      <input
-                        type="number"
-                        value={axisLimits.ymin ?? 0} // Provide default value
-                        onChange={(e) =>
-                          handleAxisLimitChange("ymin", e.target.value)
-                        }
-                        className="flex-1 px-2 py-1 text-sm border rounded"
-                        step="1"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-600 w-24">
                         X Max:
                       </label>
                       <input
@@ -594,20 +580,6 @@ export function NpyViewer() {
                         value={axisLimits.xmax ?? 0} // Provide default value
                         onChange={(e) =>
                           handleAxisLimitChange("xmax", e.target.value)
-                        }
-                        className="flex-1 px-2 py-1 text-sm border rounded"
-                        step="1"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-600 w-24">
-                        X Min:
-                      </label>
-                      <input
-                        type="number"
-                        value={axisLimits.xmin ?? 0} // Provide default value
-                        onChange={(e) =>
-                          handleAxisLimitChange("xmin", e.target.value)
                         }
                         className="flex-1 px-2 py-1 text-sm border rounded"
                         step="1"
