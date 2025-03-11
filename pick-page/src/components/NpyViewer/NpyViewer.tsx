@@ -10,18 +10,9 @@ import { BasePlot } from "../controls/BasePlot";
 import { FileInput } from "../controls/FileInput";
 import { ErrorTip } from "../controls/ErrorTip";
 import { ColorMapEditor } from './ColorMapEditor';
+import { Window } from "../../types";
 
 extend({ Container, Sprite, Graphics, Text });
-
-interface Window {
-  showSaveFilePicker(options?: {
-    suggestedName?: string;
-    types?: Array<{
-      description: string;
-      accept: Record<string, string[]>;
-    }>;
-  }): Promise<FileSystemFileHandle>;
-}
 
 export function NpyViewer() {
   const {

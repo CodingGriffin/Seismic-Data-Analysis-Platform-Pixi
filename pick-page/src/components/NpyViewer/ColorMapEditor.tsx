@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNpyViewer } from '../../context/NpyViewerContext';
+import { Window } from '../../types';
 
 interface ColorMapEditorProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
         }
         return prevMap;
       } else {
+        // For RGB values
         const numValue = parseFloat(value);
         if (!isNaN(numValue)) {
           const clampedValue = Math.max(0, Math.min(255, numValue));
@@ -62,6 +64,43 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
   const handleSave = () => {
     updateColorMap(selectedColorMap, editedColorMap);
     onClose();
+  };
+
+  const handleExport = () => {
+    const colorMapDefinition = `'${selectedColorMap}': [\n${editedColorMap
+      .map(color => `    '${color}'`)
+      .join(',\n')}\n  ],`;
+
+    const blob = new Blob([colorMapDefinition], { type: 'text/plain' });
+    
+    try {
+      (window as unknown as Window)
+        .showSaveFilePicker({
+          suggestedName: `${selectedColorMap}_colormap.txt`,
+          types: [
+            {
+              description: "Text Files",
+              accept: {
+                "text/plain": [".txt"],
+              },
+            },
+          ],
+        })
+        .then(async (handle: any) => {
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        });
+    } catch (err) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${selectedColorMap}_colormap.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   };
 
   if (!isOpen) return null;
@@ -162,6 +201,12 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
           </button>
         </div>
         <div className="p-4 border-t border-gray-200 flex justify-end gap-2">
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 bg-green-50 text-green-700 rounded-md hover:bg-green-100"
+          >
+            Export
+          </button>
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
