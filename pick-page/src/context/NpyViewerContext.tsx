@@ -158,7 +158,7 @@ interface TextureData {
 }
 // Function to parse 'rgb(r,g,b, position)' strings
 const parseColorStop = (colorStop: string): ColorStop => {
-  const match = colorStop.match(/rgb\((\d+),(\d+),(\d+),\s*([\d.]+)\)/);
+  const match = colorStop.match(/rgb\((\d+\.?\d*),(\d+\.?\d*),(\d+\.?\d*),\s*([\d.]+)\)/);
   if (!match) throw new Error(`Invalid color stop format: ${colorStop}`);
 
   return {

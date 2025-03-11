@@ -20,16 +20,26 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
     setEditedColorMap(prevMap => {
       const newMap = [...prevMap];
       const colorStop = newMap[index];
-      const match = colorStop.match(/rgb\((\d+),(\d+),(\d+),\s*([\d.]+)\)/);
+      const match = colorStop.match(/rgb\((\d+\.?\d*),(\d+\.?\d*),(\d+\.?\d*),\s*([\d.]+)\)/);
       if (!match) return prevMap;
 
       const [_, r, g, b, stop] = match;
       let newValue = value;
       
       if (field !== 'stop') {
-        newValue = Math.max(0, Math.min(255, Number(value))).toString();
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue)) {
+          newValue = Math.max(0, Math.min(255, numValue)).toString();
+        } else {
+          return prevMap; 
+        }
       } else {
-        newValue = Math.max(0, Math.min(1, Number(value))).toString();
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue)) {
+          newValue = Math.max(0, Math.min(1, numValue)).toString();
+        } else {
+          return prevMap;
+        }
       }
 
       const values = { r, g, b, stop };
@@ -81,7 +91,7 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
             </thead>
             <tbody>
               {editedColorMap.map((colorStop, index) => {
-                const match = colorStop.match(/rgb\((\d+),(\d+),(\d+),\s*([\d.]+)\)/);
+                const match = colorStop.match(/rgb\((\d+\.?\d*),(\d+\.?\d*),(\d+\.?\d*),\s*([\d.]+)\)/);
                 if (!match) return null;
                 return (
                   <tr key={index}>
@@ -90,6 +100,7 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
                         type="number"
                         min="0"
                         max="255"
+                        step="any" 
                         className="w-full p-1 border rounded"
                         value={match[1]}
                         onChange={(e) => handleColorChange(index, 'r', e.target.value)}
@@ -100,6 +111,7 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
                         type="number"
                         min="0"
                         max="255"
+                        step="any" 
                         className="w-full p-1 border rounded"
                         value={match[2]}
                         onChange={(e) => handleColorChange(index, 'g', e.target.value)}
@@ -110,6 +122,7 @@ export const ColorMapEditor: React.FC<ColorMapEditorProps> = ({ isOpen, onClose 
                         type="number"
                         min="0"
                         max="255"
+                        step="any" 
                         className="w-full p-1 border rounded"
                         value={match[3]}
                         onChange={(e) => handleColorChange(index, 'b', e.target.value)}
