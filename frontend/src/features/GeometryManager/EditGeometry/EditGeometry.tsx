@@ -1,115 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { GeometryItem } from "../types";
-import { CSS } from "@dnd-kit/utilities";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { GeometryItem } from "../../../types";
+import { Button } from "../../../components/Button/Button";
+import { Input } from "../../../components/Input/Input";
+import { Modal } from "../../../components/Modal/Modal";
+import { SortableRow } from "./SortableRow";
 
-interface GeometryEditorProps {
-  initialPoints?: GeometryItem[];
+interface EditGeometryProps {
+  initialPoints: GeometryItem[];
   onPointsChange?: (points: GeometryItem[]) => void;
   onClose: () => void;
 }
 
-function SortableRow({
-  point,
-  index,
-  onDelete,
-  onPointChange,
-}: {
-  point: GeometryItem;
-  index: number;
-  onDelete: (index: number) => void;
-  onPointChange: (
-    index: number,
-    field: keyof GeometryItem,
-    value: number
-  ) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: point.index });
-
-  const style = transform
-    ? {
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }
-    : undefined;
-
-  return (
-    <tr ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <td>{index + 1}</td>
-      <td>
-        <input
-          type="number"
-          className="form-control"
-          value={point.x}
-          onChange={(e) =>
-            onPointChange(index, "x", parseFloat(e.target.value) || 0)
-          }
-        />
-      </td>
-      <td>
-        <input
-          type="number"
-          className="form-control"
-          value={point.y}
-          onChange={(e) =>
-            onPointChange(index, "y", parseFloat(e.target.value) || 0)
-          }
-        />
-      </td>
-      <td>
-        <input
-          type="number"
-          className="form-control"
-          value={point.z}
-          onChange={(e) =>
-            onPointChange(index, "z", parseFloat(e.target.value) || 0)
-          }
-        />
-      </td>
-      <td>
-        <button
-          className="btn btn-danger btn-sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(point.index);
-          }}
-        >
-          Delete
-        </button>
-      </td>
-    </tr>
-  );
-}
-
-export default function GeometryEditor({
-  initialPoints = [],
-  onPointsChange,
-  onClose,
-}: GeometryEditorProps) {
+export default function EditGeometry({ initialPoints, onPointsChange, onClose }: EditGeometryProps) {
   const [points, setPoints] = useState<GeometryItem[]>(initialPoints);
-  const [units, setUnits] = useState<"Meters" | "Feet">("Meters");
-  const [inputAsDepth, setInputAsDepth] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-
-  const peakElevation = points.length > 0 ? Math.max(...points.map((p) => p.z)) : 0;
+  const [inputAsDepth, setInputAsDepth] = useState(false);
+  const [units, setUnits] = useState<"Meters" | "Feet">("Meters");
+  const [peakElevation] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -188,25 +99,17 @@ export default function GeometryEditor({
       <div className="modal-content">
         <div className="modal-header">
           <h5 className="modal-title">View / Edit Geometry</h5>
-          <button
-            type="button"
-            className="btn-close"
-            onClick={onClose}
-            aria-label="Close"
-          ></button>
+          <Button variant="secondary" className="btn-close" onClick={onClose} aria-label="Close" />
         </div>
         <div className="modal-body">
           <div className="d-flex justify-content-between mb-3">
             <div>
               <div className="d-flex align-items-center gap-2">
-                <label htmlFor="peakElevation" className="form-label mb-0">
-                  Peak Elevation ({units}):
-                </label>
-                <input
-                  id="peakElevation"
+                <Input
+                  label={`Peak Elevation (${units}):`}
                   type="number"
-                  className="form-control"
                   value={peakElevation.toFixed(2)}
+                  onChange={() => {}}
                   disabled
                   style={{ width: '120px' }}
                 />
@@ -225,9 +128,6 @@ export default function GeometryEditor({
               </div>
             </div>
             <div className="d-flex align-items-center gap-2">
-              <label htmlFor="units" className="form-label mb-0">
-                Units:
-              </label>
               <select
                 id="units"
                 className="form-select"
@@ -285,60 +185,56 @@ export default function GeometryEditor({
         </div>
         <div className="modal-footer">
           <div className="d-flex gap-2">
-            <button className="btn btn-primary" onClick={addPoint}>
+            <Button variant="primary" onClick={addPoint}>
               Add Point
-            </button>
-            <button
-              className="btn btn-danger"
+            </Button>
+            <Button
+              variant="danger"
               onClick={() => setShowConfirmation(true)}
               disabled={points.length === 0}
             >
               Delete All
-            </button>
-            <button className="btn btn-secondary" onClick={onClose}>
+            </Button>
+            <Button variant="secondary" onClick={onClose}>
               Close
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Confirmation Modal */}
-      {showConfirmation && (
-        <div className="modal show" style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Confirm Deletion</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowConfirmation(false)}
-                  aria-label="Close"
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p>Are you sure you want to delete all {points.length} points? This action cannot be undone.</p>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowConfirmation(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={deleteAll}
-                >
-                  Delete All
-                </button>
-              </div>
-            </div>
+      <Modal
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+      >
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title">Confirm Deletion</h5>
+            <Button
+              variant="secondary"
+              className="btn-close"
+              onClick={() => setShowConfirmation(false)}
+              aria-label="Close"
+            />
+          </div>
+          <div className="modal-body">
+            <p>Are you sure you want to delete all {points.length} points? This action cannot be undone.</p>
+          </div>
+          <div className="modal-footer">
+            <Button
+              variant="secondary"
+              onClick={() => setShowConfirmation(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={deleteAll}
+            >
+              Delete All
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </>
   );
 }

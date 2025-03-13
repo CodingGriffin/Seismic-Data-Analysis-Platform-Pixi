@@ -13,10 +13,16 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@reduxjs/toolkit": "^2.6.1",
     "axios": "^1.7.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "xlsx": "^0.18.5"
+    "react-redux": "^9.2.0",
+    "xlsx": "^0.18.5",
+    "@pixi/events": "^7.4.2",
+    "@pixi/react": "^8.0.0-beta.21",
+    "npyjs": "^0.6.0",
+    "pixi.js": "^8.6.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

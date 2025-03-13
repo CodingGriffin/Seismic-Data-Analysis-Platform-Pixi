@@ -1,18 +1,11 @@
-export interface GeometryItem {
-    index: number,
-    x: number,
-    y: number,
-    z: number,
-}
-
-export interface GeometryArray {
-    units: string,
-    data: GeometryItem[]
-}
+import { GeometryItem } from "../../../types";
+import { Button } from "../../../components/Button/Button";
 
 export default function GeometryButton({
-                                           geometry, addGeometry, editGeometry
-                                       }: {
+    geometry,
+    addGeometry,
+    editGeometry
+}: {
     geometry: GeometryItem[],
     addGeometry: () => void,
     editGeometry: () => void,
@@ -26,11 +19,11 @@ export default function GeometryButton({
                     : "No geometry present."
                 }
             </span>
-            <label
-                htmlFor="geometry-excel-files"
-                className="btn btn-primary w-auto ms-2 mb-0"
+            <Button
+                variant="primary"
+                className="w-auto ms-2 mb-0"
                 style={{cursor: "pointer"}}
-                onClick={(e:any) =>{
+                onClick={(e) => {
                     e.preventDefault();
                     if (geometry.length > 0) {
                         editGeometry();
@@ -40,7 +33,7 @@ export default function GeometryButton({
                 }}
             >
                 {geometry.length > 0 ? "Edit Geometry" : "Add Geometry"}
-            </label>
+            </Button>
         </div>
-    )
+    );
 }

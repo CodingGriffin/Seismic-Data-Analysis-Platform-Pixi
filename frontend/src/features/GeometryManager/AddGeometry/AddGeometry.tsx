@@ -1,8 +1,10 @@
 import { useState, useRef, type ChangeEvent, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { getDataFromExcel } from "../utils/excelParse";
-import { extractGeometryFromSegy } from "../utils/segyParse";
-import { GeometryItem } from "../types";
+import { getDataFromExcel } from "../../../utils/excelParse";
+import { extractGeometryFromSegy } from "../../../utils/segyParse";
+import { GeometryItem } from "../../../types";
+import { Input } from '../../../components/Input/Input';
+import { useInputValidation } from '../../../components/Input/useInputValidation';
 
 interface AddGeometryProps {
   onSetGeometry: (data: any) => void;
@@ -36,8 +38,23 @@ export default function AddGeometry({
   const [matrix, setMatrix] = useState<number[][]>([]);
   const [text, setText] = useState<string>(() => matrixToText(matrix));
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [numberOfPoints, setNumberOfPoints] = useState<number>(5);
   const [spacing, setSpacing] = useState<number>(8);
+
+  const numberOfPointsValidation = {
+    value: useInputValidation({
+      initialValue: '5',
+      validation: [
+        {
+          validate: (value) => !isNaN(Number(value)),
+          message: 'Must be a number'
+        },
+        {
+          validate: (value) => Number(value) >= 2,
+          message: 'Must be at least 2 points'
+        }
+      ]
+    })
+  };
 
   useEffect(() => {
     if (selectedSheet && sheets.length > 0) {
@@ -252,7 +269,7 @@ export default function AddGeometry({
       }
     } else if (inputMethod === "Array") {
       const geometryData: GeometryItem[] = Array.from(
-        { length: numberOfPoints },
+        { length: Number(numberOfPointsValidation.value.value) },
         (_, i) => ({
           index: i + 1,
           x: i * spacing,
@@ -443,17 +460,17 @@ export default function AddGeometry({
               <div className="mb-3">
                 <div className="d-flex justify-content-between gap-3">
                   <div className="mb-2 w-1/2">
-                    <label className="form-label">Number of Points</label>
-                    <input
+                    <Input
+                      label="Number of Points"
                       type="number"
-                      className="form-control"
+                      value={numberOfPointsValidation.value.value}
+                      onChange={numberOfPointsValidation.value.handleChange}
+                      onBlur={numberOfPointsValidation.value.handleBlur}
+                      error={numberOfPointsValidation.value.error}
+                      touched={numberOfPointsValidation.value.touched}
                       min="2"
-                      value={numberOfPoints}
-                      onChange={(e) =>
-                        setNumberOfPoints(
-                          Math.max(2, parseInt(e.target.value) || 2)
-                        )
-                      }
+                      helperText="Enter the number of points to generate"
+                      fullWidth
                     />
                   </div>
                   <div className="mb-2 w-1/2">
@@ -481,13 +498,13 @@ export default function AddGeometry({
               onClick={
                 handleLoadData
               }
-              disabled={
+              disabled={Boolean(
                 (inputMethod === "Text" &&
                   (!matrix.length || validationErrors.length > 0)) ||
                 (inputMethod === "Spreadsheet" && !previewData) ||
-                (inputMethod === "Array" && numberOfPoints < 2) ||
+                (inputMethod === "Array" && (numberOfPointsValidation.value.error || !numberOfPointsValidation.value.touched)) ||
                 (inputMethod === "SGY" && !previewData)
-              }
+              )}
             >
               Load Data
             </button>
