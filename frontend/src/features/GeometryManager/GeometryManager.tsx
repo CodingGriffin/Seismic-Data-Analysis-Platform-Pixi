@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { GeometryItem } from "../../types";
+import { GeometryItem } from "../../types/geometry";
 import GeometryButton from "./GeometryButton/GeometryButton";
 import AddGeometry from "./AddGeometry/AddGeometry";
 import GeometryEditor from "./EditGeometry/EditGeometry";

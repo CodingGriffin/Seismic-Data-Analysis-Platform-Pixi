@@ -1,4 +1,4 @@
-import { GeometryItem } from "../../../types";
+import { GeometryItem } from "../../../types/geometry";
 import { Button } from "../../../components/Button/Button";
 
 export default function GeometryButton({

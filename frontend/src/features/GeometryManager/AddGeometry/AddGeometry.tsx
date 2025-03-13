@@ -2,7 +2,7 @@ import { useState, useRef, type ChangeEvent, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { getDataFromExcel } from "../../../utils/excelParse";
 import { extractGeometryFromSegy } from "../../../utils/segyParse";
-import { GeometryItem } from "../../../types";
+import { GeometryItem } from "../../../types/geometry";
 import { Input } from '../../../components/Input/Input';
 import { useInputValidation } from '../../../components/Input/useInputValidation';
 
