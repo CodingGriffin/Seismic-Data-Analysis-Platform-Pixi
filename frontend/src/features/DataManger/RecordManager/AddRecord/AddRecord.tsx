@@ -1,0 +1,79 @@
+import { useState, type ChangeEvent} from "react";
+import { FileControls } from "../../../../components/FileControls/FileControls";
+import { RecordItem } from "../../../../types/record";
+import { extractDataFromNpy } from "../../../../utils/npy-util";
+import { rotateClockwise, flipVertical } from "../../../../utils/matrix-util";
+
+interface AddRecordProps {
+  selectedRecordId?: string;
+  mode?: 'add' | 'edit';
+  onAddRecord: (id: string|null, data: RecordItem) => void;
+  onClose: () => void;
+}
+
+export default function AddRecord({ selectedRecordId,mode = 'add', onAddRecord, onClose }: AddRecordProps) {
+  const [previewData, setPreviewData] = useState<RecordItem | null>(null);
+
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const data = await extractDataFromNpy(file);
+
+    if (!data) return;
+    let { matrix: rotated } = rotateClockwise(data.data);
+    let { matrix: transformed, shape} = flipVertical(rotated);
+
+    setPreviewData({
+        data: transformed,
+        dimensions: {
+          width: shape[1],
+          height: shape[0]
+        },
+        shape,
+        min: data.min,
+        max: data.max
+    });
+  };
+
+  const isEditMode = mode === 'edit';
+  const title = isEditMode ? 'Edit Record' : 'Add Record';
+  const buttonText = isEditMode ? 'Replace Data' : 'Load Data';
+  const seletectedRecordId = selectedRecordId;
+
+  return (
+    <div className="modal show d-block" tabIndex={-1}>
+      <div className="modal-dialog">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title fs-4">{title}</h5>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={onClose}
+              aria-label="Close"
+            ></button>
+          </div>
+          <div className="modal-body">
+            <FileControls onFileSelect={handleFileUpload} accept=".npy" showDownload={false}/>
+            {previewData && (
+              <>
+                <div className="">Shape: {previewData.dimensions.width} x {previewData.dimensions.height}</div>
+                <div className="">Min: {previewData.min}</div>
+                <div className="">Max: {previewData.max}</div>
+              </>
+            )}
+          </div>
+          <div className="modal-footer">
+            <button
+              className="btn btn-primary w-100"
+              disabled={!previewData}
+              onClick={() => mode === 'edit' && seletectedRecordId ? onAddRecord(seletectedRecordId, previewData!) : onAddRecord(null, previewData!)}
+            >
+              {buttonText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

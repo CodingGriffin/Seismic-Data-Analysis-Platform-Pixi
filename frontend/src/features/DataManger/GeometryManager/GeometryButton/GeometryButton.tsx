@@ -1,5 +1,5 @@
-import { GeometryItem } from "../../../types/geometry";
-import { Button } from "../../../components/Button/Button";
+import { GeometryItem } from "../../../../types/geometry";
+import { Button } from "../../../../components/Button/Button";
 
 export default function GeometryButton({
     geometry,
@@ -11,7 +11,7 @@ export default function GeometryButton({
     editGeometry: () => void,
 }) {
     return (
-        <div className="d-flex flex-column align-items-center">
+        <div className="d-flex flex-column align-items-center justify-content-space-between h-100">
             <h2 className="mb-0 text-center">Geometry</h2>
             <span className="mb-0 text-secondary">
                 {geometry.length > 0

@@ -1,8 +1,8 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GeometryItem } from "../../../types/geometry";
-import { Input } from "../../../components/Input/Input";
-import { Button } from "../../../components/Button/Button";
+import { GeometryItem } from "../../../../types/geometry";
+import { Input } from "../../../../components/Input/Input";
+import { Button } from "../../../../components/Button/Button";
 
 interface SortableRowProps {
   point: GeometryItem;

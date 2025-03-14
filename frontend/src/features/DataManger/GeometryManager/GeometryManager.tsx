@@ -1,12 +1,12 @@
 import { useEffect } from "react";
-import { GeometryItem } from "../../types/geometry";
+import { GeometryItem } from "../../../types/geometry";
 import GeometryButton from "./GeometryButton/GeometryButton";
 import AddGeometry from "./AddGeometry/AddGeometry";
 import GeometryEditor from "./EditGeometry/EditGeometry";
-import { Modal } from "../../components/Modal/Modal";
-import { useAppDispatch } from "../../hooks/useAppDispatch";
-import { useAppSelector } from "../../hooks/useAppSelector";
-import { setGeometry, setShowAddGeometry, setShowEditGeometry } from "../../store/slices/geometrySlice";
+import { Modal } from "../../../components/Modal/Modal";
+import { useAppDispatch } from "../../../hooks/useAppDispatch";
+import { useAppSelector } from "../../../hooks/useAppSelector";
+import { setGeometry, setShowAddGeometry, setShowEditGeometry } from "../../../store/slices/geometrySlice";
 
 export const GeometryManager = () => {
   const dispatch = useAppDispatch();
@@ -29,7 +29,7 @@ export const GeometryManager = () => {
   
   return (
     <>
-      <div className="container mt-5">
+      <div className="container mt-5 flex-1">
         <GeometryButton 
           geometry={geometry} 
           addGeometry={() => dispatch(setShowAddGeometry(true))} 
