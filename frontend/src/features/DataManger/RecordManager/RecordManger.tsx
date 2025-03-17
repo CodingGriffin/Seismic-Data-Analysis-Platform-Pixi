@@ -27,7 +27,7 @@ export const RecordManager = () => {
   const [addMode, setAddMode] = useState<"add" | "edit" | null>(null);
   const [selectedRecordId, setSelectedRecordId] = useState<string>("");
 
-  const handleRecordAdd = (id: string|null, data: RecordItem) => {
+  const handleRecordAdd = (id: string | null, data: RecordItem) => {
     if (addMode === "edit" && id) {
       dispatch(updateRecord({ id, data }));
     } else {
@@ -46,9 +46,16 @@ export const RecordManager = () => {
     setShowDeleteConfirmation(false);
   };
 
-  const handleRecordUpdate = (id: string) => {
+  const handleRecordUpdate = (
+    id: string,
+    data:RecordItem|null
+  ) => {
     setSelectedRecordId(id);
-    setAddMode("edit");
+    if (data !== null) {
+      dispatch(updateRecord({id, data}))
+    } else {
+      setAddMode("edit");
+    }
   };
 
   const handleRecordReorder = (orderedIds: string[]) => {
@@ -61,6 +68,7 @@ export const RecordManager = () => {
   };
 
   useEffect(() => {
+    console.log("AddMode:", addMode);
     if (addMode !== null) {
       dispatch(setShowAddRecord(true));
     } else {
@@ -92,7 +100,7 @@ export const RecordManager = () => {
             selectedRecordId={selectedRecordId}
             onAddRecord={handleRecordAdd}
             mode={addMode}
-            onClose={() => dispatch(setShowAddRecord(false))}
+            onClose={() => setAddMode(null)}
           />
         )}
         {showEditRecord && (

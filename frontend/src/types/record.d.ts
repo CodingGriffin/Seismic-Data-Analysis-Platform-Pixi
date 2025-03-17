@@ -11,6 +11,9 @@ export interface Matrix {
 }
 
 interface RecordItem {
+  fileName:string;
+  enabled:boolean;
+  weight:number;
   data: number[][];
   shape: number[];
   dimensions: { width: number; height: number };

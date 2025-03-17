@@ -1,43 +1,62 @@
-import { useState, type ChangeEvent} from "react";
+import { useState, type ChangeEvent } from "react";
 import { FileControls } from "../../../../components/FileControls/FileControls";
 import { RecordItem } from "../../../../types/record";
-import { extractDataFromNpy } from "../../../../utils/npy-util";
-import { rotateClockwise, flipVertical } from "../../../../utils/matrix-util";
+// import { extractDataFromNpy } from "../../../../utils/npy-util";
+// import { rotateClockwise, flipVertical } from "../../../../utils/matrix-util";
 
 interface AddRecordProps {
   selectedRecordId?: string;
-  mode?: 'add' | 'edit';
-  onAddRecord: (id: string|null, data: RecordItem) => void;
+  mode?: "add" | "edit";
+  onAddRecord: (id: string | null, data: RecordItem) => void;
   onClose: () => void;
 }
 
-export default function AddRecord({ selectedRecordId,mode = 'add', onAddRecord, onClose }: AddRecordProps) {
+export default function AddRecord({
+  selectedRecordId,
+  mode = "add",
+  onAddRecord,
+  onClose,
+}: AddRecordProps) {
   const [previewData, setPreviewData] = useState<RecordItem | null>(null);
 
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const data = await extractDataFromNpy(file);
+    // const data = await extractDataFromNpy(file);
 
-    if (!data) return;
-    let { matrix: rotated } = rotateClockwise(data.data);
-    let { matrix: transformed, shape} = flipVertical(rotated);
+    // if (!data) return;
+    // let { matrix: rotated } = rotateClockwise(data.data);
+    // let { matrix: transformed, shape } = flipVertical(rotated);
 
+    // setPreviewData({
+      // fileName: file.name,
+      // data: transformed,
+      // dimensions: {
+      //   width: shape[1],
+      //   height: shape[0],
+      // },
+      // shape,
+      // min: data.min,
+      // max: data.max,
+    // });
     setPreviewData({
-        data: transformed,
-        dimensions: {
-          width: shape[1],
-          height: shape[0]
-        },
-        shape,
-        min: data.min,
-        max: data.max
+      fileName: file.name,
+      enabled:false,
+      weight:0,
+      data: [],
+      dimensions: {
+        width: 0,
+        height: 0,
+      },
+      shape:[0,0],
+      min: 0,
+      max: 0,
     });
   };
 
-  const isEditMode = mode === 'edit';
-  const title = isEditMode ? 'Edit Record' : 'Add Record';
-  const buttonText = isEditMode ? 'Replace Data' : 'Load Data';
+  const isEditMode = mode === "edit";
+  const title = isEditMode ? "Edit Record" : "Add Record";
+  const buttonText = isEditMode ? "Replace Data" : "Load Data";
   const seletectedRecordId = selectedRecordId;
 
   return (
@@ -54,10 +73,17 @@ export default function AddRecord({ selectedRecordId,mode = 'add', onAddRecord, 
             ></button>
           </div>
           <div className="modal-body">
-            <FileControls onFileSelect={handleFileUpload} accept=".npy" showDownload={false}/>
+            <FileControls
+              onFileSelect={handleFileUpload}
+              accept=".sgy"
+              showDownload={false}
+            />
             {previewData && (
               <>
-                <div className="">Shape: {previewData.dimensions.width} x {previewData.dimensions.height}</div>
+                <div className="">
+                  Shape: {previewData.dimensions.width} x{" "}
+                  {previewData.dimensions.height}
+                </div>
                 <div className="">Min: {previewData.min}</div>
                 <div className="">Max: {previewData.max}</div>
               </>
@@ -67,7 +93,11 @@ export default function AddRecord({ selectedRecordId,mode = 'add', onAddRecord, 
             <button
               className="btn btn-primary w-100"
               disabled={!previewData}
-              onClick={() => mode === 'edit' && seletectedRecordId ? onAddRecord(seletectedRecordId, previewData!) : onAddRecord(null, previewData!)}
+              onClick={() =>
+                mode === "edit" && seletectedRecordId
+                  ? onAddRecord(seletectedRecordId, previewData!)
+                  : onAddRecord(null, previewData!)
+              }
             >
               {buttonText}
             </button>

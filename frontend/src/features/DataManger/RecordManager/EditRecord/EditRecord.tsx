@@ -29,7 +29,7 @@ interface EditRecordProps {
   onRecordDelete: (id: string) => void;
   onRecordDeleteAll: () => void;
   onRecordReorder: (orderedIds: string[]) => void;
-  onRecordUpdate: (id: string) => void;
+  onRecordUpdate: (index: string, data:RecordItem|null) => void;
   onRecordAdd: () => void;
   onShowDeleteConfirm: (id: string) => void;
   onShowDeleteAllConfirm: () => void;
@@ -105,9 +105,9 @@ export default function EditRecord({
                 <table className="table table-striped table-bordered">
                   <thead className="table-light">
                     <tr>
-                      <th>Index</th>
-                      <th>Dimensions</th>
-                      <th>Range</th>
+                      <th>Name</th>
+                      <th>Enabled</th>
+                      <th>Weight</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -117,7 +117,7 @@ export default function EditRecord({
                       strategy={verticalListSortingStrategy}
                     >
                       {orderedIds.map((id, index) => {
-                        const record = records[id];  // Changed from records.get(id)
+                        const record = records[id];
                         if (!record) return null;
                         
                         return (

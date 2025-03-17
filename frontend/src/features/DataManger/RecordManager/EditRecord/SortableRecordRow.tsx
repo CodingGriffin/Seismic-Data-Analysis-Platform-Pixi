@@ -2,13 +2,14 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { RecordItem } from "../../../../types/record";
 import { Button } from "../../../../components/Button/Button";
+import { Input } from "../../../../components/Input/Input";
 
 interface SortableRecordRowProps {
   record: RecordItem;
   index: number;
   orderId: string;
   onDelete: (index: string) => void;
-  onUpdate: (index: string) => void;
+  onUpdate: (index: string, data: RecordItem | null) => void;
 }
 
 export function SortableRecordRow({
@@ -28,24 +29,48 @@ export function SortableRecordRow({
 
   return (
     <tr ref={setNodeRef} style={style} {...attributes}>
-      <td className="align-middle cursor-move" {...listeners}>
-        {orderId}
+      <td className="align-middle">
+        <Button
+          variant="primary"
+          onClick={() => onUpdate(orderId, null)}
+          aria-label="Edit record"
+        >
+          {record.fileName}
+        </Button>
       </td>
       <td className="align-middle">
-        {record.dimensions.width} x {record.dimensions.height}
+        <input
+          className="form-check-input"
+          type="checkbox"
+          value={record.enabled ? 1 : 0}
+          checked={record.enabled}
+          onChange={(event) => {
+            console.log("curValue:", event.target.checked);
+            onUpdate(orderId, {
+              ...record,
+              enabled: event.target.checked,
+            });
+          }}
+          aria-label="enable"
+        />
+        <label className="form-check-label" htmlFor="flexCheck">
+          {record.enabled ? "Yes" : "No"}
+        </label>
       </td>
       <td className="align-middle">
-        {record.min.toFixed(2)} to {record.max.toFixed(2)}
+        <Input
+          type="number"
+          value={record.weight}
+          onChange={(value) =>
+            onUpdate(orderId, {
+              ...record,
+              weight: parseFloat(value),
+            })
+          }
+        />
       </td>
       <td>
         <div className="d-flex gap-2">
-          <Button
-            variant="primary"
-            onClick={() => onUpdate(orderId)}
-            aria-label="Edit record"
-          >
-            Edit
-          </Button>
           <Button
             variant="danger"
             onClick={() => onDelete(orderId)}
