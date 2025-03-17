@@ -68,7 +68,7 @@ const SelectedRecordsSummary: React.FC<SelectedRecordsSummaryProps> = ({
                     fontSize: "10px",
                   }}
                 >
-                  {orderedIds.findIndex((id) => id === recordId)}
+                  {orderedIds.findIndex((id) => id === recordId) + 1}
                 </div>
               </div>
             </div>
