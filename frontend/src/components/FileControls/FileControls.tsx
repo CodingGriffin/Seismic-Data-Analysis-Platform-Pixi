@@ -3,9 +3,16 @@ interface FileControlsProps {
   accept?: string;
   showDownload?: boolean;
   onDownload?: () => void;
+  multiple?: boolean;
 }
 
-export const FileControls = ({ onFileSelect, onDownload = () => {}, accept = ".txt", showDownload = true }: FileControlsProps) => {
+export const FileControls = ({
+  onFileSelect,
+  onDownload = () => {},
+  accept = ".txt",
+  showDownload = true,
+  multiple = false,
+}: FileControlsProps) => {
   return (
     <div className="d-flex justify-content-center gap-3 mb-3">
       <div className="form-group flex-grow-1">
@@ -14,6 +21,7 @@ export const FileControls = ({ onFileSelect, onDownload = () => {}, accept = ".t
           accept={accept}
           onChange={onFileSelect}
           className="form-control"
+          multiple={multiple}
         />
       </div>
       {showDownload && (

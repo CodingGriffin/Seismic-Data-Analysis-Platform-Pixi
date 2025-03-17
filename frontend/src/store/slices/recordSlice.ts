@@ -25,10 +25,12 @@ const recordSlice = createSlice({
   name: "record",
   initialState,
   reducers: {
-    addRecord: (state, action: PayloadAction<RecordItem>) => {
-      const id = generateId();
-      state.itemsMap[id] = action.payload;
-      state.orderedIds.push(id);
+    addRecord: (state, action: PayloadAction<RecordItem[]>) => {
+      action.payload.forEach((item) => {
+        const id = generateId();
+        state.itemsMap[id] = item;
+        state.orderedIds.push(id);
+      });
     },
     setRecords: (state, action: PayloadAction<RecordItem[]>) => {
       state.itemsMap = {};
@@ -49,7 +51,7 @@ const recordSlice = createSlice({
     },
     deleteRecord: (state, action: PayloadAction<string>) => {
       delete state.itemsMap[action.payload];
-      state.orderedIds = state.orderedIds.filter(id => id !== action.payload);
+      state.orderedIds = state.orderedIds.filter((id) => id !== action.payload);
     },
     reorderRecords: (state, action: PayloadAction<string[]>) => {
       state.orderedIds = action.payload;

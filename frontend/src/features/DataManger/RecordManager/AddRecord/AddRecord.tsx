@@ -7,7 +7,7 @@ import { RecordItem } from "../../../../types/record";
 interface AddRecordProps {
   selectedRecordId?: string;
   mode?: "add" | "edit";
-  onAddRecord: (id: string | null, data: RecordItem) => void;
+  onAddRecord: (id: string | null, data: RecordItem[] | RecordItem) => void;
   onClose: () => void;
 }
 
@@ -17,41 +17,38 @@ export default function AddRecord({
   onAddRecord,
   onClose,
 }: AddRecordProps) {
-  const [previewData, setPreviewData] = useState<RecordItem | null>(null);
+  const [previewData, setPreviewData] = useState<RecordItem[]>([]);
 
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    // const data = await extractDataFromNpy(file);
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    const uploadedData: RecordItem[] = [];
 
-    // if (!data) return;
-    // let { matrix: rotated } = rotateClockwise(data.data);
-    // let { matrix: transformed, shape } = flipVertical(rotated);
+    for (const file of Array.from(files)) {
+      // const data = await extractDataFromNpy(file);
+      // if (!data) continue;
 
-    // setPreviewData({
-      // fileName: file.name,
-      // data: transformed,
-      // dimensions: {
-      //   width: shape[1],
-      //   height: shape[0],
-      // },
-      // shape,
-      // min: data.min,
-      // max: data.max,
-    // });
-    setPreviewData({
-      fileName: file.name,
-      enabled:false,
-      weight:0,
-      data: [],
-      dimensions: {
-        width: 0,
-        height: 0,
-      },
-      shape:[0,0],
-      min: 0,
-      max: 0,
-    });
+      // let { matrix: rotated } = rotateClockwise(data.data);
+      // let { matrix: transformed, shape } = flipVertical(rotated);
+
+      const record: RecordItem = {
+        fileName: file.name,
+        enabled: false,
+        weight: 0,
+        data: [],
+        dimensions: {
+          width: 0,
+          height: 0,
+        },
+        shape: [0, 0],
+        min: 0,
+        max: 0,
+      };
+
+      uploadedData.push(record);
+    }
+
+    setPreviewData(uploadedData);
   };
 
   const isEditMode = mode === "edit";
@@ -77,17 +74,13 @@ export default function AddRecord({
               onFileSelect={handleFileUpload}
               accept=".sgy"
               showDownload={false}
+              multiple = {mode === "add" ? true:false}
             />
-            {previewData && (
-              <>
-                <div className="">
-                  Shape: {previewData.dimensions.width} x{" "}
-                  {previewData.dimensions.height}
-                </div>
-                <div className="">Min: {previewData.min}</div>
-                <div className="">Max: {previewData.max}</div>
-              </>
-            )}
+            <>
+              {previewData.length > 0 &&
+                previewData.map((data, index) => <div key={`${data.fileName}-${index}`}>{data.fileName}</div>)}
+            </>
+            <div></div>
           </div>
           <div className="modal-footer">
             <button
@@ -95,7 +88,7 @@ export default function AddRecord({
               disabled={!previewData}
               onClick={() =>
                 mode === "edit" && seletectedRecordId
-                  ? onAddRecord(seletectedRecordId, previewData!)
+                  ? onAddRecord(seletectedRecordId, previewData[0]!)
                   : onAddRecord(null, previewData!)
               }
             >
