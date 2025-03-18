@@ -113,7 +113,7 @@ const Dashboard: React.FC = () => {
         <>
           <div className="modal-backdrop show" />
           <div className="modal show d-block">
-            <div className={"modal-dialog"}>
+            <div className="modal-dialog h-75 w-75">
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">Manage Data</h5>
