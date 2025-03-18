@@ -27,11 +27,11 @@ export const RecordManager = () => {
   const [addMode, setAddMode] = useState<"add" | "edit" | null>(null);
   const [selectedRecordId, setSelectedRecordId] = useState<string>("");
 
-  const handleRecordAdd = (id: string | null, data: RecordItem) => {
-    if (addMode === "edit" && id) {
+  const handleRecordAdd = (id: string | null, data: RecordItem[]|RecordItem) => {
+    if (addMode === "edit" && id && !Array.isArray(data)) {
       dispatch(updateRecord({ id, data }));
     } else {
-      dispatch(addRecord(data));
+      Array.isArray(data) && dispatch(addRecord(data));
     }
     setAddMode(null);
   };
