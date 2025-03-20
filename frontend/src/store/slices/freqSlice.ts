@@ -22,8 +22,11 @@ const freqSlice = createSlice({
     setMaxFreq: (state, action: PayloadAction<number>) => {
       state.maxFreq = action.payload;
     },
+    setFreqData: (state, action: PayloadAction<number[]>) => {
+      state.freqData = action.payload;
+    },
   },
 });
 
-export const { setNumFreq, setMaxFreq } = freqSlice.actions;
+export const { setNumFreq, setMaxFreq, setFreqData } = freqSlice.actions;
 export default freqSlice.reducer;

@@ -48,9 +48,7 @@ export const processSingleGrid = async (
   formData.append('num_slow_points', numSlowPoints.toString());
   formData.append('num_freq_points', numFreqPoints.toString());
   
-  return api.post('/process/grid', formData, {
-    responseType: 'arraybuffer'
-  });
+  return api.post('/process/grid', formData);
 };
 
 export const processFrequencyWithSgy = async (
@@ -64,9 +62,7 @@ export const processFrequencyWithSgy = async (
   formData.append('max_frequency', maxFrequency.toString());
   formData.append('num_freq_points', numFreqPoints.toString());
   
-  return api.post('/process/frequency_with_sgy', formData, {
-    responseType: 'arraybuffer'
-  });
+  return api.post('/process/frequency_with_sgy', formData);
 };
 
 export const processFrequencyWithParams = async (
@@ -82,9 +78,7 @@ export const processFrequencyWithParams = async (
   formData.append('max_frequency', maxFrequency.toString());
   formData.append('num_freq_points', numFreqPoints.toString());
   
-  return api.post('/process/frequency_with_params', formData, {
-    responseType: 'arraybuffer'
-  });
+  return api.post('/process/frequency_with_params', formData);
 };
 
 export const processSlownessWithParams = async (
@@ -96,7 +90,5 @@ export const processSlownessWithParams = async (
   formData.append('max_slow', maxSlow.toString());
   formData.append('num_slow_points', numSlowPoints.toString());
   
-  return api.post('/process/frequency_with_params', formData, {
-    responseType: 'arraybuffer'
-  });
+  return api.post('/process/frequency_with_params', formData);
 };

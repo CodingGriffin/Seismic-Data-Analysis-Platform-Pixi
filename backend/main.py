@@ -15,8 +15,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.responses import FileResponse
 
-from backend.utils import close_and_remove_file, get_sheets_from_excel, get_geometry_from_sgy
-from backend.utils import get_geometry_from_excel
+from utils import close_and_remove_file, get_sheets_from_excel, get_geometry_from_sgy
+from utils import get_geometry_from_excel
 
 app = FastAPI()
 CHUNK_SIZE = 1024 * 1024  # adjust the chunk size as desired
@@ -149,28 +149,49 @@ async def dummy_grids_endpoint(
         num_freq_points: Annotated[int, Form(...)],
         return_freq_and_slow: Annotated[bool, Form(...)] = True,
 ):
-    # As part of the processing, we need to generate the freq and slow arrays here anyways.
-    # Not sure if it's better to return everything together, or just one.
+    # if return_freq_and_slow:
+    #     kwargs_savez = {
+    #         "freq": dummy_freq_data,
+    #         "slow": dummy_slow_data,
+    #     }
+    # else:
+    #     kwargs_savez = {}
 
-    # For now just return the small grid sample data
-    if return_freq_and_slow:
-        kwargs_savez = {
-            "freq": dummy_freq_data,
-            "slow": dummy_slow_data,
+    # # When actually implemented, generate grids for them here
+    # for i, _ in enumerate(sgy_files):
+    #     kwargs_savez["grid_" + str(i)] = dummy_grid_data
+
+    # # A couple thoughts on how to return this
+    # # - As an npz, saved as a temporary file. Either uncompressed or compressed
+    # # - As 1 or more npy files zipped together
+    # # - As json data
+
+    # return "No return yet"
+    # Prepare response data
+    response_data = {
+        "data": {
+            "grids": []
         }
-    else:
-        kwargs_savez = {}
-
-    # When actually implemented, generate grids for them here
-    for i, _ in enumerate(sgy_files):
-        kwargs_savez["grid_" + str(i)] = dummy_grid_data
-
-    # A couple thoughts on how to return this
-    # - As an npz, saved as a temporary file. Either uncompressed or compressed
-    # - As 1 or more npy files zipped together
-    # - As json data
-
-    return "No return yet"
+    }
+    
+    # Add frequency and slowness data if requested
+    if return_freq_and_slow:
+        response_data["data"]["freq"] = {
+            "data": dummy_freq_data.tolist(),
+        }
+        response_data["data"]["slow"] = {
+            "data": dummy_slow_data.tolist(),
+        }
+    
+    # Add grid data for each sgy file as array elements
+    for i, sgy_file in enumerate(sgy_files):
+        response_data["data"]["grids"].append({
+            "name": sgy_file.filename,
+            "data": dummy_grid_data.tolist(),
+            "shape": dummy_grid_data.shape
+        })
+    
+    return response_data
 
 @app.post("/process/grid")
 async def dummy_grid_endpoint(
@@ -183,17 +204,41 @@ async def dummy_grid_endpoint(
         num_freq_points: Annotated[int, Form(...)],
 ):
     # Alternate version - only return a single grid
-    with tempfile.NamedTemporaryFile(suffix=".npy", delete=False) as temp_file:
-        # Get the temporary file path
-        temp_file_path = temp_file.name
+    # with tempfile.NamedTemporaryFile(suffix=".npy", delete=False) as temp_file:
+    #     # Get the temporary file path
+    #     temp_file_path = temp_file.name
 
-        # Save the NumPy array to the temporary file
-        np.save(temp_file_path, dummy_grid_data)
+    #     # Save the NumPy array to the temporary file
+    #     np.save(temp_file_path, dummy_grid_data)
 
-    #TODO: Properly handle deleting the tempfile using background_tasks
-    return FileResponse(
-        path=temp_file_path,
-    )
+    # #TODO: Properly handle deleting the tempfile using background_tasks
+    # return FileResponse(
+    #     path=temp_file_path,
+    # )
+    # Prepare response data
+    response_data = {
+        # "metadata": {
+        #     "max_slowness": max_slowness,
+        #     "max_frequency": max_frequency,
+        #     "num_slow_points": num_slow_points,
+        #     "num_freq_points": num_freq_points
+        # },
+        "data": {
+            "grid": {
+                "name": sgy_file.filename,
+                "data": dummy_grid_data.tolist(),
+                "shape": dummy_grid_data.shape
+            },
+            # "freq": {
+            #     "data": dummy_freq_data.tolist(),
+            # },
+            # "slow": {
+            #     "data": dummy_slow_data.tolist(),
+            # }
+        }
+    }
+    
+    return response_data
 
 @app.post("/process/frequency_with_sgy")
 async def dummy_freq_endpoint_from_sgy(

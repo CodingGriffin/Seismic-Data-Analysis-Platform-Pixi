@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+numpy
+aiofiles
+python-multipart
+starlette
+openpyxl
+pandas
+segyio
+pydantic

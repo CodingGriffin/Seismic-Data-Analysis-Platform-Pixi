@@ -22,8 +22,11 @@ const slowSlice = createSlice({
     setMaxSlow: (state, action: PayloadAction<number>) => {
       state.maxSlow = action.payload;
     },
+    setSlowData: (state, action: PayloadAction<number[]>) => {
+      state.slowData = action.payload;
+    },
   },
 });
 
-export const { setNumSlow, setMaxSlow } = slowSlice.actions;
+export const { setNumSlow, setMaxSlow, setSlowData } = slowSlice.actions;
 export default slowSlice.reducer;
