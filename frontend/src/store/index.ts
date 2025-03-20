@@ -5,6 +5,7 @@ import freqReducer from "./slices/freqSlice";
 import slowReducer from "./slices/slowSlice";
 import toastReducer from "./slices/toastSlice";
 import cacheReducer from "./slices/cacheSlice";
+import plotReducer from "./slices/plotSlice";
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     slow: slowReducer,
     toast: toastReducer,
     cache: cacheReducer,
+    plot: plotReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

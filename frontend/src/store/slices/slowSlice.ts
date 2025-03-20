@@ -7,8 +7,8 @@ interface SlowState {
 }
 
 const initialState: SlowState = {
-  numSlow: 0,
-  maxSlow: 0,
+  numSlow: 50,
+  maxSlow: 0.004,
   slowData: [],
 };
 

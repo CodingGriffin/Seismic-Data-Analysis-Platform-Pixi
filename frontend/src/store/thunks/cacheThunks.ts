@@ -1,13 +1,14 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { processGrids, processSingleGrid } from "../../services/api";
 import { RecordItem } from "../../types/record";
-import { 
-  setPreviewRecords, 
-  setPreviewFreqData, 
-  setPreviewSlowData, 
-  setIsLoading 
+import {
+  setPreviewRecords,
+  setPreviewFreqData,
+  setPreviewSlowData,
+  setIsLoading
 } from "../slices/cacheSlice";
 import { addToast } from "../slices/toastSlice";
+import { npArrayToMatrix, rotateClockwise, flipVertical } from "../../utils/matrix-util";
 
 export const processGridsForPreview = createAsyncThunk(
   "cache/processGridsForPreview",
@@ -33,7 +34,7 @@ export const processGridsForPreview = createAsyncThunk(
   ) => {
     try {
       dispatch(setIsLoading(true));
-      
+
       const response = await processGrids(
         sgyFiles,
         geometryData,
@@ -49,7 +50,7 @@ export const processGridsForPreview = createAsyncThunk(
       if (freq) {
         dispatch(setPreviewFreqData(freq.data));
       }
-      
+
       if (slow) {
         dispatch(setPreviewSlowData(slow.data));
       }
@@ -57,24 +58,28 @@ export const processGridsForPreview = createAsyncThunk(
       const recordItems: RecordItem[] = grids.map((grid: any) => {
         const { data, shape, name } = grid;
         const flatData = data.flat();
-        
+        console.log("Flat:", flatData)
+        let { matrix: jsMatrix } = npArrayToMatrix(flatData, shape)
+        let { matrix: rotated } = rotateClockwise(jsMatrix);
+        let { matrix: transformed, shape:transformedShape } = flipVertical(rotated);
+
         return {
           fileName: name,
           enabled: false,
           weight: 0,
-          data: data,
+          data: transformed,
           dimensions: {
-            width: shape[1],
-            height: shape[0],
+            width: transformedShape[1],
+            height: transformedShape[0],
           },
-          shape: shape,
+          shape: transformedShape,
           min: Math.min(...flatData),
           max: Math.max(...flatData),
         };
       });
 
       dispatch(setPreviewRecords(recordItems));
-      
+
       dispatch(addToast({
         message: "Files processed successfully",
         type: "success"
@@ -117,7 +122,7 @@ export const processSingleGridForPreview = createAsyncThunk(
   ) => {
     try {
       dispatch(setIsLoading(true));
-      
+
       const response = await processSingleGrid(
         sgyFile,
         geometryData,
@@ -132,14 +137,14 @@ export const processSingleGridForPreview = createAsyncThunk(
       if (freq) {
         dispatch(setPreviewFreqData(freq.data));
       }
-      
+
       if (slow) {
         dispatch(setPreviewSlowData(slow.data));
       }
 
       const { data, shape, name } = grid;
       const flatData = data.flat();
-      
+
       const recordItem: RecordItem = {
         fileName: name,
         enabled: false,
@@ -155,7 +160,7 @@ export const processSingleGridForPreview = createAsyncThunk(
       };
 
       dispatch(setPreviewRecords([recordItem]));
-      
+
       dispatch(addToast({
         message: "File processed successfully",
         type: "success"

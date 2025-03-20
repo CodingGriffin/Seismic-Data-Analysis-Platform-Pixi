@@ -7,8 +7,8 @@ interface FreqState {
 }
 
 const initialState: FreqState = {
-  numFreq: 0,
-  maxFreq: 0,
+  numFreq: 50,
+  maxFreq: 50,
   freqData: [],
 };
 

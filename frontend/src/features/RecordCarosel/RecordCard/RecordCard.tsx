@@ -2,6 +2,8 @@
 
 import type React from "react";
 import { RecordItem } from "../../../types/record";
+import { useRef, useState, useCallback } from "react";
+import { Texture } from "pixi.js";
 
 interface RecordCardProps {
   id: string;
@@ -16,6 +18,20 @@ const RecordCard: React.FC<RecordCardProps> = ({
   onToggleSelection,
   onSliderChange,
 }) => {
+  const plotRef = useRef<HTMLDivElement>(null);
+  const [texture, setTexture] = useState<Texture | null>(null);
+  const [plotDimensions, setPlotDimensions] = useState({
+    width: 180,
+    height: 140,
+  });
+
+  const handleDimensionChange = useCallback(
+    (dimensions: { width: number; height: number }) => {
+      setPlotDimensions(dimensions);
+    },
+    []
+  );
+
   return (
     <div
       className={`card p-0 no-select ${
@@ -41,8 +57,8 @@ const RecordCard: React.FC<RecordCardProps> = ({
           <div
             className="border rounded"
             style={{
-              width: "180px",
-              height: "140px",
+              width: `${plotDimensions.width}px`,
+              height: `${plotDimensions.height}px`,
             }}
           >
             Preview

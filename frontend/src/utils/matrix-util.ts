@@ -1,6 +1,6 @@
 import { Matrix } from '../types/record';
 
-export const npArrayToJS = (flatArray: number[], shape: number[]) => {
+export const npArrayToMatrix = (flatArray: number[], shape: number[]) => {
   const [rows, cols] = shape;
   let result: number[][] = [];
 

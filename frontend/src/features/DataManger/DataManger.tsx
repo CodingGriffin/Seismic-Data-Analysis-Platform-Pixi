@@ -1,6 +1,7 @@
 import { FreqSlowManger } from "./FreqSlowManager/FreqSlowManager";
 import { GeometryManager } from "./GeometryManager/GeometryManager";
 import { RecordManager } from "./RecordManager/RecordManger";
+import { ColorMapManager } from "./ColorMapManager/ColorMapManager";
 
 export const DataManger = () => {
   return (
@@ -18,6 +19,11 @@ export const DataManger = () => {
       <div className="row mt-4">
         <div className="border p-3 col d-flex mt-2">
           <FreqSlowManger />
+        </div>
+      </div>
+      <div className="row mt-4">
+        <div className="border p-3 col d-flex mt-2">
+          <ColorMapManager />
         </div>
       </div>
     </div>
