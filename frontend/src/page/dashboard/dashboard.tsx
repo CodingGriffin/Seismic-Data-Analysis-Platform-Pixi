@@ -1,69 +1,29 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../../components/Button/Button";
 import RecordCarousel from "../../features/RecordCarosel/RecordCarosel";
 import SelectedRecordsSummary from "../../features/RecordSummary/RecordSummary";
 import DrawingCanvas from "../../features/MainRecord/MainRecord";
 import { DataManger } from "../../features/DataManger/DataManger";
-import { useAppDispatch } from "../../hooks/useAppDispatch";
-import { useAppSelector } from "../../hooks/useAppSelector";
-import { updateRecord } from "../../store/slices/recordSlice";
 
 const Dashboard: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const { itemsMap, orderedIds } = useAppSelector((state) => state.record);
-
   const [scrollToRecordId, setScrollToRecordId] = useState<string | null>(null);
-
   const [showDataManager, setShowDataManager] = useState<boolean>(false);
-  const toggleRecordSelection = (recordId: string, event: React.MouseEvent) => {
-    if ((event.target as HTMLElement).tagName === "INPUT") {
-      return;
-    }
-    const prevRecord = itemsMap[recordId];
-    dispatch(
-      updateRecord({
-        id: recordId,
-        data: {
-          ...prevRecord,
-          enabled: !prevRecord.enabled,
-        },
-      })
-    );
-  };
 
-  const handleSliderChange = (recordId: string, value: number) => {
-    dispatch(
-      updateRecord({
-        id: recordId,
-        data: {
-          ...itemsMap[recordId],
-          weight: value,
-        },
-      })
-    );
-  };
+  useEffect(() => {
+    const handleScrollToRecord = (event: CustomEvent<{ recordId: string }>) => {
+      setScrollToRecordId(event.detail.recordId);
+      setTimeout(() => setScrollToRecordId(null), 100);
+    };
 
-  const clearSelections = () => {
-    orderedIds.forEach((recordId) => {
-      dispatch(
-        updateRecord({
-          id: recordId,
-          data: {
-            ...itemsMap[recordId],
-            enabled: false,
-          },
-        })
-      );
-    });
-  };
-
-  const handleSelectRecord = (recordId: string) => {
-    setScrollToRecordId(recordId);
-    setTimeout(() => setScrollToRecordId(null), 100);
-  };
+    window.addEventListener('scrollToRecord', handleScrollToRecord as EventListener);
+    
+    return () => {
+      window.removeEventListener('scrollToRecord', handleScrollToRecord as EventListener);
+    };
+  }, []);
 
   return (
     <>
@@ -85,21 +45,12 @@ const Dashboard: React.FC = () => {
 
           <div className="col-md-7">
             <RecordCarousel
-              records={itemsMap}
-              orderedIds={orderedIds}
-              onToggleSelection={toggleRecordSelection}
-              onSliderChange={handleSliderChange}
               scrollToRecordId={scrollToRecordId}
             />
           </div>
 
           <div className="col-md-3">
-            <SelectedRecordsSummary
-              records={itemsMap}
-              orderedIds={orderedIds}
-              onClearSelection={clearSelections}
-              onSelectRecord={handleSelectRecord}
-            />
+            <SelectedRecordsSummary />
           </div>
         </div>
 

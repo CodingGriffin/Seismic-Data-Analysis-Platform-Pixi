@@ -10,10 +10,13 @@ export interface Matrix {
   shape: [number, number];
 }
 
-interface RecordItem {
-  fileName:string;
-  enabled:boolean;
-  weight:number;
+export interface RecordState {
+  enabled: boolean;
+  weight: number;
+}
+
+export interface RecordData {
+  fileName: string;
   data: number[][];
   shape: number[];
   dimensions: { width: number; height: number };
@@ -21,5 +24,6 @@ interface RecordItem {
   max: number;
 }
 
+export interface RecordItem extends RecordData, RecordState {}
 export type RGB = { r: number; g: number; b: number };
 export type ColorStop = { color: RGB; position: number };

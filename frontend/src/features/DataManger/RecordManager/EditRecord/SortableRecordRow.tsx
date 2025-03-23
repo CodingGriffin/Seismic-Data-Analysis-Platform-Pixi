@@ -3,13 +3,15 @@ import { CSS } from "@dnd-kit/utilities";
 import { RecordItem } from "../../../../types/record";
 import { Button } from "../../../../components/Button/Button";
 import { Input } from "../../../../components/Input/Input";
+import { useAppDispatch } from "../../../../hooks/useAppDispatch";
+import { updateRecordState } from "../../../../store/slices/recordSlice";
 
 interface SortableRecordRowProps {
   record: RecordItem;
   index: number;
   orderId: string;
-  onDelete: (index: string) => void;
-  onUpdate: (index: string, data: RecordItem | null) => void;
+  onDelete: (id: string) => void;
+  onUpdate: (id: string, data: RecordItem | null) => void;
 }
 
 export function SortableRecordRow({
@@ -19,11 +21,46 @@ export function SortableRecordRow({
   onDelete,
   onUpdate,
 }: SortableRecordRowProps) {
+  const dispatch = useAppDispatch();
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: index });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+  };
+
+  const handleToggleEnabled = (checked: boolean) => {
+    dispatch(
+      updateRecordState({
+        id: orderId,
+        state: {
+          enabled: checked,
+        },
+      })
+    );
+    
+    onUpdate(orderId, {
+      ...record,
+      enabled: checked,
+    });
+  };
+
+  const handleWeightChange = (value: string) => {
+    const weightValue = parseFloat(value);
+    
+    dispatch(
+      updateRecordState({
+        id: orderId,
+        state: {
+          weight: weightValue,
+        },
+      })
+    );
+    
+    onUpdate(orderId, {
+      ...record,
+      weight: weightValue,
+    });
   };
 
   return (
@@ -45,10 +82,7 @@ export function SortableRecordRow({
           checked={record.enabled}
           onChange={(event) => {
             console.log("curValue:", event.target.checked);
-            onUpdate(orderId, {
-              ...record,
-              enabled: event.target.checked,
-            });
+            handleToggleEnabled(event.target.checked);
           }}
           aria-label="enable"
         />
@@ -60,12 +94,7 @@ export function SortableRecordRow({
         <Input
           type="number"
           value={record.weight}
-          onChange={(value) =>
-            onUpdate(orderId, {
-              ...record,
-              weight: parseFloat(value),
-            })
-          }
+          onChange={(value) => handleWeightChange(value)}
         />
       </td>
       <td>

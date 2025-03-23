@@ -1,24 +1,36 @@
 "use client";
 
 import type React from "react";
-import { RecordItem } from "../../types/record";
+import { useAppDispatch } from "../../hooks/useAppDispatch";
+import { useAppSelector } from "../../hooks/useAppSelector";
+import { updateRecordState } from "../../store/slices/recordSlice";
+import { selectRecordItems } from "../../store/selectors/recordSelectors";
 
-interface SelectedRecordsSummaryProps {
-  records: { [key: string]: RecordItem };
-  orderedIds: string[];
-  onClearSelection: () => void;
-  onSelectRecord: (recordId: string) => void;
-}
-
-const SelectedRecordsSummary: React.FC<SelectedRecordsSummaryProps> = ({
-  records,
-  orderedIds,
-  onClearSelection,
-  onSelectRecord,
-}) => {
+const RecordSummary: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const { itemsMap, orderedIds } = useAppSelector(selectRecordItems);
+  
   const selectedRecordObjects = orderedIds.filter(
-    (recordId) => records[recordId].enabled
+    (recordId) => itemsMap[recordId].enabled
   );
+
+  const handleClearSelection = () => {
+    orderedIds.forEach((recordId) => {
+      dispatch(
+        updateRecordState({
+          id: recordId,
+          state: {
+            enabled: false,
+          },
+        })
+      );
+    });
+  };
+
+  const handleSelectRecord = (recordId: string) => {
+    const event = new CustomEvent('scrollToRecord', { detail: { recordId } });
+    window.dispatchEvent(event);
+  };
 
   return (
     <div className="border rounded d-flex flex-column">
@@ -29,7 +41,7 @@ const SelectedRecordsSummary: React.FC<SelectedRecordsSummaryProps> = ({
         <h6 className="mb-0">Selected ({selectedRecordObjects.length})</h6>
         <button
           className="btn btn-sm btn-outline-danger"
-          onClick={onClearSelection}
+          onClick={handleClearSelection}
         >
           Clear
         </button>
@@ -47,14 +59,14 @@ const SelectedRecordsSummary: React.FC<SelectedRecordsSummaryProps> = ({
             <div
               key={recordId}
               className="card mb-2 cursor-pointer p-1"
-              onClick={() => onSelectRecord(recordId)}
+              onClick={() => handleSelectRecord(recordId)}
               style={{ cursor: "pointer", height: "62px" }}
             >
               <div className="card-body p-1 d-flex justify-content-between align-items-center">
                 <div>
-                  <h6 className="mb-0">{records[recordId].fileName}</h6>
+                  <h6 className="mb-0">{itemsMap[recordId].fileName}</h6>
                   <small className="text-muted">
-                    State: {records[recordId].weight}
+                    State: {itemsMap[recordId].weight}
                   </small>
                 </div>
                 <div
@@ -79,4 +91,4 @@ const SelectedRecordsSummary: React.FC<SelectedRecordsSummaryProps> = ({
   );
 };
 
-export default SelectedRecordsSummary;
+export default RecordSummary;

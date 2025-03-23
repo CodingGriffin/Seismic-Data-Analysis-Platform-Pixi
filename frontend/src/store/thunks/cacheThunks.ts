@@ -8,7 +8,7 @@ import {
   setIsLoading
 } from "../slices/cacheSlice";
 import { addToast } from "../slices/toastSlice";
-import { npArrayToMatrix, rotateClockwise, flipVertical } from "../../utils/matrix-util";
+import { rotateClockwise, flipVertical } from "../../utils/matrix-util";
 
 export const processGridsForPreview = createAsyncThunk(
   "cache/processGridsForPreview",
@@ -58,9 +58,7 @@ export const processGridsForPreview = createAsyncThunk(
       const recordItems: RecordItem[] = grids.map((grid: any) => {
         const { data, shape, name } = grid;
         const flatData = data.flat();
-        console.log("Flat:", flatData)
-        let { matrix: jsMatrix } = npArrayToMatrix(flatData, shape)
-        let { matrix: rotated } = rotateClockwise(jsMatrix);
+        let { matrix: rotated } = rotateClockwise(data);
         let { matrix: transformed, shape:transformedShape } = flipVertical(rotated);
 
         return {
@@ -72,7 +70,7 @@ export const processGridsForPreview = createAsyncThunk(
             width: transformedShape[1],
             height: transformedShape[0],
           },
-          shape: transformedShape,
+          shape: shape,
           min: Math.min(...flatData),
           max: Math.max(...flatData),
         };

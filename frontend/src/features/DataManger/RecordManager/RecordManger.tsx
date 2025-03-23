@@ -10,15 +10,17 @@ import {
   setShowEditRecord,
   addRecord,
   deleteRecord,
-  updateRecord,
+  updateRecordData,
+  updateRecordState,
   reorderRecords,
 } from "../../../store/slices/recordSlice";
-import { RecordItem } from "../../../types/record";
+import { RecordItem} from "../../../types/record";
 import { useEffect, useState } from "react";
+import { selectRecordItems } from "../../../store/selectors/recordSelectors";
 
 export const RecordManager = () => {
   const dispatch = useAppDispatch();
-  const { itemsMap, orderedIds } = useAppSelector((state) => state.record);
+  const { itemsMap, orderedIds } = useAppSelector(selectRecordItems);
   const { showAddRecord, showEditRecord } = useAppSelector(
     (state) => state.record
   );
@@ -29,7 +31,13 @@ export const RecordManager = () => {
 
   const handleRecordAdd = (id: string | null, data: RecordItem[]|RecordItem) => {
     if (addMode === "edit" && id && !Array.isArray(data)) {
-      dispatch(updateRecord({ id, data }));
+      const { enabled, weight, ...recordData } = data;
+      
+      dispatch(updateRecordData({ id, data: recordData }));
+      dispatch(updateRecordState({ 
+        id, 
+        state: { enabled, weight } 
+      }));
     } else {
       Array.isArray(data) && dispatch(addRecord(data));
     }
@@ -48,11 +56,19 @@ export const RecordManager = () => {
 
   const handleRecordUpdate = (
     id: string,
-    data:RecordItem|null
+    data: RecordItem | null
   ) => {
     setSelectedRecordId(id);
     if (data !== null) {
-      dispatch(updateRecord({id, data}))
+      const { enabled, weight, ...recordData } = data;
+      if (Object.keys(recordData).length > 0) {
+        dispatch(updateRecordData({ id, data: recordData }));
+      }
+      
+      dispatch(updateRecordState({ 
+        id, 
+        state: { enabled, weight } 
+      }));
     } else {
       setAddMode("edit");
     }
@@ -74,7 +90,7 @@ export const RecordManager = () => {
     } else {
       dispatch(setShowAddRecord(false));
     }
-  }, [addMode]);
+  }, [addMode, dispatch]);
 
   return (
     <>

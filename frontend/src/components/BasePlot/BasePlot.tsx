@@ -4,13 +4,13 @@ import { Tooltip } from "../ToolTip/ToolTip";
 
 interface BasePlotProps {
   children: ReactNode;
-  xLabel: string;
-  yLabel: string;
-  xMin: number;
-  xMax: number;
-  yMin: number;
-  yMax: number;
-  display: (value:number) => string;
+  xLabel?: string;
+  yLabel?: string;
+  xMin?: number;
+  xMax?: number;
+  yMin?: number;
+  yMax?: number;
+  display?: (value:number) => string;
   tooltipContent?: string;
   axesSwapped?: boolean;
   xAxisReversed?: boolean;
@@ -157,25 +157,25 @@ export const BasePlot = forwardRef<HTMLDivElement, BasePlotProps>(({
 
   return (
     <div
-      className="position-relative border rounded bg-white shadow-sm w-100 aspect-ratio-4x3 min-vh-300"
+      className="position-relative border bg-white shadow-sm w-100 h-100 min-vh-50"
     >
-      <div className="position-absolute start-0 top-50 translate-middle-y rotate-270 small ms-n4">
+      <div className="position-absolute start-0 top-50 translate-middle-y text-rotate-270 small ms-n4">
         {displayedValues.yLabel}
       </div>
       <div className="position-absolute start-0 top-0 h-100 d-flex flex-column justify-content-between ms-n3">
-        <div className="small">{display(displayedValues.yMax)}</div>
-        <div className="small">{display(displayedValues.yMin)}</div>
+        <div className="small">{displayedValues.yMax !== undefined && display ? display(displayedValues.yMax) : ''}</div>
+        <div className="small">{displayedValues.yMin !== undefined && display ? display(displayedValues.yMin) : ''}</div>
       </div>
 
       <div className="position-absolute bottom-0 start-50 translate-middle-x small mb-n3">
         {displayedValues.xLabel}
       </div>
       <div className="position-absolute bottom-0 start-0 w-100 d-flex justify-content-between mb-n2">
-        <div className="small">{display(displayedValues.xMin)}</div>
-        <div className="small">{display(displayedValues.xMax)}</div>
+        <div className="small">{displayedValues.xMin !== undefined && display ? display(displayedValues.xMin) : ''}</div>
+        <div className="small">{displayedValues.xMax !== undefined && display ? display(displayedValues.xMax) : ''}</div>
       </div>
       <div 
-        className="w-100 h-100"
+        className="w-100 h-100 d-flex"
         onPointerMove={handlePointerMove}
         onPointerUp={onPointerUp}
         onPointerDown={onPointerDown}
@@ -183,7 +183,7 @@ export const BasePlot = forwardRef<HTMLDivElement, BasePlotProps>(({
       >
         {ref && 'current' in ref && ref.current && (
           <Application
-            className="w-100 h-100"
+            className="flex-1"
             width={plotDimensions.width}
             height={plotDimensions.height}
             background="white"

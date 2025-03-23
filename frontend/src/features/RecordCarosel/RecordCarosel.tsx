@@ -3,27 +3,22 @@
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import RecordCard from "./RecordCard/RecordCard";
-import { RecordItem } from "../../types/record";
+import { useAppSelector } from "../../hooks/useAppSelector";
+import { selectRecordItems } from "../../store/selectors/recordSelectors";
 
 const CARD_WIDTH = 200;
 const CARD_MARGIN = 10;
 const TOTAL_CARD_WIDTH = CARD_WIDTH + CARD_MARGIN * 2;
 
 interface RecordCarouselProps {
-  records: { [key: string]: RecordItem };
-  orderedIds: string[];
-  onToggleSelection: (id: string, event: React.MouseEvent) => void;
-  onSliderChange: (id: string, value: number) => void;
   scrollToRecordId?: string | null;
 }
 
 const RecordCarousel: React.FC<RecordCarouselProps> = ({
-  records,
-  orderedIds,
-  onToggleSelection,
-  onSliderChange,
   scrollToRecordId,
 }) => {
+  const { orderedIds } = useAppSelector(selectRecordItems);
+  
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [visibleIndex, setVisibleIndex] = useState(0);
   const [perpage, setPerpage] = useState(1);
@@ -157,9 +152,6 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
                 >
                   <RecordCard
                     id={recordId}
-                    record={records[recordId]}
-                    onToggleSelection={onToggleSelection}
-                    onSliderChange={onSliderChange}
                   />
                 </div>
               )
