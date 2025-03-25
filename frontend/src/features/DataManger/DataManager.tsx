@@ -17,6 +17,7 @@ import {
   selectOptions,
 } from "../../store/selectors/recordSelectors";
 import { Modal } from "../../components/Modal/Modal";
+import { processGridsForPreview } from "../../store/thunks/cacheThunks";
 
 export const DataManager = () => {
   const dispatch = useAppDispatch();
@@ -28,17 +29,10 @@ export const DataManager = () => {
   const recordOptions = useAppSelector(selectOptions);
 
   const [savedGeometry, setSavedGeometry] = useState<GeometryItem[]>([]);
-  const [savedFreqSettings, setSavedFreqSettings] = useState({ numFreq: 0, maxFreq: 0 });
-  const [savedSlowSettings, setSavedSlowSettings] = useState({ numSlow: 0, maxSlow: 0 });
-  const [savedRecordOptions, setSavedRecordOptions] = useState<RecordOption[]>([]);
+  const [savedFreqSettings, setSavedFreqSettings] = useState({ numFreq: numFreq, maxFreq: maxFreq });
+  const [savedSlowSettings, setSavedSlowSettings] = useState({ numSlow: numSlow, maxSlow: maxSlow });
+  const [savedRecordOptions, setSavedRecordOptions] = useState<RecordOption[]>(recordOptions);
   const [uploadFiles, setUploadFiles] = useState<{[key:string]:File|null}>({});
-
-  const [originalState, setOriginalState] = useState({
-    geometry: [] as GeometryItem[],
-    freqSettings: { numFreq: 0, maxFreq: 0 },
-    slowSettings: { numSlow: 0, maxSlow: 0 },
-    recordOptions: [] as RecordOption[],
-  });
 
   const handleUploadFiles = (files: RecordUploadFile[]|null) => {
     let newUploadFiles:{[key:string]:File|null} = {...uploadFiles};
@@ -54,31 +48,55 @@ export const DataManager = () => {
   }
 
   const handleApplyChanges = () => {
-    dispatch(setGeometry(savedGeometry));
+    const files = Object.values(uploadFiles).filter(Boolean) as File[];
+    const validationErrors = [];
 
+    if (files.length === 0) {
+      validationErrors.push("No SGY files uploaded");
+    }
+
+    if (savedGeometry.length === 0) {
+      validationErrors.push("No geometry data provided");
+    }
+
+    if (savedFreqSettings.numFreq <= 0 || savedFreqSettings.maxFreq <= 0) {
+      validationErrors.push("Invalid frequency settings");
+    }
+
+    if (savedSlowSettings.numSlow <= 0 || savedSlowSettings.maxSlow <= 0) {
+      validationErrors.push("Invalid slowness settings");
+    }
+
+    if (validationErrors.length > 0) {
+      dispatch(addToast({
+        message: `Validation failed: ${validationErrors.join(", ")}`,
+        type: "error",
+        duration: 5000
+      }));
+      return;
+    }
+
+    dispatch(setGeometry(savedGeometry));
     dispatch(setNumFreq(savedFreqSettings.numFreq));
     dispatch(updateMaxFreq(savedFreqSettings.maxFreq));
-
     dispatch(setNumSlow(savedSlowSettings.numSlow));
     dispatch(updateMaxSlow(savedSlowSettings.maxSlow));
-
     dispatch(setOptions(savedRecordOptions));
-    setUploadFiles({});
 
     dispatch(addToast({
       message: "Changes applied successfully",
       type: "success",
       duration: 3000
     }));
-
+    
     setShowDataManager(false);
   };
 
   const handleDiscardChanges = () => {
-    setSavedGeometry(originalState.geometry);
-    setSavedFreqSettings(originalState.freqSettings);
-    setSavedSlowSettings(originalState.slowSettings);
-    setSavedRecordOptions(originalState.recordOptions);
+    setSavedGeometry(geometry);
+    setSavedFreqSettings({ numFreq: numFreq, maxFreq: maxFreq });
+    setSavedSlowSettings({ numSlow: numSlow, maxSlow: maxSlow });
+    setSavedRecordOptions(recordOptions);
     setUploadFiles({});
 
     dispatch(addToast({
@@ -91,17 +109,6 @@ export const DataManager = () => {
   };
 
   useEffect(() => {
-    if (showDataManager) {
-      setOriginalState({
-        geometry: [...geometry],
-        freqSettings: { numFreq, maxFreq },
-        slowSettings: { numSlow, maxSlow },
-        recordOptions: [...recordOptions],
-      });
-    }
-  }, [showDataManager, geometry, numFreq, maxFreq, numSlow, maxSlow, recordOptions]);
-
-  useEffect(() => {
     console.log("Local Geometry Changed:", savedGeometry);
   }, [savedGeometry])
 
@@ -112,6 +119,36 @@ export const DataManager = () => {
   useEffect(() => {
     console.log("Uploaded Files:", uploadFiles)
   }, [uploadFiles])
+
+  useEffect(() => {
+    const files = Object.values(uploadFiles).filter(Boolean) as File[];
+    
+    if (files.length > 0 && 
+        savedGeometry.length > 0 && 
+        savedFreqSettings.numFreq > 0 && 
+        savedFreqSettings.maxFreq > 0 &&
+        savedSlowSettings.numSlow > 0 && 
+        savedSlowSettings.maxSlow > 0) {
+      
+      dispatch(
+        processGridsForPreview({
+          sgyFiles: files,
+          geometryData: JSON.stringify(savedGeometry),
+          maxSlowness: savedSlowSettings.maxSlow,
+          maxFrequency: savedFreqSettings.maxFreq,
+          numSlowPoints: savedSlowSettings.numSlow,
+          numFreqPoints: savedFreqSettings.numFreq,
+          returnFreqAndSlow: true
+        })
+      );
+      
+      dispatch(addToast({
+        message: `Processing ${files.length} files with ${savedGeometry.length} geometry points`,
+        type: "info",
+        duration: 3000
+      }));
+    }
+  }, [savedGeometry, savedFreqSettings, savedSlowSettings, uploadFiles, dispatch]);
 
   return (
     <>

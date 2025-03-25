@@ -17,7 +17,7 @@ const RecordCarousel: React.FC<RecordCarouselProps> = () => {
   const records = useAppSelector(selectRecordItems);
   
   const orderedIds = records.map(record => record.id);
-
+  
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [visibleCards, setVisibleCards] = useState<Set<string>>(new Set());
   const [perpage, setPerpage] = useState(1);
@@ -52,7 +52,6 @@ const RecordCarousel: React.FC<RecordCarouselProps> = () => {
 
   useEffect(() => {
     if (!scrollContainerRef.current) return;
-
     const observer = new IntersectionObserver(
       (entries) => {
         setVisibleCards(prev => {

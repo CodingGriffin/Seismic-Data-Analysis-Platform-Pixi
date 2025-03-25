@@ -137,6 +137,7 @@ const EditRecordOptions: React.FC<EditRecordOptionsProps> = ({
     onRecordOptionsChange?.(recordOptions);
     onFilesChange(recordUploadFiles);
     setHasChanges(false);
+    onClose?.();
   };
 
   return (

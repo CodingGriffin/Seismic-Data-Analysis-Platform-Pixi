@@ -1,14 +1,13 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { processGrids, processSingleGrid } from "../../services/api";
-import { RecordItem } from "../../types/record";
+import { processGrids } from "../../services/api";
 import {
-  setPreviewRecords,
   setPreviewFreqData,
   setPreviewSlowData,
   setIsLoading
 } from "../slices/cacheSlice";
 import { addToast } from "../slices/toastSlice";
 import { rotateClockwise, flipVertical, getMatrixShape } from "../../utils/matrix-util";
+import { setRecords} from "../slices/recordSlice";
 
 export const processGridsForPreview = createAsyncThunk(
   "cache/processGridsForPreview",
@@ -55,121 +54,38 @@ export const processGridsForPreview = createAsyncThunk(
         dispatch(setPreviewSlowData(slow.data));
       }
 
-      const recordItems: RecordItem[] = grids.map((grid: any) => {
+      const recordDataArray = grids.map((grid: any) => {
         const { data, shape, name } = grid;
         const flatData = data.flat();
         const rotated = rotateClockwise(data);
         const transformed = flipVertical(rotated);
         const transformedShape = getMatrixShape(transformed);
-        
         return {
-          fileName: name,
-          enabled: false,
-          weight: 100,
-          data: transformed,
-          dimensions: {
-            width: transformedShape[1],
-            height: transformedShape[0],
-          },
-          shape: shape,
-          min: Math.min(...flatData),
-          max: Math.max(...flatData),
-        };
+          id: name,
+          data: {
+            data: transformed,
+            dimensions: {
+              width: transformedShape[1],
+              height: transformedShape[0],
+            },
+            shape: shape,
+            min: Math.min(...flatData),
+            max: Math.max(...flatData),
+          }
+        }
       });
 
-      dispatch(setPreviewRecords(recordItems));
-
+      dispatch(setRecords(recordDataArray))
       dispatch(addToast({
-        message: "Files processed successfully",
+        message: "Record Data updated successfully",
         type: "success"
       }));
 
-      return recordItems;
+      return recordDataArray;
     } catch (error) {
       console.error("Error processing grids:", error);
       dispatch(addToast({
         message: "Error processing files. Please try again.",
-        type: "error",
-        duration: 7000
-      }));
-      throw error;
-    } finally {
-      dispatch(setIsLoading(false));
-    }
-  }
-);
-
-export const processSingleGridForPreview = createAsyncThunk(
-  "cache/processSingleGridForPreview",
-  async (
-    {
-      sgyFile,
-      geometryData,
-      maxSlowness,
-      maxFrequency,
-      numSlowPoints,
-      numFreqPoints,
-    }: {
-      sgyFile: File;
-      geometryData: string;
-      maxSlowness: number;
-      maxFrequency: number;
-      numSlowPoints: number;
-      numFreqPoints: number;
-    },
-    { dispatch }
-  ) => {
-    try {
-      dispatch(setIsLoading(true));
-
-      const response = await processSingleGrid(
-        sgyFile,
-        geometryData,
-        maxSlowness,
-        maxFrequency,
-        numSlowPoints,
-        numFreqPoints
-      );
-
-      const { grid, freq, slow } = response.data.data;
-
-      if (freq) {
-        dispatch(setPreviewFreqData(freq.data));
-      }
-
-      if (slow) {
-        dispatch(setPreviewSlowData(slow.data));
-      }
-
-      const { data, shape, name } = grid;
-      const flatData = data.flat();
-
-      const recordItem: RecordItem = {
-        fileName: name,
-        enabled: false,
-        weight: 100,
-        data: data,
-        dimensions: {
-          width: shape[1],
-          height: shape[0],
-        },
-        shape: shape,
-        min: Math.min(...flatData),
-        max: Math.max(...flatData),
-      };
-
-      dispatch(setPreviewRecords([recordItem]));
-
-      dispatch(addToast({
-        message: "File processed successfully",
-        type: "success"
-      }));
-
-      return recordItem;
-    } catch (error) {
-      console.error("Error processing grid:", error);
-      dispatch(addToast({
-        message: "Error processing file. Please try again.",
         type: "error",
         duration: 7000
       }));

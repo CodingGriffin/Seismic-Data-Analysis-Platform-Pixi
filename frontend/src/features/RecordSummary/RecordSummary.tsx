@@ -12,10 +12,10 @@ const RecordSummary: React.FC = () => {
   const enabledRecords = useAppSelector(selectOptions).filter((item) => item.enabled);
   
   const handleClearSelection = () => {
-    enabledRecords.forEach((recordId) => {
+    enabledRecords.forEach((record) => {
       dispatch(
         updateRecordOption({
-          id: recordId,
+          id: record.id,
           enabled: false,
         })
       );

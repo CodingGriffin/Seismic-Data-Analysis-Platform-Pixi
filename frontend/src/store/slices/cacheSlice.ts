@@ -1,15 +1,12 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { RecordItem } from "../../types/record";
 
 interface CacheState {
-  previewRecords: RecordItem[];
   previewFreqData: number[];
   previewSlowData: number[];
   isLoading: boolean;
 }
 
 const initialState: CacheState = {
-  previewRecords: [],
   previewFreqData: [],
   previewSlowData: [],
   isLoading: false,
@@ -19,9 +16,6 @@ const cacheSlice = createSlice({
   name: "cache",
   initialState,
   reducers: {
-    setPreviewRecords: (state, action: PayloadAction<RecordItem[]>) => {
-      state.previewRecords = action.payload;
-    },
     setPreviewFreqData: (state, action: PayloadAction<number[]>) => {
       state.previewFreqData = action.payload;
     },
@@ -32,7 +26,6 @@ const cacheSlice = createSlice({
       state.isLoading = action.payload;
     },
     clearCache: (state) => {
-      state.previewRecords = [];
       state.previewFreqData = [];
       state.previewSlowData = [];
       state.isLoading = false;
@@ -41,7 +34,6 @@ const cacheSlice = createSlice({
 });
 
 export const {
-  setPreviewRecords,
   setPreviewFreqData,
   setPreviewSlowData,
   setIsLoading,

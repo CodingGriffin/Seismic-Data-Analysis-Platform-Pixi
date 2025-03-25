@@ -45,9 +45,7 @@ const RecordCard: React.FC<RecordCardProps> = ({
     dispatch(
       updateRecordOption({
         id,
-        option: {
-          enabled: !record?.enabled,
-        },
+        enabled: !record?.enabled,
       })
     );
   };

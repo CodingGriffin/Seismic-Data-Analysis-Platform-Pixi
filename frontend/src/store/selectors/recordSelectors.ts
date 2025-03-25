@@ -11,8 +11,11 @@ export const selectDataMap = (state: RootState) => state.record.dataMap;
 export const selectRecordOption = (state: RootState, id: string): RecordOption | undefined => 
   state.record.options.find(option => option.id === id);
 
-export const selectRecordData = (state: RootState, id: string): RecordData | undefined => 
-  state.record.dataMap[id];
+export const selectRecordData = (state: RootState, id: string): RecordData | undefined => {
+  const fileName = state.record.options.find(option => option.id === id)?.fileName;
+  if (fileName)
+    return state.record.dataMap[fileName]
+}
 
 export const selectRecordById = createSelector(
   [
@@ -34,8 +37,7 @@ export const selectRecordItems = createSelector(
   (dataMap, options) => {
     const records = options
       .map(option => {
-        const id = option.id;
-        const data = dataMap[id];
+        const data = dataMap[option.fileName];
         
         if (data) {
           return {

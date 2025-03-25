@@ -15,19 +15,16 @@ const recordSlice = createSlice({
   name: "record",
   initialState,
   reducers: {
-    setRecords: (state, action: PayloadAction<{ data: RecordData, option: RecordOption }[]>) => {
+    setRecords: (state, action: PayloadAction<{ id:string, data: RecordData}[]>) => {
       action.payload.forEach((item) => {
-        state.dataMap[item.option.id] = item.data;
-        state.options.push(item.option);
+        state.dataMap[item.id] = item.data;
       });
     },
     updateRecordData: (
       state,
       action: PayloadAction<{ id: string; data: RecordData }>
     ) => {
-      if (action.payload.id in state.dataMap) {
-        state.dataMap[action.payload.id] = action.payload.data;
-      }
+      state.dataMap[action.payload.id] = action.payload.data;
     },
     updateRecordOption: (
       state,
