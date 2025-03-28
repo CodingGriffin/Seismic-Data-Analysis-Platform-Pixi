@@ -1,9 +1,49 @@
 #root {
-  max-width: 1280px;
+  max-width: 100%; /* Changed from fixed 1280px */
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem; /* Reduced padding */
   text-align: center;
   width: 100%;
+}
+
+/* Add responsive container class */
+.responsive-container {
+  width: 100%;
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+  max-width: 100%;
+}
+
+@media (min-width: 576px) {
+  .responsive-container {
+    max-width: 540px;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-container {
+    max-width: 720px;
+  }
+}
+
+@media (min-width: 992px) {
+  .responsive-container {
+    max-width: 960px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .responsive-container {
+    max-width: 1140px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .responsive-container {
+    max-width: 1320px;
+  }
 }
 
 .no-select {
@@ -42,7 +82,7 @@
 }
 
 .card {
-  padding: 2em;
+  height: 100%;
 }
 
 .read-the-docs {
@@ -122,4 +162,66 @@
     max-height: calc(80vh - 250px);
     overflow-y: auto;
   }
+}
+
+/* Aspect ratio container for plot */
+.aspect-ratio-container {
+  position: relative;
+  // overflow: hidden;
+  margin: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+  }
+}
+
+.plot-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  // overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1rem;
+}
+
+/* Ensure the BasePlot fills its container */
+.w-100.h-100 {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure the card body has no padding when containing plots */
+.card-body.p-0 {
+  padding: 0 !important;
+}
+
+/* Ensure the Application canvas fits perfectly */
+canvas {
+  display: block;
+}
+
+/* Tooltip styles */
+.tooltip-container {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  max-width: 200px;
+  transform: translate(10px, 10px);
+}
+
+.row {
+  margin-bottom: 1rem;
 }

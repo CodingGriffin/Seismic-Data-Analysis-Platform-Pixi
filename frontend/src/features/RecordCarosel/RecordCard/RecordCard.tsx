@@ -13,18 +13,6 @@ import { selectRecordData, selectRecordState } from "../../../store/selectors/re
 
 extend({ Container, Sprite });
 
-const isWebGLSupported = (): boolean => {
-  try {
-    const canvas = document.createElement('canvas');
-    return !!(
-      window.WebGLRenderingContext && 
-      (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
-    );
-  } catch (e) {
-    return false;
-  }
-};
-
 interface RecordCardProps {
   id: string;
 }
@@ -37,7 +25,6 @@ const RecordCard: React.FC<RecordCardProps> = ({
   const recordState = useAppSelector((state) => selectRecordState(state, id));
 
   const colorMap = colorMaps[selectedColorMap];
-  const [webGLSupported] = useState(isWebGLSupported());
   const dispatch = useAppDispatch();
 
   const [sliderValue, setSliderValue] = useState(recordState.weight);
@@ -170,11 +157,7 @@ const RecordCard: React.FC<RecordCardProps> = ({
       </div>
       <div className="card-body p-2">
         <div className="d-flex justify-content-center align-items-center position-relative">
-          {!webGLSupported ? (
-            <div className="alert alert-warning p-2 m-0">
-              WebGL not supported. Please enable hardware acceleration in your browser.
-            </div>
-          ) : !isLoading && texture && texture.width > 0 ? (
+          {!isLoading && texture && texture.width > 0 ? (
             <BasePlot
               ref={plotRef}
               onDimensionChange={handleDimensionChange}

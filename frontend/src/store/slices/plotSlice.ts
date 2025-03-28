@@ -3,7 +3,23 @@ import { ColorMapKey } from "../../utils/record-util";
 
 interface PlotState {
     colorMaps: { [key: string]: string[] },
-    selectedColorMap: string
+    selectedColorMap: string,
+    texture: any | null,
+    isLoading: boolean,
+    points: {x: number, y: number}[],
+    hoveredPoint: {x: number, y: number} | null,
+    isDragging: boolean,
+    draggedPoint: {x: number, y: number} | null,
+    axisLimits: {
+        xmin: number,
+        xmax: number,
+        ymin: number,
+        ymax: number
+    },
+    plotDimensions: {
+        width: number,
+        height: number
+    }
 }
 
 const initialState: PlotState = {
@@ -86,7 +102,23 @@ const initialState: PlotState = {
             'rgb(26,26,26, 1.0)'
         ]
     },
-    selectedColorMap: 'VsSurf-1' as ColorMapKey
+    selectedColorMap: 'VsSurf-1' as ColorMapKey,
+    texture: null,
+    isLoading: false,
+    points: [],
+    hoveredPoint: null,
+    isDragging: false,
+    draggedPoint: null,
+    axisLimits: {
+        xmin: 0,
+        xmax: 100,
+        ymin: 0,
+        ymax: 100
+    },
+    plotDimensions: {
+        width: 640,
+        height: 480
+    }
 }
 
 const PlotSlice = createSlice({
@@ -99,8 +131,52 @@ const PlotSlice = createSlice({
         updateColorMap: (state, action: PayloadAction<{ [key: string]: string[] }>) => {
             state.colorMaps = { ...state.colorMaps, ...action.payload }
         },
+        setTexture: (state, action: PayloadAction<any | null>) => {
+            state.texture = action.payload;
+        },
+        setIsLoading: (state, action: PayloadAction<boolean>) => {
+            state.isLoading = action.payload;
+        },
+        setPoints: (state, action: PayloadAction<{x: number, y: number}[]>) => {
+            state.points = action.payload;
+        },
+        addPoint: (state, action: PayloadAction<{x: number, y: number}>) => {
+            state.points.push(action.payload);
+        },
+        removePoint: (state, action: PayloadAction<{x: number, y: number}>) => {
+            state.points = state.points.filter(point => 
+                point.x !== action.payload.x || point.y !== action.payload.y);
+        },
+        setHoveredPoint: (state, action: PayloadAction<{x: number, y: number} | null>) => {
+            state.hoveredPoint = action.payload;
+        },
+        setIsDragging: (state, action: PayloadAction<boolean>) => {
+            state.isDragging = action.payload;
+        },
+        setDraggedPoint: (state, action: PayloadAction<{x: number, y: number} | null>) => {
+            state.draggedPoint = action.payload;
+        },
+        updateAxisLimits: (state, action: PayloadAction<Partial<PlotState['axisLimits']>>) => {
+            state.axisLimits = { ...state.axisLimits, ...action.payload };
+        },
+        setPlotDimensions: (state, action: PayloadAction<{width: number, height: number}>) => {
+            state.plotDimensions = action.payload;
+        }
     }
 })
 
-export const { setSelectedColorMap, updateColorMap } = PlotSlice.actions;
+export const { 
+    setSelectedColorMap, 
+    updateColorMap,
+    setTexture,
+    setIsLoading,
+    setPoints,
+    addPoint,
+    removePoint,
+    setHoveredPoint,
+    setIsDragging,
+    setDraggedPoint,
+    updateAxisLimits,
+    setPlotDimensions
+} = PlotSlice.actions;
 export default PlotSlice.reducer;

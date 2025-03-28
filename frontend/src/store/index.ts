@@ -20,9 +20,17 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ["record/setRecords"],
+        // Add the plot/setTexture action to ignored actions
+        ignoredActions: [
+          "record/setRecords", 
+          "plot/setTexture"
+        ],
         ignoredActionPaths: ["meta.arg", "payload.timestamp"],
-        ignoredPaths: ["record.itemsMap"],
+        // Add texture to ignored paths
+        ignoredPaths: [
+          "record.itemsMap", 
+          "plot.texture"
+        ],
         warnAfter: 500,
       },
     }),
