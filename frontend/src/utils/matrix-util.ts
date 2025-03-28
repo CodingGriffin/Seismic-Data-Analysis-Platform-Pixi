@@ -54,3 +54,20 @@ export const flipHorizontal = (matrix: number[][]): Matrix => {
   let flipped = matrix.map((row) => [...row].reverse());
   return { matrix: flipped, shape: [matrix.length, matrix[0].length] };
 };
+
+export const scalarMulti = (matrix: number[][], multiFactor: number): Matrix => {
+  let result = matrix.map(row => row.map(value => value * multiFactor))
+  return { matrix: result, shape: [matrix.length, matrix[0].length]}
+}
+
+export const Add = (matrix1: number[][], matrix2: number[][]): { matrix: number[][]; shape: [number, number] } => {
+  if (matrix1.length !== matrix2.length || matrix1[0].length !== matrix2[0].length) {
+    throw new Error("Matrices must have the same dimensions for addition.");
+  }
+
+  let result = matrix1.map((row, rowIndex) => 
+    row.map((value, colIndex) => value + matrix2[rowIndex][colIndex])
+  );
+
+  return { matrix: result, shape: [matrix1.length, matrix1[0].length] };
+};

@@ -94,14 +94,35 @@ export default function MainPlot() {
     // Create weighted texture from selected records
     const createWeightedTexture = async () => {
       try {
-        // Use the first record's dimensions for simplicity
-        const firstRecord = selectedRecords[0];
+        const totalWeight = selectedRecords.reduce(
+          (total: number, item) => total + item.weight,
+          0
+        );
+        console.log("Totalweight:", totalWeight);
         
-        // Create a texture from the data
+        // Initialize array with zeros
+        let mainRecord: number[] = new Array(selectedRecords[0].data.flat().length).fill(0);
+
+        // Properly accumulate weighted values
+        for (const record of selectedRecords) {
+          const flatData = record.data.flat();
+          flatData.forEach((value: number, index: number) => {
+            // This is the key fix - use += to actually update the array
+            mainRecord[index] += value * record.weight / totalWeight;
+          });
+        }
+        
+        console.log("first record:", selectedRecords[0].data.flat());
+        console.log("Creating new texture for main plot", mainRecord);
+
+        // Calculate min/max from the weighted data for better visualization
+        const min = Math.min(...mainRecord);
+        const max = Math.max(...mainRecord);
+
         const newTexture = createTexture(
-          firstRecord.data.flat(),
-          firstRecord.dimensions,
-          { min: firstRecord.min, max: firstRecord.max },
+          mainRecord,
+          selectedRecords[0].dimensions,
+          { min, max }, // Use calculated min/max instead of from first record
           colorMaps[selectedColorMap]
         );
         

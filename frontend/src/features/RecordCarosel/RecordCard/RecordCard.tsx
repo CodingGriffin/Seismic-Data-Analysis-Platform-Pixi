@@ -194,7 +194,7 @@ const RecordCard: React.FC<RecordCardProps> = ({
           </label>
           <input
             type="range"
-            className="form-range"
+            // className="form-range"
             id={`slider-${id}`}
             min="0"
             max="100"
@@ -202,16 +202,6 @@ const RecordCard: React.FC<RecordCardProps> = ({
             onChange={(e) => handleSliderChange(Number.parseInt(e.target.value))}
             onClick={(e) => e.stopPropagation()}
           />
-          <div className="progress" style={{ height: "4px" }}>
-            <div
-              className="progress-bar"
-              role="progressbar"
-              style={{ width: `${sliderValue}%` }}
-              aria-valuenow={sliderValue}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-          </div>
         </div>
       </div>
     </div>
