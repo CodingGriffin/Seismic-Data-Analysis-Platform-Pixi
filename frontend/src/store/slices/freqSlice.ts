@@ -1,4 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { AppThunk } from "../index";
+import { updateDataLimits } from "./plotSlice";
 
 interface FreqState {
   numFreq: number;
@@ -30,3 +32,11 @@ const freqSlice = createSlice({
 
 export const { setNumFreq, setMaxFreq, setFreqData } = freqSlice.actions;
 export default freqSlice.reducer;
+
+export const updateMaxFreq = (value: number): AppThunk => (dispatch, _) => {
+  dispatch(setMaxFreq(value));
+  dispatch(updateDataLimits({
+    freqMax: value,
+    freqMin: 0
+  }));
+};

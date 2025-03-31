@@ -16,9 +16,9 @@ import {
   removePoint,
   setHoveredPoint, 
   setIsDragging, 
-  setDraggedPoint, 
-  updateAxisLimits,
-  setPlotDimensions
+  setDraggedPoint,
+  setPlotDimensions,
+  setImageTransform
 } from "../../store/slices/plotSlice";
 import { ColorMapKey } from "../../utils/record-util";
 
@@ -35,35 +35,77 @@ export default function MainPlot() {
     hoveredPoint, 
     isDragging, 
     draggedPoint, 
-    axisLimits,
-    plotDimensions 
+    plotDimensions,
+    coordinateMatrix,
+    dataLimits 
   } = useAppSelector((state) => state.plot);
   
   const plotRef = useRef<any>(null);
 
   // Add a local state for texture instead of using Redux
   const [localTexture, setLocalTexture] = useState<Texture | null>(null);
+  
+  const selectAxisValue = useCallback((axisKey:number) =>{
+    switch(axisKey) {
+      case 1:
+        return dataLimits.slowMin;
+      case 2:
+        return dataLimits.slowMax;
+      case -2:
+        return dataLimits.freqMin;
+      case -1:
+        return dataLimits.freqMax;
+      default:
+        return 0;
+    }
+  }, [dataLimits, coordinateMatrix])
+  
+  const left = useCallback(() => selectAxisValue(coordinateMatrix[1][0]), [dataLimits, coordinateMatrix]);
+  const right = useCallback(() => selectAxisValue(coordinateMatrix[1][2]), [dataLimits, coordinateMatrix]);
+  const bottom = useCallback(() => selectAxisValue(coordinateMatrix[2][1]), [dataLimits, coordinateMatrix]);
+  const top = useCallback(() => selectAxisValue(coordinateMatrix[0][1]), [dataLimits, coordinateMatrix]);
+  const isAxisSwapped = useCallback(() => coordinateMatrix[1][0] > 0, [coordinateMatrix]);
 
-  const coordinateHelpers = useMemo(() => {
-    return {
+  const isFlippedVertical = useCallback(() => coordinateMatrix[1][0] < coordinateMatrix[1][2], [coordinateMatrix]);
+  const isFlippedHorizontal = useCallback(() => coordinateMatrix[2][1] < coordinateMatrix[0][1], [coordinateMatrix]);
+  
+  const coordinateHelpers = useMemo(
+    () => ({
+      toScreenX: (value: number) => {
+        return (
+          ((value - dataLimits.slowMax) / (dataLimits.slowMax - dataLimits.slowMin)) *
+          plotDimensions.width
+        );
+      },
       fromScreenX: (x: number) => {
-        const { xmin, xmax } = axisLimits;
-        return xmin + (x / plotDimensions.width) * (xmax - xmin);
+        const value =
+          isFlippedHorizontal()
+            ? right() +
+              ((plotDimensions.width - x) / plotDimensions.width) *
+                (left() - right())
+            : left() + (x / plotDimensions.width) * (right() - left());
+
+        return Math.round(value * 1000000) / 1000000;
+      },
+      toScreenY: (value: number) => {
+        return (
+          ((value - dataLimits.freqMin) / (dataLimits.freqMax - dataLimits.freqMin)) *
+          plotDimensions.height
+        );
       },
       fromScreenY: (y: number) => {
-        const { ymin, ymax } = axisLimits;
-        return ymax - (y / plotDimensions.height) * (ymax - ymin);
+        const value =
+          isFlippedVertical()
+            ? bottom() +
+              ((plotDimensions.height - y) / plotDimensions.height) *
+                (top() - bottom())
+            : top() + (y / plotDimensions.height) * (bottom() - top());
+
+        return Math.round(value * 1000000) / 1000000;
       },
-      toScreenX: (x: number) => {
-        const { xmin, xmax } = axisLimits;
-        return ((x - xmin) / (xmax - xmin)) * plotDimensions.width;
-      },
-      toScreenY: (y: number) => {
-        const { ymin, ymax } = axisLimits;
-        return ((ymax - y) / (ymax - ymin)) * plotDimensions.height;
-      }
-    };
-  }, [plotDimensions, axisLimits]);
+    }),
+    [dataLimits, plotDimensions, coordinateMatrix]
+  );
 
   const handleDimensionChange = useCallback(
     (dimensions: { width: number; height: number }) => {
@@ -107,7 +149,6 @@ export default function MainPlot() {
         for (const record of selectedRecords) {
           const flatData = record.data.flat();
           flatData.forEach((value: number, index: number) => {
-            // This is the key fix - use += to actually update the array
             mainRecord[index] += value * record.weight / totalWeight;
           });
         }
@@ -115,14 +156,13 @@ export default function MainPlot() {
         console.log("first record:", selectedRecords[0].data.flat());
         console.log("Creating new texture for main plot", mainRecord);
 
-        // Calculate min/max from the weighted data for better visualization
         const min = Math.min(...mainRecord);
         const max = Math.max(...mainRecord);
 
         const newTexture = createTexture(
           mainRecord,
           selectedRecords[0].dimensions,
-          { min, max }, // Use calculated min/max instead of from first record
+          { min, max },
           colorMaps[selectedColorMap]
         );
         
@@ -213,9 +253,6 @@ export default function MainPlot() {
       return; // Unknown event format
     }
     
-    // Update cursor position for tooltip
-    setCursorPosition({ x, y });
-    
     if (isDragging && draggedPoint) {
       // Update the dragged point position
       dispatch(removePoint(draggedPoint));
@@ -226,7 +263,7 @@ export default function MainPlot() {
       setTooltipContent(
         isAxisSwapped()
           ? `(Freq:${coordinateHelpers.fromScreenX(x).toFixed(6)}, Slow:${coordinateHelpers.fromScreenY(y).toFixed(6)})`
-          : `(Dist:${coordinateHelpers.fromScreenX(x).toFixed(6)}, Depth:${coordinateHelpers.fromScreenY(y).toFixed(6)})`
+          : `(Slow:${coordinateHelpers.fromScreenX(x).toFixed(6)}, Freq:${coordinateHelpers.fromScreenY(y).toFixed(6)})`
       );
     } else {
       // Check for hovering over points
@@ -244,7 +281,7 @@ export default function MainPlot() {
         setTooltipContent(
           isAxisSwapped()
             ? `(Freq:${coordinateHelpers.fromScreenX(hovered.x).toFixed(6)}, Slow:${coordinateHelpers.fromScreenY(hovered.y).toFixed(6)})`
-            : `(Dist:${coordinateHelpers.fromScreenX(hovered.x).toFixed(6)}, Depth:${coordinateHelpers.fromScreenY(hovered.y).toFixed(6)})`
+            : `(Slow:${coordinateHelpers.fromScreenX(hovered.x).toFixed(6)}, Freq:${coordinateHelpers.fromScreenY(hovered.y).toFixed(6)})`
         );
       } else {
         setTooltipContent('');
@@ -316,18 +353,6 @@ export default function MainPlot() {
     }
   }, [points, coordinateHelpers, dispatch]);
 
-  const isAxisSwapped = useCallback(() => {
-    // Logic to determine if axes are swapped
-    return false;
-  }, []);
-
-  const left = useCallback(() => axisLimits.xmin, [axisLimits]);
-  const right = useCallback(() => axisLimits.xmax, [axisLimits]);
-  const bottom = useCallback(() => axisLimits.ymin, [axisLimits]);
-  const top = useCallback(() => axisLimits.ymax, [axisLimits]);
-
-  // Add state for tooltip
-  const [cursorPosition, setCursorPosition] = useState<{x: number, y: number} | null>(null);
   const [tooltipContent, setTooltipContent] = useState<string>('');
 
   return (
@@ -349,18 +374,18 @@ export default function MainPlot() {
                 ) : localTexture ? (
                   <BasePlot
                     ref={plotRef}
-                    xLabel="Distance"
-                    yLabel="Depth"
-                    xMax={axisLimits.xmax}
-                    xMin={axisLimits.xmin}
-                    yMin={axisLimits.ymin}
-                    yMax={axisLimits.ymax}
+                    xLabel={isAxisSwapped() ? "Frequency" : "Slowness"}
+                    yLabel={isAxisSwapped() ? "Slowness" : "Frequency"}
+                    xMax={right()}
+                    xMin={left()}
+                    yMin={bottom()}
+                    yMax={top()}
+                    display={(value) => value.toFixed(3)}
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                     onPointerDown={handlePointerDown}
                     onDimensionChange={handleDimensionChange}
                     tooltipContent={tooltipContent}
-                    // cursorPosition={cursorPosition}
                   >
                     <pixiContainer>
                       {localTexture && (
@@ -433,54 +458,58 @@ export default function MainPlot() {
                 <label className="form-label">Transform</label>
                 <div className="d-flex flex-wrap gap-2 justify-content-between">
                   <button
-                    // onClick={() => {
-                    //   setLoading(true);
-                    //   setImageTransform({
-                    //     type: "rotationCounterClockwise",
-                    //     rectSize: plotDimensions,
-                    //   });
-                    // }}
+                    onClick={() => {
+                      dispatch(setIsLoading(true));
+                      dispatch(setImageTransform({
+                        type: "rotationCounterClockwise",
+                        rectSize: plotDimensions,
+                      }));
+                    }}
                     className="btn btn-outline-primary btn-sm"
                     title="Rotate Counter-clockwise"
+                    disabled={isLoading || !localTexture}
                   >
                     <span>↺</span>
                   </button>
                   <button
-                    // onClick={() => {
-                    //   setLoading(true);
-                    //   setImageTransform({
-                    //     type: "rotationClockwise",
-                    //     rectSize: plotDimensions,
-                    //   });
-                    // }}
+                    onClick={() => {
+                      dispatch(setIsLoading(true));
+                      dispatch(setImageTransform({
+                        type: "rotationClockwise",
+                        rectSize: plotDimensions,
+                      }));
+                    }}
                     className="btn btn-outline-primary btn-sm"
                     title="Rotate Clockwise"
+                    disabled={isLoading || !localTexture}
                   >
                     <span>↻</span>
                   </button>
                   <button
-                    // onClick={() => {
-                    //   setLoading(true);
-                    //   setImageTransform({
-                    //     type: "flipHorizontal",
-                    //     rectSize: plotDimensions,
-                    //   });
-                    // }}
+                    onClick={() => {
+                      dispatch(setIsLoading(true));
+                      dispatch(setImageTransform({
+                        type: "flipHorizontal",
+                        rectSize: plotDimensions,
+                      }));
+                    }}
                     className="btn btn-outline-primary btn-sm"
                     title="Flip Horizontal"
+                    disabled={isLoading || !localTexture}
                   >
                     <span>↔</span>
                   </button>
                   <button
-                    // onClick={() => {
-                    //   setLoading(true);
-                    //   setImageTransform({
-                    //     type: "flipVertical",
-                    //     rectSize: plotDimensions,
-                    //   });
-                    // }}
+                    onClick={() => {
+                      dispatch(setIsLoading(true));
+                      dispatch(setImageTransform({
+                        type: "flipVertical",
+                        rectSize: plotDimensions,
+                      }));
+                    }}
                     className="btn btn-outline-primary btn-sm"
                     title="Flip Vertical"
+                    disabled={isLoading || !localTexture}
                   >
                     <span>↕</span>
                   </button>

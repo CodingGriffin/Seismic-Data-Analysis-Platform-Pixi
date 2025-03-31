@@ -1,4 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { AppThunk } from "../index";
+import { updateDataLimits } from "./plotSlice";
 
 interface SlowState {
   numSlow: number;
@@ -8,7 +10,7 @@ interface SlowState {
 
 const initialState: SlowState = {
   numSlow: 50,
-  maxSlow: 0.004,
+  maxSlow: 0.015,
   slowData: [],
 };
 
@@ -30,3 +32,12 @@ const slowSlice = createSlice({
 
 export const { setNumSlow, setMaxSlow, setSlowData } = slowSlice.actions;
 export default slowSlice.reducer;
+
+export const updateMaxSlow = (value: number): AppThunk => (dispatch, _) => {
+  dispatch(setMaxSlow(value));
+  
+  dispatch(updateDataLimits({
+    slowMax: value,
+    slowMin: 0
+  }));
+};

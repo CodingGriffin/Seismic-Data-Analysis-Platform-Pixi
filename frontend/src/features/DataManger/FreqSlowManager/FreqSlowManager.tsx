@@ -1,8 +1,10 @@
 import { Input } from "../../../components/Input/Input";
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../hooks/useAppSelector";
-import { setMaxFreq, setNumFreq } from "../../../store/slices/freqSlice";
-import { setMaxSlow, setNumSlow } from "../../../store/slices/slowSlice";
+import { setNumFreq } from "../../../store/slices/freqSlice";
+import { setNumSlow } from "../../../store/slices/slowSlice";
+import { updateMaxFreq } from "../../../store/slices/freqSlice";
+import { updateMaxSlow } from "../../../store/slices/slowSlice";
 
 export const FreqSlowManger = () => {
   const dispatch = useAppDispatch();
@@ -42,7 +44,7 @@ export const FreqSlowManger = () => {
             <Input
               type="number"
               value={maxFreq}
-              onChange={(value) => dispatch(setMaxFreq(parseFloat(value)))}
+              onChange={(value) => dispatch(updateMaxFreq(parseFloat(value)))}
               className="flex-grow-1"
             />
           </div>
@@ -53,7 +55,7 @@ export const FreqSlowManger = () => {
             <Input
               type="number"
               value={maxSlow}
-              onChange={(value) => dispatch(setMaxSlow(parseFloat(value)))}
+              onChange={(value) => dispatch(updateMaxSlow(parseFloat(value)))}
               className="flex-grow-1"
             />
           </div>

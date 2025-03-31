@@ -1,5 +1,16 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { ColorMapKey } from "../../utils/record-util";
+import { Point } from "../../types/plot";
+import { Matrix } from "../../types/record";
+import { rotateClockwise, rotateCounterClockwise, flipHorizontal, flipVertical } from '../../utils/matrix-util';
+
+export interface ImageTransform {
+  type: 'flipHorizontal' | 'flipVertical' | 'rotationCounterClockwise' | 'rotationClockwise';
+  rectSize: {
+    width: number;
+    height: number;
+  };
+}
 
 interface PlotState {
     colorMaps: { [key: string]: string[] },
@@ -10,16 +21,21 @@ interface PlotState {
     hoveredPoint: {x: number, y: number} | null,
     isDragging: boolean,
     draggedPoint: {x: number, y: number} | null,
-    axisLimits: {
-        xmin: number,
-        xmax: number,
-        ymin: number,
-        ymax: number
+    dataLimits: {
+        slowMin: number,
+        slowMax: number,
+        freqMin: number,
+        freqMax: number
     },
     plotDimensions: {
         width: number,
         height: number
-    }
+    },
+    textureData: {
+        transformed: number[][];
+        dimensions: { width: number; height: number };
+    } | null,
+    coordinateMatrix: number[][]
 }
 
 const initialState: PlotState = {
@@ -109,16 +125,22 @@ const initialState: PlotState = {
     hoveredPoint: null,
     isDragging: false,
     draggedPoint: null,
-    axisLimits: {
-        xmin: 0,
-        xmax: 100,
-        ymin: 0,
-        ymax: 100
+    dataLimits: {
+        slowMin: 0,
+        slowMax: 0.015,
+        freqMin: 0,
+        freqMax: 50
     },
     plotDimensions: {
         width: 640,
         height: 480
-    }
+    },
+    textureData: null,
+    coordinateMatrix: [
+        [0, -1, 0],//top, bottom
+        [2, 0, 1],//left, right
+        [0, -2, 0]//bottom, top
+    ]
 }
 
 const PlotSlice = createSlice({
@@ -156,11 +178,61 @@ const PlotSlice = createSlice({
         setDraggedPoint: (state, action: PayloadAction<{x: number, y: number} | null>) => {
             state.draggedPoint = action.payload;
         },
-        updateAxisLimits: (state, action: PayloadAction<Partial<PlotState['axisLimits']>>) => {
-            state.axisLimits = { ...state.axisLimits, ...action.payload };
+        updateDataLimits: (state, action: PayloadAction<Partial<PlotState['dataLimits']>>) => {
+            state.dataLimits = { ...state.dataLimits, ...action.payload };
         },
         setPlotDimensions: (state, action: PayloadAction<{width: number, height: number}>) => {
             state.plotDimensions = action.payload;
+        },
+        setImageTransform: (state, action: PayloadAction<ImageTransform>) => {
+            if (!state.textureData || !action.payload.rectSize || !action.payload.type) return state;
+            
+            let transformedData: Matrix = { matrix: [], shape: [0, 0] };
+            let newCoordinate: Matrix = { matrix: [], shape: [0, 0] };
+            let newPoints: Point[] = [];
+            const { width, height } = action.payload.rectSize;
+            const rate = width / height;
+
+            switch (action.payload.type) {
+                case 'flipHorizontal':
+                    transformedData = flipHorizontal([...state.textureData.transformed]);
+                    newCoordinate = flipHorizontal([...state.coordinateMatrix]);
+                    newPoints = state.points.map((point: Point) => ({ ...point, x: width - point.x }));
+                    break;
+                case 'flipVertical':
+                    transformedData = flipVertical([...state.textureData.transformed]);
+                    newCoordinate = flipVertical([...state.coordinateMatrix]);
+                    newPoints = state.points.map((point: Point) => ({ ...point, y: height - point.y }));
+                    break;
+                case 'rotationClockwise':
+                    transformedData = rotateClockwise([...state.textureData.transformed]);
+                    newCoordinate = rotateClockwise([...state.coordinateMatrix]);
+                    newPoints = state.points.map((point: Point) => ({ 
+                        ...point, 
+                        x: (height - point.y) * rate, 
+                        y: point.x / rate 
+                    }));
+                    break;
+                case 'rotationCounterClockwise':
+                    transformedData = rotateCounterClockwise([...state.textureData.transformed]);
+                    newCoordinate = rotateCounterClockwise([...state.coordinateMatrix]);
+                    newPoints = state.points.map((point: Point) => ({ 
+                        ...point, 
+                        x: point.y * rate, 
+                        y: (width - point.x) / rate 
+                    }));
+                    break;
+            }
+
+            state.textureData = {
+                transformed: transformedData.matrix,
+                dimensions: {
+                    width: transformedData.shape[1],
+                    height: transformedData.shape[0]
+                }
+            };
+            state.coordinateMatrix = newCoordinate.matrix;
+            state.points = newPoints;
         }
     }
 })
@@ -176,7 +248,8 @@ export const {
     setHoveredPoint,
     setIsDragging,
     setDraggedPoint,
-    updateAxisLimits,
-    setPlotDimensions
+    updateDataLimits,
+    setPlotDimensions,
+    setImageTransform
 } = PlotSlice.actions;
 export default PlotSlice.reducer;
