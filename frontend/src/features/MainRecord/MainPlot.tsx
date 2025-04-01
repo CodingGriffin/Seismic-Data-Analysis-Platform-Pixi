@@ -1,26 +1,24 @@
-import { Container, Sprite, Graphics, Text, Texture } from "pixi.js";
+import { Container, Sprite, Graphics, Text} from "pixi.js";
 import { useCallback, useRef, useEffect, useMemo, useState } from "react";
 import { extend } from "@pixi/react";
 import { BasePlot } from "../../components/BasePlot/BasePlot";
 import { useAppSelector } from "../../hooks/useAppSelector";
 import { selectRecordItems } from "../../store/selectors/recordSelectors";
-import { createTexture } from "../../utils/plot-util";
 import { Window } from "../../types";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { addToast } from "../../store/slices/toastSlice";
 import { 
   setSelectedColorMap, 
-  setTexture, 
-  setIsLoading,
   addPoint, 
   removePoint,
   setHoveredPoint, 
   setIsDragging, 
   setDraggedPoint,
   setPlotDimensions,
-  setImageTransform
 } from "../../store/slices/plotSlice";
+import { createWeightedTexture } from "../../store/thunks/plotThunks";
 import { ColorMapKey } from "../../utils/record-util";
+import { updateImageTransformation } from "../../store/thunks/plotThunks";
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -37,14 +35,12 @@ export default function MainPlot() {
     draggedPoint, 
     plotDimensions,
     coordinateMatrix,
-    dataLimits 
+    dataLimits,
+    texture
   } = useAppSelector((state) => state.plot);
   
   const plotRef = useRef<any>(null);
 
-  // Add a local state for texture instead of using Redux
-  const [localTexture, setLocalTexture] = useState<Texture | null>(null);
-  
   const selectAxisValue = useCallback((axisKey:number) =>{
     switch(axisKey) {
       case 1:
@@ -115,72 +111,14 @@ export default function MainPlot() {
   );
 
   useEffect(() => {
-    const selectedRecords = orderedIds
-      .filter(id => itemsMap[id].enabled)
-      .map(id => ({
-        data: itemsMap[id].data,
-        weight: itemsMap[id].weight,
-        dimensions: itemsMap[id].dimensions,
-        min: itemsMap[id].min,
-        max: itemsMap[id].max
-      }));
-    
-    if (selectedRecords.length === 0) {
-      dispatch(setTexture(null));
-      dispatch(setIsLoading(false));
-      return;
-    }
-    
-    dispatch(setIsLoading(true));
-    
-    // Create weighted texture from selected records
-    const createWeightedTexture = async () => {
-      try {
-        const totalWeight = selectedRecords.reduce(
-          (total: number, item) => total + item.weight,
-          0
-        );
-        console.log("Totalweight:", totalWeight);
-        
-        // Initialize array with zeros
-        let mainRecord: number[] = new Array(selectedRecords[0].data.flat().length).fill(0);
-
-        // Properly accumulate weighted values
-        for (const record of selectedRecords) {
-          const flatData = record.data.flat();
-          flatData.forEach((value: number, index: number) => {
-            mainRecord[index] += value * record.weight / totalWeight;
-          });
-        }
-        
-        console.log("first record:", selectedRecords[0].data.flat());
-        console.log("Creating new texture for main plot", mainRecord);
-
-        const min = Math.min(...mainRecord);
-        const max = Math.max(...mainRecord);
-
-        const newTexture = createTexture(
-          mainRecord,
-          selectedRecords[0].dimensions,
-          { min, max },
-          colorMaps[selectedColorMap]
-        );
-        
-        setLocalTexture(newTexture);
-      } catch (error) {
-        console.error("Error creating texture:", error);
-        dispatch(addToast({
-          message: "Failed to create texture from data",
-          type: "error",
-          duration: 7000
-        }));
-      } finally {
-        dispatch(setIsLoading(false));
-      }
-    };
-    
-    createWeightedTexture();
-  }, [itemsMap, orderedIds, selectedColorMap, colorMaps, dispatch]);
+    dispatch(createWeightedTexture());
+  }, [
+    itemsMap, 
+    orderedIds, 
+    selectedColorMap, 
+    colorMaps,
+    dispatch
+  ]);
 
   const handlePointerDown = useCallback((event: any) => {
     console.log("PointerDown event:", event);
@@ -371,7 +309,7 @@ export default function MainPlot() {
                       <span className="visually-hidden">Loading...</span>
                     </div>
                   </div>
-                ) : localTexture ? (
+                ) : texture ? (
                   <BasePlot
                     ref={plotRef}
                     xLabel={isAxisSwapped() ? "Frequency" : "Slowness"}
@@ -388,9 +326,9 @@ export default function MainPlot() {
                     tooltipContent={tooltipContent}
                   >
                     <pixiContainer>
-                      {localTexture && (
+                      {texture && (
                         <pixiSprite
-                          texture={localTexture}
+                          texture={texture}
                           width={plotDimensions.width}
                           height={plotDimensions.height}
                           anchor={0}
@@ -457,62 +395,46 @@ export default function MainPlot() {
               <div className="mb-3">
                 <label className="form-label">Transform</label>
                 <div className="d-flex flex-wrap gap-2 justify-content-between">
-                  <button
-                    onClick={() => {
-                      dispatch(setIsLoading(true));
-                      dispatch(setImageTransform({
-                        type: "rotationCounterClockwise",
-                        rectSize: plotDimensions,
-                      }));
-                    }}
-                    className="btn btn-outline-primary btn-sm"
-                    title="Rotate Counter-clockwise"
-                    disabled={isLoading || !localTexture}
-                  >
-                    <span>↺</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      dispatch(setIsLoading(true));
-                      dispatch(setImageTransform({
-                        type: "rotationClockwise",
-                        rectSize: plotDimensions,
-                      }));
-                    }}
-                    className="btn btn-outline-primary btn-sm"
-                    title="Rotate Clockwise"
-                    disabled={isLoading || !localTexture}
-                  >
-                    <span>↻</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      dispatch(setIsLoading(true));
-                      dispatch(setImageTransform({
-                        type: "flipHorizontal",
-                        rectSize: plotDimensions,
-                      }));
-                    }}
-                    className="btn btn-outline-primary btn-sm"
-                    title="Flip Horizontal"
-                    disabled={isLoading || !localTexture}
-                  >
-                    <span>↔</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      dispatch(setIsLoading(true));
-                      dispatch(setImageTransform({
-                        type: "flipVertical",
-                        rectSize: plotDimensions,
-                      }));
-                    }}
-                    className="btn btn-outline-primary btn-sm"
-                    title="Flip Vertical"
-                    disabled={isLoading || !localTexture}
-                  >
-                    <span>↕</span>
-                  </button>
+                <button
+                  onClick={() => {
+                    dispatch(updateImageTransformation("rotateCounterClockwise"));
+                  }}
+                  className="btn btn-outline-primary btn-sm"
+                  title="Rotate Counter-clockwise"
+                  disabled={isLoading || !texture}
+                >
+                  <span>↺</span>
+                </button>
+                <button
+                  onClick={() => {
+                    dispatch(updateImageTransformation("rotateClockwise"));
+                  }}
+                  className="btn btn-outline-primary btn-sm"
+                  title="Rotate Clockwise"
+                  disabled={isLoading || !texture}
+                >
+                  <span>↻</span>
+                </button>
+                <button
+                  onClick={() => {
+                    dispatch(updateImageTransformation("flipHorizontal"));
+                  }}
+                  className="btn btn-outline-primary btn-sm"
+                  title="Flip Horizontal"
+                  disabled={isLoading || !texture}
+                >
+                  <span>↔</span>
+                </button>
+                <button
+                  onClick={() => {
+                    dispatch(updateImageTransformation("flipVertical"));
+                  }}
+                  className="btn btn-outline-primary btn-sm"
+                  title="Flip Vertical"
+                  disabled={isLoading || !texture}
+                >
+                  <span>↕</span>
+                </button>
                 </div>
               </div>
               
