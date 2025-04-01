@@ -97,7 +97,7 @@ export const updateImageTransformation = createAsyncThunk(
       const state = getState() as RootState;
       const { coordinateMatrix, plotDimensions } = state.plot;
       
-      let newCoordinate: Matrix = { matrix: [], shape: [0, 0] };
+      let newCoordinate: Matrix = [];
       
       switch (transformType) {
         case 'flipHorizontal':

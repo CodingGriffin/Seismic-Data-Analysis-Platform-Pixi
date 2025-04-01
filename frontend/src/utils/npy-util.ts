@@ -1,5 +1,5 @@
 import { NpyData } from '../types/record';
-import { npArrayToMatrix } from './matrix-util';
+import { getMatrixShape, npArrayToMatrix } from './matrix-util';
 import NpyJs from 'npyjs';
 
 export const extractDataFromNpy = async (file: File): Promise<NpyData> => {
@@ -20,7 +20,8 @@ export const extractDataFromNpy = async (file: File): Promise<NpyData> => {
     if (val > max) max = val;
   }
 
-  const { matrix: jsMatrix, shape } = npArrayToMatrix(data, npyData.shape)
+  const jsMatrix = npArrayToMatrix(data, npyData.shape)
+  const shape = getMatrixShape(jsMatrix);
 
   return {
     data: jsMatrix,

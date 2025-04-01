@@ -5,10 +5,7 @@ export interface NpyData {
   max: number;
 }
 
-export interface Matrix {
-  matrix: number[][];
-  shape: [number, number];
-}
+export type Matrix = number[][];
 
 export interface RecordState {
   enabled: boolean;

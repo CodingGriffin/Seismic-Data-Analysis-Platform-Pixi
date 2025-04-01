@@ -8,7 +8,7 @@ import {
   setIsLoading
 } from "../slices/cacheSlice";
 import { addToast } from "../slices/toastSlice";
-import { rotateClockwise, flipVertical } from "../../utils/matrix-util";
+import { rotateClockwise, flipVertical, getMatrixShape } from "../../utils/matrix-util";
 
 export const processGridsForPreview = createAsyncThunk(
   "cache/processGridsForPreview",
@@ -58,9 +58,10 @@ export const processGridsForPreview = createAsyncThunk(
       const recordItems: RecordItem[] = grids.map((grid: any) => {
         const { data, shape, name } = grid;
         const flatData = data.flat();
-        let { matrix: rotated } = rotateClockwise(data);
-        let { matrix: transformed, shape:transformedShape } = flipVertical(rotated);
-
+        const rotated = rotateClockwise(data);
+        const transformed = flipVertical(rotated);
+        const transformedShape = getMatrixShape(transformed);
+        
         return {
           fileName: name,
           enabled: false,
