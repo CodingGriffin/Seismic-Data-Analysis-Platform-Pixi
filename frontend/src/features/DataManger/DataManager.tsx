@@ -2,7 +2,7 @@ import { FreqSlowManger } from "./FreqSlowManager/FreqSlowManager";
 import { GeometryManager } from "./GeometryManager/GeometryManager";
 import RecordManager from "./RecordManager/RecordManger";
 import { Button } from "../../components/Button/Button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { useAppSelector } from "../../hooks/useAppSelector";
@@ -47,6 +47,35 @@ export const DataManager = () => {
     setUploadFiles(newUploadFiles);
   }
 
+  const getRecordDataFromBackend = useCallback(() => {
+    const files = Object.values(uploadFiles).filter(Boolean) as File[];
+    
+    if (JSON.stringify(savedGeometry) !== JSON.stringify(geometry) ||
+        savedFreqSettings.numFreq !== numSlow || savedFreqSettings.maxFreq !== maxFreq || 
+        savedSlowSettings.numSlow !== numSlow || savedSlowSettings.maxSlow !== maxSlow ||
+        JSON.stringify(savedRecordOptions.map((opt) => opt.fileName)) !== JSON.stringify(recordOptions.map((opt) => opt.fileName))
+      ) {
+      
+      dispatch(
+        processGridsForPreview({
+          sgyFiles: files,
+          geometryData: JSON.stringify(savedGeometry),
+          maxSlowness: savedSlowSettings.maxSlow,
+          maxFrequency: savedFreqSettings.maxFreq,
+          numSlowPoints: savedSlowSettings.numSlow,
+          numFreqPoints: savedFreqSettings.numFreq,
+          returnFreqAndSlow: true
+        })
+      );
+      
+      dispatch(addToast({
+        message: `Processing ${files.length} files with ${savedGeometry.length} geometry points`,
+        type: "info",
+        duration: 3000
+      }));
+    }
+  }, [savedGeometry, savedFreqSettings, savedSlowSettings, uploadFiles, dispatch]);
+
   const handleApplyChanges = () => {
     const files = Object.values(uploadFiles).filter(Boolean) as File[];
     const validationErrors = [];
@@ -88,6 +117,8 @@ export const DataManager = () => {
       type: "success",
       duration: 3000
     }));
+
+    getRecordDataFromBackend();
     
     setShowDataManager(false);
   };
@@ -121,34 +152,8 @@ export const DataManager = () => {
   }, [uploadFiles])
 
   useEffect(() => {
-    const files = Object.values(uploadFiles).filter(Boolean) as File[];
-    
-    if (files.length > 0 && 
-        savedGeometry.length > 0 && 
-        savedFreqSettings.numFreq > 0 && 
-        savedFreqSettings.maxFreq > 0 &&
-        savedSlowSettings.numSlow > 0 && 
-        savedSlowSettings.maxSlow > 0) {
-      
-      dispatch(
-        processGridsForPreview({
-          sgyFiles: files,
-          geometryData: JSON.stringify(savedGeometry),
-          maxSlowness: savedSlowSettings.maxSlow,
-          maxFrequency: savedFreqSettings.maxFreq,
-          numSlowPoints: savedSlowSettings.numSlow,
-          numFreqPoints: savedFreqSettings.numFreq,
-          returnFreqAndSlow: true
-        })
-      );
-      
-      dispatch(addToast({
-        message: `Processing ${files.length} files with ${savedGeometry.length} geometry points`,
-        type: "info",
-        duration: 3000
-      }));
-    }
-  }, [savedGeometry, savedFreqSettings, savedSlowSettings, uploadFiles, dispatch]);
+    setSavedRecordOptions(recordOptions);
+  }, [recordOptions])
 
   return (
     <>
