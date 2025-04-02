@@ -1,21 +1,12 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { ColorMapKey } from "../../utils/record-util";
-import { Point } from "../../types/plot";
 import { Matrix } from "../../types/record";
-import { rotateClockwise, rotateCounterClockwise, flipHorizontal, flipVertical } from '../../utils/matrix-util';
 
-export interface ImageTransform {
-  type: 'flipHorizontal' | 'flipVertical' | 'rotationCounterClockwise' | 'rotationClockwise';
-  rectSize: {
-    width: number;
-    height: number;
-  };
-}
+export type Transformation = 'flipHorizontal' | 'flipVertical' | 'rotateClockwise' | 'rotateCounterClockwise';
 
 interface PlotState {
     colorMaps: { [key: string]: string[] },
     selectedColorMap: string,
-    texture: any | null,
     isLoading: boolean,
     points: {x: number, y: number}[],
     hoveredPoint: {x: number, y: number} | null,
@@ -32,10 +23,11 @@ interface PlotState {
         height: number
     },
     textureData: {
-        transformed: number[][];
+        transformed: Matrix;
         dimensions: { width: number; height: number };
     } | null,
-    coordinateMatrix: number[][]
+    coordinateMatrix: Matrix,
+    transformations:Transformation[]
 }
 
 const initialState: PlotState = {
@@ -119,7 +111,6 @@ const initialState: PlotState = {
         ]
     },
     selectedColorMap: 'VsSurf-1' as ColorMapKey,
-    texture: null,
     isLoading: false,
     points: [],
     hoveredPoint: null,
@@ -140,7 +131,8 @@ const initialState: PlotState = {
         [0, -1, 0],//top, bottom
         [2, 0, 1],//left, right
         [0, -2, 0]//bottom, top
-    ]
+    ],
+    transformations: []
 }
 
 const PlotSlice = createSlice({
@@ -152,9 +144,6 @@ const PlotSlice = createSlice({
         },
         updateColorMap: (state, action: PayloadAction<{ [key: string]: string[] }>) => {
             state.colorMaps = { ...state.colorMaps, ...action.payload }
-        },
-        setTexture: (state, action: PayloadAction<any | null>) => {
-            state.texture = action.payload;
         },
         setIsLoading: (state, action: PayloadAction<boolean>) => {
             state.isLoading = action.payload;
@@ -184,55 +173,11 @@ const PlotSlice = createSlice({
         setPlotDimensions: (state, action: PayloadAction<{width: number, height: number}>) => {
             state.plotDimensions = action.payload;
         },
-        setImageTransform: (state, action: PayloadAction<ImageTransform>) => {
-            if (!state.textureData || !action.payload.rectSize || !action.payload.type) return state;
-            
-            let transformedData: Matrix = { matrix: [], shape: [0, 0] };
-            let newCoordinate: Matrix = { matrix: [], shape: [0, 0] };
-            let newPoints: Point[] = [];
-            const { width, height } = action.payload.rectSize;
-            const rate = width / height;
-
-            switch (action.payload.type) {
-                case 'flipHorizontal':
-                    transformedData = flipHorizontal([...state.textureData.transformed]);
-                    newCoordinate = flipHorizontal([...state.coordinateMatrix]);
-                    newPoints = state.points.map((point: Point) => ({ ...point, x: width - point.x }));
-                    break;
-                case 'flipVertical':
-                    transformedData = flipVertical([...state.textureData.transformed]);
-                    newCoordinate = flipVertical([...state.coordinateMatrix]);
-                    newPoints = state.points.map((point: Point) => ({ ...point, y: height - point.y }));
-                    break;
-                case 'rotationClockwise':
-                    transformedData = rotateClockwise([...state.textureData.transformed]);
-                    newCoordinate = rotateClockwise([...state.coordinateMatrix]);
-                    newPoints = state.points.map((point: Point) => ({ 
-                        ...point, 
-                        x: (height - point.y) * rate, 
-                        y: point.x / rate 
-                    }));
-                    break;
-                case 'rotationCounterClockwise':
-                    transformedData = rotateCounterClockwise([...state.textureData.transformed]);
-                    newCoordinate = rotateCounterClockwise([...state.coordinateMatrix]);
-                    newPoints = state.points.map((point: Point) => ({ 
-                        ...point, 
-                        x: point.y * rate, 
-                        y: (width - point.x) / rate 
-                    }));
-                    break;
-            }
-
-            state.textureData = {
-                transformed: transformedData.matrix,
-                dimensions: {
-                    width: transformedData.shape[1],
-                    height: transformedData.shape[0]
-                }
-            };
-            state.coordinateMatrix = newCoordinate.matrix;
-            state.points = newPoints;
+        addTransformation: (state, action: PayloadAction<Transformation>) => {
+            state.transformations.push(action.payload);
+        },
+        setCoordinateMatrix: (state, action: PayloadAction<Matrix>) => {
+            state.coordinateMatrix = action.payload;
         }
     }
 })
@@ -240,7 +185,6 @@ const PlotSlice = createSlice({
 export const { 
     setSelectedColorMap, 
     updateColorMap,
-    setTexture,
     setIsLoading,
     setPoints,
     addPoint,
@@ -250,6 +194,7 @@ export const {
     setDraggedPoint,
     updateDataLimits,
     setPlotDimensions,
-    setImageTransform
+    addTransformation,
+    setCoordinateMatrix
 } = PlotSlice.actions;
 export default PlotSlice.reducer;

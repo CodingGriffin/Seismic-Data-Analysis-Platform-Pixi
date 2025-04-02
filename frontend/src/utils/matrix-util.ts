@@ -26,7 +26,7 @@ export const rotateClockwise = (matrix: Matrix): Matrix => {
   const rows = matrix.length;
   const cols = matrix[0].length;
 
-  let rotated: Matrix = Array.from({ length: cols }, () => Array(rows));
+  let rotated: Matrix = Array.from({ length: cols }, () => Array(rows).fill(0));
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -41,7 +41,7 @@ export const rotateCounterClockwise = (matrix: Matrix): Matrix => {
   const rows = matrix.length;
   const cols = matrix[0].length;
 
-  let rotated: Matrix = Array.from({ length: cols }, () => Array(rows));
+  let rotated: Matrix = Array.from({ length: cols }, () => Array(rows).fill(0));
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -61,8 +61,8 @@ export const flipHorizontal = (matrix: Matrix): Matrix => {
 };
 
 export const multiplyScalar = (matrix: Matrix, multiFactor: number): Matrix => {
-  return matrix.map(row => row.map(value => value * multiFactor))
-}
+  return matrix.map(row => row.map(value => value * multiFactor));
+};
 
 export const addMatrices = (matrix1: Matrix, matrix2: Matrix): Matrix => {
   if (matrix1.length !== matrix2.length || matrix1[0].length !== matrix2[0].length) {
@@ -72,7 +72,6 @@ export const addMatrices = (matrix1: Matrix, matrix2: Matrix): Matrix => {
   return matrix1.map((row, rowIndex) => 
     row.map((value, colIndex) => value + matrix2[rowIndex][colIndex])
   );
-
 };
 
 export const multiplyMatrices = (A: Matrix, B: Matrix): Matrix => {
@@ -80,7 +79,7 @@ export const multiplyMatrices = (A: Matrix, B: Matrix): Matrix => {
   const rowsB = B.length, colsB = B[0].length;
   if (colsA !== rowsB) throw new Error("Matrix dimensions do not match for multiplication");
 
-  let result = Array.from({ length: rowsA }, () => Array(colsB).fill(0));
+  let result: Matrix = Array.from({ length: rowsA }, () => new Array(colsB).fill(0));
   for (let i = 0; i < rowsA; i++) {
     for (let j = 0; j < colsB; j++) {
       for (let k = 0; k < colsA; k++) {
@@ -103,31 +102,59 @@ export const applyTransformation = (matrix: Matrix, transformations: string[]): 
   const rows = matrix.length;
   const cols = matrix[0].length;
 
-  const ROTATE_CW = [[0, 1], [-1, 0]];
-  const ROTATE_CCW = [[0, -1], [1, 0]];
-  const FLIP_VERTICAL = [[1, 0], [0, -1]];
-  const FLIP_HORIZONTAL = [[-1, 0], [0, 1]];
+  const ROTATE_CW = [[0, 1], [-1, 0]]; // Rotate 90 degrees clockwise
+  const ROTATE_CCW = [[0, -1], [1, 0]]; // Rotate 90 degrees counterclockwise
+  const FLIP_VERTICAL = [[1, 0], [0, -1]]; // Flip vertically
+  const FLIP_HORIZONTAL = [[-1, 0], [0, 1]]; // Flip horizontally
 
+  const transformationsMap: Record<string, Matrix> = {
+    rotateClockwise: ROTATE_CW,
+    rotateCounterClockwise: ROTATE_CCW,
+    flipVertical: FLIP_VERTICAL,
+    flipHorizontal: FLIP_HORIZONTAL
+  };
+
+  // Start with an identity matrix for the transformation
   let T = [[1, 0], [0, 1]];
 
+  let rotateCount = 0; // To track the number of rotations
+
+  // Apply all transformations to the matrix in sequence
   for (let transform of transformations) {
-    if (transform === 'rotateClockwise') T = multiplyMatrices(ROTATE_CW, T);
-    if (transform === 'rotateCounterClockwise') T = multiplyMatrices(ROTATE_CCW, T);
-    if (transform === 'flipVertical') T = multiplyMatrices(FLIP_VERTICAL, T);
-    if (transform === 'flipHorizontal') T = multiplyMatrices(FLIP_HORIZONTAL, T);
+    if (transform in transformationsMap) {
+      if (transform === 'rotateClockwise') {
+        rotateCount += 1; // Increment for clockwise rotation
+      } else if (transform === 'rotateCounterClockwise') {
+        rotateCount -= 1; // Decrement for counterclockwise rotation
+      } else {
+        T = multiplyMatrices(transformationsMap[transform], T);
+      }
+    }
   }
 
-  let T3 = expandTo3x3(T, rows, cols);
-  let newMatrix: Matrix =
-    transformations.includes('rotateCW') || transformations.includes('rotateCCW')
-      ? Array.from({ length: cols }, () => Array(rows).fill(0))
-      : Array.from({ length: rows }, () => Array(cols).fill(0));
+  // Normalize rotation count (modulo 4 because 4 rotations result in no change)
+  rotateCount = ((rotateCount % 4) + 4) % 4; // Ensures the value stays within 0-3
 
+  // Apply the net rotation (rotateCount could be 1, 2, or 3)
+  for (let i = 0; i < rotateCount; i++) {
+    T = multiplyMatrices(ROTATE_CW, T); // Apply 90-degree clockwise rotation
+  }
+
+  // Convert the 2x2 matrix to a 3x3 matrix for homogeneous coordinates
+  let T3 = expandTo3x3(T, rows, cols);
+
+  // Adjust matrix dimensions based on the number of rotations
+  let newMatrix: Matrix = Array.from({ length: rotateCount === 2 ? rows : cols }, () =>
+    Array(rotateCount === 2 ? cols : rows).fill(0)
+  );
+
+  // Apply the final transformation
   for (let i = 0; i < rows; i++) {
     for (let j = 0; j < cols; j++) {
       let [x, y, _] = multiplyMatrixVector(T3, [[i], [j], [1]]).map(row => row[0]);
       x = Math.round(x);
       y = Math.round(y);
+
       if (x >= 0 && x < newMatrix.length && y >= 0 && y < newMatrix[0].length) {
         newMatrix[x][y] = matrix[i][j];
       }

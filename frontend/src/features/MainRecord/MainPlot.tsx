@@ -1,4 +1,4 @@
-import { Container, Sprite, Graphics, Text} from "pixi.js";
+import { Container, Sprite, Graphics, Text, Texture } from "pixi.js";
 import { useCallback, useRef, useEffect, useMemo, useState } from "react";
 import { extend } from "@pixi/react";
 import { BasePlot } from "../../components/BasePlot/BasePlot";
@@ -15,10 +15,11 @@ import {
   setIsDragging, 
   setDraggedPoint,
   setPlotDimensions,
+  setIsLoading,
+  addTransformation,
 } from "../../store/slices/plotSlice";
-import { createWeightedTexture } from "../../store/thunks/plotThunks";
 import { ColorMapKey } from "../../utils/record-util";
-import { updateImageTransformation } from "../../store/thunks/plotThunks";
+import { createTexture } from "../../utils/plot-util";
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -35,12 +36,13 @@ export default function MainPlot() {
     draggedPoint, 
     plotDimensions,
     coordinateMatrix,
-    dataLimits,
-    texture
+    dataLimits
   } = useAppSelector((state) => state.plot);
   
   const plotRef = useRef<any>(null);
-
+  
+  const [texture, setTexture] = useState<Texture | null>(null);
+  
   const selectAxisValue = useCallback((axisKey:number) =>{
     switch(axisKey) {
       case 1:
@@ -111,14 +113,73 @@ export default function MainPlot() {
   );
 
   useEffect(() => {
-    dispatch(createWeightedTexture());
-  }, [
-    itemsMap, 
-    orderedIds, 
-    selectedColorMap, 
-    colorMaps,
-    dispatch
-  ]);
+    const selectedRecords = orderedIds
+      .filter(id => itemsMap[id].enabled)
+      .map(id => ({
+        data: itemsMap[id].data,
+        weight: itemsMap[id].weight,
+        dimensions: itemsMap[id].dimensions,
+        min: itemsMap[id].min,
+        max: itemsMap[id].max
+      }));
+    
+    if (selectedRecords.length === 0) {
+      setTexture(null);
+      dispatch(setIsLoading(false));
+      return;
+    }
+    
+    dispatch(setIsLoading(true));
+    
+    // Create weighted texture from selected records
+    const createWeightedTexture = async () => {
+      try {
+        const totalWeight = selectedRecords.reduce(
+          (total: number, item) => total + item.weight,
+          0
+        );
+        if (totalWeight === 0) {
+          dispatch(addToast({ message: "Total weight is 0, cannot create weighted texture", type: "warning", duration: 5000 }));
+          return;
+        }
+        // Initialize array with zeros
+        let mainRecord: number[] = new Array(selectedRecords[0].data.flat().length).fill(0);
+
+        // Properly accumulate weighted values
+        for (const record of selectedRecords) {
+          const flatData = record.data.flat();
+          flatData.forEach((value: number, index: number) => {
+            // This is the key fix - use += to actually update the array
+            mainRecord[index] += value * record.weight / totalWeight;
+          });
+        }
+        
+        // Calculate min/max from the weighted data for better visualization
+        const min = Math.min(...mainRecord);
+        const max = Math.max(...mainRecord);
+
+        const newTexture = createTexture(
+          mainRecord,
+          selectedRecords[0].dimensions,
+          { min, max }, // Use calculated min/max instead of from first record
+          colorMaps[selectedColorMap]
+        );
+        
+        setTexture(newTexture);
+      } catch (error) {
+        console.error("Error creating texture:", error);
+        dispatch(addToast({
+          message: "Failed to create texture from data",
+          type: "error",
+          duration: 7000
+        }));
+      } finally {
+        dispatch(setIsLoading(false));
+      }
+    };
+    
+    createWeightedTexture();
+  }, [itemsMap, orderedIds, selectedColorMap, colorMaps, dispatch]);
 
   const handlePointerDown = useCallback((event: any) => {
     console.log("PointerDown event:", event);
@@ -397,7 +458,7 @@ export default function MainPlot() {
                 <div className="d-flex flex-wrap gap-2 justify-content-between">
                 <button
                   onClick={() => {
-                    dispatch(updateImageTransformation("rotateCounterClockwise"));
+                    dispatch(addTransformation("rotateCounterClockwise"));
                   }}
                   className="btn btn-outline-primary btn-sm"
                   title="Rotate Counter-clockwise"
@@ -407,7 +468,7 @@ export default function MainPlot() {
                 </button>
                 <button
                   onClick={() => {
-                    dispatch(updateImageTransformation("rotateClockwise"));
+                    dispatch(addTransformation("rotateClockwise"));
                   }}
                   className="btn btn-outline-primary btn-sm"
                   title="Rotate Clockwise"
@@ -417,7 +478,7 @@ export default function MainPlot() {
                 </button>
                 <button
                   onClick={() => {
-                    dispatch(updateImageTransformation("flipHorizontal"));
+                    dispatch(addTransformation("flipHorizontal"));
                   }}
                   className="btn btn-outline-primary btn-sm"
                   title="Flip Horizontal"
@@ -427,7 +488,7 @@ export default function MainPlot() {
                 </button>
                 <button
                   onClick={() => {
-                    dispatch(updateImageTransformation("flipVertical"));
+                    dispatch(addTransformation("flipVertical"));
                   }}
                   className="btn btn-outline-primary btn-sm"
                   title="Flip Vertical"
