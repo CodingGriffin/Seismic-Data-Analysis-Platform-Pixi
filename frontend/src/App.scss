@@ -189,7 +189,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 1rem;
+  margin: 3rem;
 }
 
 /* Ensure the BasePlot fills its container */
@@ -224,4 +224,14 @@ canvas {
 
 .row {
   margin-bottom: 1rem;
+}
+
+.text-rotate-90 {
+  writing-mode: tb-rl;
+  transform: rotate(-90deg);
+  white-space: nowrap;
+  position: absolute;
+  left: -30px;
+  top: 50%;
+  transform-origin: left center;
 }

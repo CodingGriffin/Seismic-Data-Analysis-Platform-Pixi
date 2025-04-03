@@ -169,19 +169,37 @@ export const BasePlot = forwardRef<HTMLDivElement, BasePlotProps>(({
     <div
       className="position-relative border bg-white shadow-sm w-100 h-100 min-vh-50"
     >
-      <div className="position-absolute start-0 top-50 translate-middle-y text-rotate-270 small ms-n4">
-        
+      <div 
+        className="position-absolute small" 
+        style={{
+          right: plotDimensions.width - 25,
+          top: '50%',
+          transform: 'translateY(-50%) rotate(-90deg)',
+          width: '100px'
+        }}
+      >
+        {displayedValues.yLabel}
       </div>
-      <div className="position-absolute start-0 top-0 h-100 translate-middle-x d-flex flex-column justify-content-between ms-n3">
+      
+      {/* Y-axis values */}
+      <div className="position-absolute h-100 d-flex flex-column justify-content-between align-items-center" 
+           style={{ right: plotDimensions.width + 5, top: '0' }}>
         <div className="small">{displayedValues.yMax !== undefined && display ? display(displayedValues.yMax) : ''}</div>
-        <div className="small">{displayedValues.yLabel}</div>
         <div className="small">{displayedValues.yMin !== undefined && display ? display(displayedValues.yMin) : ''}</div>
       </div>
-      <div className="position-absolute w-100 d-flex justify-content-between mb-n2" style={{bottom:'-10px'}}>
+      
+      {/* X-axis label */}
+      <div className="position-absolute small text-center w-100" style={{ bottom: '-25px' }}>
+        {displayedValues.xLabel}
+      </div>
+      
+      {/* X-axis values */}
+      <div className="position-absolute w-100 d-flex justify-content-between" 
+           style={{ bottom: '-25px'}}>
         <div className="small">{displayedValues.xMin !== undefined && display ? display(displayedValues.xMin) : ''}</div>
-        <div className="small">{displayedValues.xLabel}</div>
         <div className="small">{displayedValues.xMax !== undefined && display ? display(displayedValues.xMax) : ''}</div>
       </div>
+      
       <div 
         className="w-100 h-100 d-flex"
         onPointerMove={handlePointerMove}

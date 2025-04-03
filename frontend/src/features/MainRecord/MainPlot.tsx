@@ -71,18 +71,29 @@ export default function MainPlot() {
   const right = useCallback(() => selectAxisValue(coordinateMatrix[1][2]), [dataLimits, coordinateMatrix]);
   const bottom = useCallback(() => selectAxisValue(coordinateMatrix[2][1]), [dataLimits, coordinateMatrix]);
   const top = useCallback(() => selectAxisValue(coordinateMatrix[0][1]), [dataLimits, coordinateMatrix]);
-  const isAxisSwapped = useCallback(() => coordinateMatrix[1][0] > 0, [coordinateMatrix]);
+  const isAxisSwapped = useCallback(() => coordinateMatrix[1][0] < 0, [dataLimits, coordinateMatrix]);
 
-  const isFlippedVertical = useCallback(() => coordinateMatrix[1][0] < coordinateMatrix[1][2], [coordinateMatrix]);
-  const isFlippedHorizontal = useCallback(() => coordinateMatrix[2][1] < coordinateMatrix[0][1], [coordinateMatrix]);
+  const isFlippedHorizontal = useCallback(() => coordinateMatrix[1][0] < coordinateMatrix[1][2], [coordinateMatrix]);
+  const isFlippedVertical = useCallback(() => coordinateMatrix[0][1] < coordinateMatrix[2][1], [coordinateMatrix]);
   
   const coordinateHelpers = useMemo(
     () => ({
       toScreenX: (value: number) => {
-        return (
-          ((value - dataLimits.slowMax) / (dataLimits.slowMax - dataLimits.slowMin)) *
-          plotDimensions.width
-        );
+        if (isAxisSwapped()) {
+          return !isFlippedHorizontal()
+            ? plotDimensions.width - 
+              ((value - dataLimits.freqMin) / (dataLimits.freqMax - dataLimits.freqMin)) * 
+              plotDimensions.width
+            : ((value - dataLimits.freqMin) / (dataLimits.freqMax - dataLimits.freqMin)) * 
+              plotDimensions.width;
+        } else {
+          return !isFlippedHorizontal()
+            ? plotDimensions.width - 
+              ((value - dataLimits.slowMin) / (dataLimits.slowMax - dataLimits.slowMin)) * 
+              plotDimensions.width
+            : ((value - dataLimits.slowMin) / (dataLimits.slowMax - dataLimits.slowMin)) * 
+              plotDimensions.width;
+        }
       },
       fromScreenX: (x: number) => {
         const value =
@@ -95,10 +106,21 @@ export default function MainPlot() {
         return Math.round(value * 1000000) / 1000000;
       },
       toScreenY: (value: number) => {
-        return (
-          ((value - dataLimits.freqMin) / (dataLimits.freqMax - dataLimits.freqMin)) *
-          plotDimensions.height
-        );
+        if (isAxisSwapped()) {
+          return !isFlippedVertical()
+            ? plotDimensions.height - 
+              ((value - dataLimits.slowMin) / (dataLimits.slowMax - dataLimits.slowMin)) * 
+              plotDimensions.height
+            : ((value - dataLimits.slowMin) / (dataLimits.slowMax - dataLimits.slowMin)) * 
+              plotDimensions.height;
+        } else {
+          return !isFlippedVertical()
+            ? plotDimensions.height - 
+              ((value - dataLimits.freqMin) / (dataLimits.freqMax - dataLimits.freqMin)) * 
+              plotDimensions.height
+            : ((value - dataLimits.freqMin) / (dataLimits.freqMax - dataLimits.freqMin)) * 
+              plotDimensions.height;
+        }
       },
       fromScreenY: (y: number) => {
         const value =
@@ -111,7 +133,7 @@ export default function MainPlot() {
         return Math.round(value * 1000000) / 1000000;
       },
     }),
-    [dataLimits, plotDimensions, coordinateMatrix]
+    [dataLimits, plotDimensions, coordinateMatrix, isAxisSwapped, isFlippedHorizontal, isFlippedVertical]
   );
 
   const handleDimensionChange = useCallback(
@@ -130,6 +152,7 @@ export default function MainPlot() {
       // PixiJS event
       x = event.data.global.x;
       y = event.data.global.y;
+      
     } else if (event.clientX !== undefined && event.clientY !== undefined) {
       // DOM event
       const rect = plotRef.current?.getBoundingClientRect();
@@ -141,38 +164,49 @@ export default function MainPlot() {
       console.error("Unknown event format:", event);
       return;
     }
-    
-    console.log("Calculated coordinates:", { x, y });
-    
-    // Add new point with Shift key
+
     if ((event.nativeEvent && event.nativeEvent.shiftKey) || event.shiftKey) {
-      console.log("Adding new point at:", { x, y });
-      const newPoint = { x, y };
+      const slow = isAxisSwapped() 
+        ? coordinateHelpers.fromScreenY(y) 
+        : coordinateHelpers.fromScreenX(x);
+      const freq = isAxisSwapped() 
+        ? coordinateHelpers.fromScreenX(x) 
+        : coordinateHelpers.fromScreenY(y);
+      
+      console.log("Adding new point at coordinates:", { slow, freq });
+      const newPoint = { slow, freq };
       dispatch(addPoint(newPoint));
       return;
     }
     
-    // Check if clicking on an existing point
-    const clickedPoint = points.find(point => {
+    const clickedPointIndex = points.findIndex(point => {
+      // Convert slow/freq to screen coordinates for comparison
+      const screenX = isAxisSwapped() 
+        ? coordinateHelpers.toScreenX(point.freq) 
+        : coordinateHelpers.toScreenX(point.slow);
+      const screenY = isAxisSwapped() 
+        ? coordinateHelpers.toScreenY(point.slow) 
+        : coordinateHelpers.toScreenY(point.freq);
+      
       const distance = Math.sqrt(
-        Math.pow(point.x - x, 2) + Math.pow(point.y - y, 2)
+        Math.pow(screenX - x, 2) + Math.pow(screenY - y, 2)
       );
-      return distance < 10; // 10px radius for clicking on a point
+      return distance < 10;
     });
     
-    if (clickedPoint) {
+    if (clickedPointIndex !== -1) {
+      const clickedPoint = points[clickedPointIndex];
+      
       if ((event.nativeEvent && event.nativeEvent.altKey) || event.altKey) {
-        // Remove point with Alt key
         console.log("Removing point:", clickedPoint);
         dispatch(removePoint(clickedPoint));
       } else {
-        // Start dragging
         console.log("Starting drag on point:", clickedPoint);
         dispatch(setDraggedPoint(clickedPoint));
         dispatch(setIsDragging(true));
       }
     }
-  }, [points, dispatch, plotRef]);
+  }, [points, dispatch, plotRef, coordinateHelpers]);
   
   const handlePointerMove = useCallback((event: any) => {
     let x, y;
@@ -193,22 +227,35 @@ export default function MainPlot() {
     }
     
     if (isDragging && draggedPoint) {
+      // Convert screen coordinates to slow/freq values
+      const slow = isAxisSwapped() 
+        ? coordinateHelpers.fromScreenY(y) 
+        : coordinateHelpers.fromScreenX(x);
+      const freq = isAxisSwapped() 
+        ? coordinateHelpers.fromScreenX(x) 
+        : coordinateHelpers.fromScreenY(y);
+      
       // Update the dragged point position
       dispatch(removePoint(draggedPoint));
-      dispatch(addPoint({ x, y }));
-      dispatch(setDraggedPoint({ x, y }));
+      const newPoint = { slow, freq };
+      dispatch(addPoint(newPoint));
+      dispatch(setDraggedPoint(newPoint));
       
       // Update tooltip content for dragged point
-      setTooltipContent(
-        isAxisSwapped()
-          ? `(Freq:${coordinateHelpers.fromScreenX(x).toFixed(6)}, Slow:${coordinateHelpers.fromScreenY(y).toFixed(6)})`
-          : `(Slow:${coordinateHelpers.fromScreenX(x).toFixed(6)}, Freq:${coordinateHelpers.fromScreenY(y).toFixed(6)})`
-      );
+      setTooltipContent(`(Slow:${slow.toFixed(6)}, Freq:${freq.toFixed(6)})`);
     } else {
       // Check for hovering over points
       const hovered = points.find(point => {
+        // Convert slow/freq to screen coordinates for comparison
+        const screenX = isAxisSwapped() 
+          ? coordinateHelpers.toScreenX(point.freq) 
+          : coordinateHelpers.toScreenX(point.slow);
+        const screenY = isAxisSwapped() 
+          ? coordinateHelpers.toScreenY(point.slow) 
+          : coordinateHelpers.toScreenY(point.freq);
+        
         const distance = Math.sqrt(
-          Math.pow(point.x - x, 2) + Math.pow(point.y - y, 2)
+          Math.pow(screenX - x, 2) + Math.pow(screenY - y, 2)
         );
         return distance < 10;
       });
@@ -217,16 +264,12 @@ export default function MainPlot() {
       
       // Update tooltip content for hovered point
       if (hovered) {
-        setTooltipContent(
-          isAxisSwapped()
-            ? `(Freq:${coordinateHelpers.fromScreenX(hovered.x).toFixed(6)}, Slow:${coordinateHelpers.fromScreenY(hovered.y).toFixed(6)})`
-            : `(Slow:${coordinateHelpers.fromScreenX(hovered.x).toFixed(6)}, Freq:${coordinateHelpers.fromScreenY(hovered.y).toFixed(6)})`
-        );
+        setTooltipContent(`(Slow:${hovered.slow.toFixed(6)}, Freq:${hovered.freq.toFixed(6)})`);
       } else {
         setTooltipContent('');
       }
     }
-  }, [isDragging, draggedPoint, points, dispatch, plotRef, coordinateHelpers]);
+  }, [isDragging, draggedPoint, points, dispatch, plotRef, coordinateHelpers, isAxisSwapped]);
   
   const handlePointerUp = useCallback(() => {
     dispatch(setIsDragging(false));
@@ -243,14 +286,7 @@ export default function MainPlot() {
       return;
     }
     
-    // Convert screen coordinates to data coordinates
-    const dataPoints = points.map(point => ({
-      x: coordinateHelpers.fromScreenX(point.x),
-      y: coordinateHelpers.fromScreenY(point.y)
-    }));
-    
-    // Create a blob with the points data
-    const pointsData = dataPoints.map(p => `${p.x.toFixed(4)},${p.y.toFixed(4)}`).join('\n');
+    const pointsData = points.map(p => `${p.slow.toFixed(6)},${p.freq.toFixed(6)}`).join('\n');
     const blob = new Blob([pointsData], { type: 'text/plain' });
     
     // Use showSaveFilePicker API for native file save dialog
@@ -290,7 +326,7 @@ export default function MainPlot() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
-  }, [points, coordinateHelpers, dispatch]);
+  }, [points, dispatch]);
 
   useEffect(() => {
     const selectedRecords = orderedIds
@@ -363,7 +399,6 @@ export default function MainPlot() {
         const flatMatrix = mainMatrix.flat();
         const min = Math.min(...flatMatrix);
         const max = Math.max(...flatMatrix);
-        
         // Convert back to flat array for texture creation
         const mainRecord = flatMatrix;
         const newTexture = createTexture(
@@ -391,8 +426,9 @@ export default function MainPlot() {
 
   useEffect(() => {
     console.log("Coordinates:", coordinateMatrix)
-    
-  }, [coordinateMatrix])
+    console.log("Points:", points)
+    console.log("Tooltip:", tooltipContent)
+  }, [coordinateMatrix, points, tooltipContent])
 
   return (
     <div className="card shadow-sm mb-4">
@@ -442,11 +478,22 @@ export default function MainPlot() {
                           points.forEach((point) => {
                             const isHovered = hoveredPoint === point;
                             const isDragged = draggedPoint === point;
-
-                            g.setFillStyle({color:isHovered || isDragged ? 0x00ff00 : 0xff0000, alpha:0.8});
+                            
+                            const screenX = isAxisSwapped() 
+                              ? coordinateHelpers.toScreenX(point.freq) 
+                              : coordinateHelpers.toScreenX(point.slow);
+                            const screenY = isAxisSwapped() 
+                              ? coordinateHelpers.toScreenY(point.slow) 
+                              : coordinateHelpers.toScreenY(point.freq);
+                            
+                            g.setFillStyle({
+                              color: isHovered || isDragged ? 0x00ff00 : 0xff0000,
+                              alpha: 0.8,
+                            });
+                            
                             g.circle(
-                              point.x,
-                              point.y,
+                              screenX,
+                              screenY,
                               isHovered || isDragged ? 6 : 4
                             );
                             g.fill();
@@ -518,7 +565,7 @@ export default function MainPlot() {
                 </button>
                 <button
                   onClick={() => {
-                    !isAxisSwapped()? dispatch(addTransformation("flipHorizontal")):dispatch(addTransformation("flipVertical"));
+                    isAxisSwapped()? dispatch(addTransformation("flipHorizontal")):dispatch(addTransformation("flipVertical"));
                   }}
                   className="btn btn-outline-primary btn-sm"
                   title="Flip Horizontal"
@@ -528,7 +575,7 @@ export default function MainPlot() {
                 </button>
                 <button
                   onClick={() => {
-                    !isAxisSwapped()? dispatch(addTransformation("flipVertical")):dispatch(addTransformation("flipHorizontal"));
+                    isAxisSwapped()? dispatch(addTransformation("flipVertical")):dispatch(addTransformation("flipHorizontal"));
                   }}
                   className="btn btn-outline-primary btn-sm"
                   title="Flip Vertical"
