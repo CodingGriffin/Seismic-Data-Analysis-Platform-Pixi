@@ -5,6 +5,7 @@ import { BasePlot } from "../../components/BasePlot/BasePlot";
 import { useAppSelector } from "../../hooks/useAppSelector";
 import { selectRecordItems } from "../../store/selectors/recordSelectors";
 import { Window } from "../../types";
+import { Matrix } from "../../types/record";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { addToast } from "../../store/slices/toastSlice";
 import { 
@@ -17,9 +18,14 @@ import {
   setPlotDimensions,
   setIsLoading,
   addTransformation,
+  setCoordinateMatrix,
+  emptyTransformations,
 } from "../../store/slices/plotSlice";
 import { ColorMapKey } from "../../utils/record-util";
+import { getMatrixShape } from "../../utils/matrix-util";
 import { createTexture } from "../../utils/plot-util";
+import { applyTransformation, areMatricesEqual } from "../../utils/matrix-util";
+import { ORIGINAL_COORDINATE_MATRIX } from "../../utils/plot-util";
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -36,12 +42,15 @@ export default function MainPlot() {
     draggedPoint, 
     plotDimensions,
     coordinateMatrix,
-    dataLimits
+    dataLimits,
+    transformations
   } = useAppSelector((state) => state.plot);
   
   const plotRef = useRef<any>(null);
   
   const [texture, setTexture] = useState<Texture | null>(null);
+
+  const [tooltipContent, setTooltipContent] = useState<string>('');
   
   const selectAxisValue = useCallback((axisKey:number) =>{
     switch(axisKey) {
@@ -111,75 +120,6 @@ export default function MainPlot() {
     },
     [dispatch]
   );
-
-  useEffect(() => {
-    const selectedRecords = orderedIds
-      .filter(id => itemsMap[id].enabled)
-      .map(id => ({
-        data: itemsMap[id].data,
-        weight: itemsMap[id].weight,
-        dimensions: itemsMap[id].dimensions,
-        min: itemsMap[id].min,
-        max: itemsMap[id].max
-      }));
-    
-    if (selectedRecords.length === 0) {
-      setTexture(null);
-      dispatch(setIsLoading(false));
-      return;
-    }
-    
-    dispatch(setIsLoading(true));
-    
-    // Create weighted texture from selected records
-    const createWeightedTexture = async () => {
-      try {
-        const totalWeight = selectedRecords.reduce(
-          (total: number, item) => total + item.weight,
-          0
-        );
-        if (totalWeight === 0) {
-          dispatch(addToast({ message: "Total weight is 0, cannot create weighted texture", type: "warning", duration: 5000 }));
-          return;
-        }
-        // Initialize array with zeros
-        let mainRecord: number[] = new Array(selectedRecords[0].data.flat().length).fill(0);
-
-        // Properly accumulate weighted values
-        for (const record of selectedRecords) {
-          const flatData = record.data.flat();
-          flatData.forEach((value: number, index: number) => {
-            // This is the key fix - use += to actually update the array
-            mainRecord[index] += value * record.weight / totalWeight;
-          });
-        }
-        
-        // Calculate min/max from the weighted data for better visualization
-        const min = Math.min(...mainRecord);
-        const max = Math.max(...mainRecord);
-
-        const newTexture = createTexture(
-          mainRecord,
-          selectedRecords[0].dimensions,
-          { min, max }, // Use calculated min/max instead of from first record
-          colorMaps[selectedColorMap]
-        );
-        
-        setTexture(newTexture);
-      } catch (error) {
-        console.error("Error creating texture:", error);
-        dispatch(addToast({
-          message: "Failed to create texture from data",
-          type: "error",
-          duration: 7000
-        }));
-      } finally {
-        dispatch(setIsLoading(false));
-      }
-    };
-    
-    createWeightedTexture();
-  }, [itemsMap, orderedIds, selectedColorMap, colorMaps, dispatch]);
 
   const handlePointerDown = useCallback((event: any) => {
     console.log("PointerDown event:", event);
@@ -352,7 +292,107 @@ export default function MainPlot() {
     }
   }, [points, coordinateHelpers, dispatch]);
 
-  const [tooltipContent, setTooltipContent] = useState<string>('');
+  useEffect(() => {
+    const selectedRecords = orderedIds
+      .filter(id => itemsMap[id].enabled)
+      .map(id => ({
+        data: itemsMap[id].data,
+        weight: itemsMap[id].weight,
+        dimensions: itemsMap[id].dimensions,
+        min: itemsMap[id].min,
+        max: itemsMap[id].max
+      }));
+    
+    if (selectedRecords.length === 0) {
+      setTexture(null);
+      dispatch(setIsLoading(false));
+      return;
+    }
+    
+    dispatch(setIsLoading(true));
+    
+    console.log("Transformations Changed", transformations);
+    console.log("Before:", coordinateMatrix);
+    let newCoordinate = applyTransformation(ORIGINAL_COORDINATE_MATRIX, transformations);
+    if (transformations.length !== 0 && areMatricesEqual(newCoordinate, ORIGINAL_COORDINATE_MATRIX)) {
+      dispatch(emptyTransformations());
+      console.log("The transforms is reset");
+    }
+    console.log("New:", newCoordinate);
+    dispatch(setCoordinateMatrix(newCoordinate));
+    // Create weighted texture from selected records
+    const createWeightedTexture = async () => {
+      try {
+        const totalWeight = selectedRecords.reduce(
+          (total: number, item) => total + item.weight,
+          0
+        );
+        if (totalWeight === 0) {
+          dispatch(addToast({ message: "Total weight is 0, cannot create weighted texture", type: "warning", duration: 5000 }));
+          return;
+        }
+        // Get the dimensions from the first record
+        const shape = getMatrixShape(selectedRecords[0].data as Matrix);
+        const width = shape[1];
+        const height = shape[0];
+       
+        // Create empty matrix with proper dimensions
+        let mainMatrix: Matrix = Array.from(
+          { length: height }, 
+          () => Array(width).fill(0)
+        );
+
+        // Properly accumulate weighted values
+        for (const record of selectedRecords) {
+          const recordMatrix = record.data as Matrix;
+          
+          for (let i = 0; i < height; i++) {
+            for (let j = 0; j < width; j++) {
+              mainMatrix[i][j] += recordMatrix[i][j] * record.weight / totalWeight;
+            }
+          }
+        }
+        if (mainMatrix.length === 0) {
+          dispatch(addToast({ message: "No data to create texture", type: "warning", duration: 5000 }));
+          return;
+        }
+        if (transformations.length !== 0) {
+          mainMatrix = applyTransformation(mainMatrix, transformations);
+        }
+        // Calculate min/max from the weighted data for better visualization
+        const flatMatrix = mainMatrix.flat();
+        const min = Math.min(...flatMatrix);
+        const max = Math.max(...flatMatrix);
+        
+        // Convert back to flat array for texture creation
+        const mainRecord = flatMatrix;
+        const newTexture = createTexture(
+          mainRecord,
+          selectedRecords[0].dimensions,
+          { min, max }, // Use calculated min/max instead of from first record
+          colorMaps[selectedColorMap]
+        );
+        
+        setTexture(newTexture);
+      } catch (error) {
+        console.error("Error creating texture:", error);
+        dispatch(addToast({
+          message: "Failed to create texture from data",
+          type: "error",
+          duration: 7000
+        }));
+      } finally {
+        dispatch(setIsLoading(false));
+      }
+    };
+    
+    createWeightedTexture();
+  }, [itemsMap, orderedIds, selectedColorMap, colorMaps, dispatch, transformations]);
+
+  useEffect(() => {
+    console.log("Coordinates:", coordinateMatrix)
+    
+  }, [coordinateMatrix])
 
   return (
     <div className="card shadow-sm mb-4">

@@ -104,8 +104,8 @@ export const applyTransformation = (matrix: Matrix, transformations: string[]): 
 
   const ROTATE_CW = [[0, 1], [-1, 0]]; // Rotate 90 degrees clockwise
   const ROTATE_CCW = [[0, -1], [1, 0]]; // Rotate 90 degrees counterclockwise
-  const FLIP_VERTICAL = [[1, 0], [0, -1]]; // Flip vertically
-  const FLIP_HORIZONTAL = [[-1, 0], [0, 1]]; // Flip horizontally
+  const FLIP_HORIZONTAL = [[1, 0], [0, -1]]; // Flip vertically
+  const FLIP_VERTICAL = [[-1, 0], [0, 1]]; // Flip horizontally
 
   const transformationsMap: Record<string, Matrix> = {
     rotateClockwise: ROTATE_CW,
@@ -166,4 +166,49 @@ export const applyTransformation = (matrix: Matrix, transformations: string[]): 
 
 const multiplyMatrixVector = (matrix: Matrix, vector: Matrix): Matrix => {
   return multiplyMatrices(matrix, vector);
+};
+
+/**
+ * Compares two matrices for equality
+ * @param matrix1 First matrix to compare
+ * @param matrix2 Second matrix to compare
+ * @param epsilon Optional tolerance for floating point comparison (default: 0)
+ * @returns True if matrices have same dimensions and all elements are equal
+ */
+export const areMatricesEqual = (
+  matrix1: Matrix, 
+  matrix2: Matrix, 
+  epsilon: number = 0
+): boolean => {
+  // Check if dimensions match
+  if (matrix1.length !== matrix2.length) {
+    return false;
+  }
+  
+  if (matrix1.length === 0) {
+    return matrix2.length === 0;
+  }
+  
+  if (matrix1[0].length !== matrix2[0].length) {
+    return false;
+  }
+  
+  // Check each element
+  for (let i = 0; i < matrix1.length; i++) {
+    for (let j = 0; j < matrix1[0].length; j++) {
+      if (epsilon === 0) {
+        // Exact comparison
+        if (matrix1[i][j] !== matrix2[i][j]) {
+          return false;
+        }
+      } else {
+        // Comparison with tolerance for floating point
+        if (Math.abs(matrix1[i][j] - matrix2[i][j]) > epsilon) {
+          return false;
+        }
+      }
+    }
+  }
+  
+  return true;
 };

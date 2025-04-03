@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { ColorMapKey } from "../../utils/record-util";
 import { Matrix } from "../../types/record";
+import { ORIGINAL_COORDINATE_MATRIX } from "../../utils/plot-util";
 
 export type Transformation = 'flipHorizontal' | 'flipVertical' | 'rotateClockwise' | 'rotateCounterClockwise';
 
@@ -127,11 +128,7 @@ const initialState: PlotState = {
         height: 480
     },
     textureData: null,
-    coordinateMatrix: [
-        [0, -1, 0],//top, bottom
-        [2, 0, 1],//left, right
-        [0, -2, 0]//bottom, top
-    ],
+    coordinateMatrix: ORIGINAL_COORDINATE_MATRIX,
     transformations: []
 }
 
@@ -176,6 +173,9 @@ const PlotSlice = createSlice({
         addTransformation: (state, action: PayloadAction<Transformation>) => {
             state.transformations.push(action.payload);
         },
+        emptyTransformations: (state) => {
+            state.transformations = [];
+        },
         setCoordinateMatrix: (state, action: PayloadAction<Matrix>) => {
             state.coordinateMatrix = action.payload;
         }
@@ -195,6 +195,7 @@ export const {
     updateDataLimits,
     setPlotDimensions,
     addTransformation,
+    emptyTransformations,
     setCoordinateMatrix
 } = PlotSlice.actions;
 export default PlotSlice.reducer;
