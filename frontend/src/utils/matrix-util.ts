@@ -104,8 +104,8 @@ export const applyTransformation = (matrix: Matrix, transformations: string[]): 
 
   const ROTATE_CW = [[0, 1], [-1, 0]]; // Rotate 90 degrees clockwise
   const ROTATE_CCW = [[0, -1], [1, 0]]; // Rotate 90 degrees counterclockwise
-  const FLIP_HORIZONTAL = [[1, 0], [0, -1]]; // Flip vertically
-  const FLIP_VERTICAL = [[-1, 0], [0, 1]]; // Flip horizontally
+  const FLIP_VERTICAL = [[1, 0], [0, -1]]; // Flip vertically
+  const FLIP_HORIZONTAL = [[-1, 0], [0, 1]]; // Flip horizontally
 
   const transformationsMap: Record<string, Matrix> = {
     rotateClockwise: ROTATE_CW,

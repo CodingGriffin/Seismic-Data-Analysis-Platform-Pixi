@@ -518,7 +518,7 @@ export default function MainPlot() {
                 </button>
                 <button
                   onClick={() => {
-                    dispatch(addTransformation("flipHorizontal"));
+                    !isAxisSwapped()? dispatch(addTransformation("flipHorizontal")):dispatch(addTransformation("flipVertical"));
                   }}
                   className="btn btn-outline-primary btn-sm"
                   title="Flip Horizontal"
@@ -528,7 +528,7 @@ export default function MainPlot() {
                 </button>
                 <button
                   onClick={() => {
-                    dispatch(addTransformation("flipVertical"));
+                    !isAxisSwapped()? dispatch(addTransformation("flipVertical")):dispatch(addTransformation("flipHorizontal"));
                   }}
                   className="btn btn-outline-primary btn-sm"
                   title="Flip Vertical"
