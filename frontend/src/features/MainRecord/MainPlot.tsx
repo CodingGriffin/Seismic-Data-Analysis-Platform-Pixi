@@ -8,6 +8,7 @@ import { Window } from "../../types";
 import { Matrix } from "../../types/record";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { addToast } from "../../store/slices/toastSlice";
+import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import { 
   setSelectedColorMap, 
   addPoint, 
@@ -432,9 +433,8 @@ export default function MainPlot() {
 
   return (
     <div className="card shadow-sm mb-4">
-      <div className="card-header d-flex justify-content-between align-items-center">
-        <h5 className="mb-0">Main Plot</h5>
-      </div>
+      <SectionHeader title="Main Plot">
+      </SectionHeader>
       <div className="card-body p-0">
         <div className="row g-0">
           <div className="col-lg-9">

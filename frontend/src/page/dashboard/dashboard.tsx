@@ -7,6 +7,7 @@ import RecordCarousel from "../../features/RecordCarosel/RecordCarosel";
 import SelectedRecordsSummary from "../../features/RecordSummary/RecordSummary";
 import MainPlot from "../../features/MainRecord/MainPlot";
 import { DataManger } from "../../features/DataManger/DataManger";
+import SectionHeader from "../../components/SectionHeader/SectionHeader";
 
 const Dashboard: React.FC = () => {
   const [scrollToRecordId, setScrollToRecordId] = useState<string | null>(null);
@@ -15,7 +16,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const handleScrollToRecord = (event: CustomEvent<{ recordId: string }>) => {
       setScrollToRecordId(event.detail.recordId);
-      setTimeout(() => setScrollToRecordId(null), 100);
+      setTimeout(() => setScrollToRecordId(null), 300);
     };
 
     window.addEventListener('scrollToRecord', handleScrollToRecord as EventListener);
@@ -30,17 +31,21 @@ const Dashboard: React.FC = () => {
       <div className="responsive-container">
         <div className="row g-3 mb-3">
           <div className="col-12 col-md-2">
-            <div className="d-flex flex-column gap-3 border rounded p-3 h-100">
-              <h5 className="mb-3">Controls</h5>
-              <Button
-                variant="primary"
-                onClick={() => setShowDataManager(true)}
-                className="w-100"
-              >
-                Manage Data
-              </Button>
-              <Button variant="primary" className="w-100">Update Plots</Button>
-              <Button variant="primary" className="w-100">Download</Button>
+            <div className="d-flex flex-column border rounded">
+              <SectionHeader
+                title="Controls"
+              />
+              <div className="d-flex justif-content-space-between flex-column gap-3 pt-1" style={{ height: "210px", margin:"8px"}}>
+                <Button
+                  variant="primary"
+                  onClick={() => setShowDataManager(true)}
+                  className="w-100"
+                >
+                  Manage Data
+                </Button>
+                <Button variant="primary" className="w-100">Update Plots</Button>
+                <Button variant="primary" className="w-100">Download</Button>
+              </div>
             </div>
           </div>
 

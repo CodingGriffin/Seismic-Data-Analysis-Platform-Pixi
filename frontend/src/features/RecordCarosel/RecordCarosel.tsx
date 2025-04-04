@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
-import RecordCard from "./RecordCard/RecordCard";
+import { OptimizedRecordCard } from "./RecordCard";
 import { useAppSelector } from "../../hooks/useAppSelector";
 import { selectRecordItems } from "../../store/selectors/recordSelectors";
 
@@ -18,7 +18,7 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
   scrollToRecordId,
 }) => {
   const { orderedIds } = useAppSelector(selectRecordItems);
-  
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [visibleIndex, setVisibleIndex] = useState(0);
   const [perpage, setPerpage] = useState(1);
@@ -81,7 +81,7 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
   }, [scrollToRecordId, orderedIds, perpage, scrollToPage]);
 
   const handleScroll = useCallback(() => {
-    if (isScrolling.current) return; 
+    if (isScrolling.current) return;
 
     if (scrollContainerRef.current) {
       const scrollLeft = scrollContainerRef.current.scrollLeft;
@@ -150,8 +150,9 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
                     height: "100%",
                   }}
                 >
-                  <RecordCard
+                  <OptimizedRecordCard
                     id={recordId}
+                    isVisible={Math.floor(index / perpage) === current}
                   />
                 </div>
               )

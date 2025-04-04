@@ -5,6 +5,7 @@ import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { useAppSelector } from "../../hooks/useAppSelector";
 import { updateRecordState } from "../../store/slices/recordSlice";
 import { selectRecordItems } from "../../store/selectors/recordSelectors";
+import SectionHeader from "../../components/SectionHeader/SectionHeader";
 
 const RecordSummary: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -34,18 +35,17 @@ const RecordSummary: React.FC = () => {
 
   return (
     <div className="border rounded d-flex flex-column">
-      <div
-        className="d-flex justify-content-between align-items-center p-2 border-bottom"
-        style={{ height: "42px" }}
-      >
-        <h6 className="mb-0">Selected ({selectedRecordObjects.length})</h6>
-        <button
-          className="btn btn-sm btn-outline-danger"
-          onClick={handleClearSelection}
-        >
-          Clear
-        </button>
-      </div>
+      <SectionHeader
+        title={`Selected (${selectedRecordObjects.length})`}
+        actions={
+          <button
+            className="btn btn-sm btn-outline-danger"
+            onClick={handleClearSelection}
+          >
+            Clear
+          </button>
+        }
+      />
 
       <div className="overflow-auto m-2 no-select" style={{ height: "210px" }}>
         {selectedRecordObjects.length === 0 ? (
