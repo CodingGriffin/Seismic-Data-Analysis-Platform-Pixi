@@ -65,7 +65,7 @@ export const processGridsForPreview = createAsyncThunk(
         return {
           fileName: name,
           enabled: false,
-          weight: 0,
+          weight: 100,
           data: transformed,
           dimensions: {
             width: transformedShape[1],

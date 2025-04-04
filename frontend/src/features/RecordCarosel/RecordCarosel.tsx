@@ -20,7 +20,7 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
   const { orderedIds } = useAppSelector(selectRecordItems);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [visibleIndex, setVisibleIndex] = useState(0);
+  const [visibleCards, setVisibleCards] = useState<Set<string>>(new Set());
   const [perpage, setPerpage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
   const [current, setCurrent] = useState(0);
@@ -36,6 +36,43 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
     ...orderedIds,
     ...Array(calculateBlankItems()).fill("blank"),
   ];
+
+  // Set up intersection observer to track visible cards
+  useEffect(() => {
+    if (!scrollContainerRef.current) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setVisibleCards(prev => {
+          const newVisible = new Set(prev);
+          
+          entries.forEach(entry => {
+            const id = entry.target.getAttribute('data-record-id');
+            if (id && id !== 'blank') {
+              if (entry.isIntersecting) {
+                newVisible.add(id);
+              } else {
+                newVisible.delete(id);
+              }
+            }
+          });
+          
+          return newVisible;
+        });
+      },
+      {
+        root: scrollContainerRef.current,
+        threshold: 0.1,
+        rootMargin: '0px'
+      }
+    );
+    
+    // Observe all card containers
+    const cardElements = scrollContainerRef.current.querySelectorAll('.record-card-container');
+    cardElements.forEach(el => observer.observe(el));
+    
+    return () => observer.disconnect();
+  }, [orderedIds]);
 
   const scrollToPage = useCallback((pageIndex: number) => {
     setCurrent(pageIndex);
@@ -91,12 +128,8 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
       if (newPage !== current) {
         setCurrent(newPage);
       }
-
-      if (newVisibleIndex !== visibleIndex) {
-        setVisibleIndex(newVisibleIndex);
-      }
     }
-  }, [perpage, visibleIndex, current]);
+  }, [perpage, current]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -132,6 +165,8 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
               recordId === "blank" ? (
                 <div
                   key={`blank-${index}`}
+                  className="record-card-container"
+                  data-record-id="blank"
                   style={{
                     minWidth: `${CARD_WIDTH}px`,
                     width: `${CARD_WIDTH}px`,
@@ -143,6 +178,8 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
               ) : (
                 <div
                   key={recordId}
+                  className="record-card-container"
+                  data-record-id={recordId}
                   style={{
                     minWidth: `${CARD_WIDTH}px`,
                     width: `${CARD_WIDTH}px`,
@@ -152,7 +189,7 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
                 >
                   <OptimizedRecordCard
                     id={recordId}
-                    isVisible={Math.floor(index / perpage) === current}
+                    isVisible={visibleCards.has(recordId)}
                   />
                 </div>
               )
