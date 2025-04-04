@@ -116,7 +116,7 @@ const initialState: PlotState = {
             'rgb(26,26,26, 1.0)'
         ]
     },
-    selectedColorMap: 'VsSurf-1' as ColorMapKey,
+    selectedColorMap: 'VsSurf-2' as ColorMapKey,
     isLoading: false,
     points: [],
     hoveredPoint: null,

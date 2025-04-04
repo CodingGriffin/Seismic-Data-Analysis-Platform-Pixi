@@ -147,7 +147,7 @@ export const processSingleGridForPreview = createAsyncThunk(
       const recordItem: RecordItem = {
         fileName: name,
         enabled: false,
-        weight: 0,
+        weight: 100,
         data: data,
         dimensions: {
           width: shape[1],
