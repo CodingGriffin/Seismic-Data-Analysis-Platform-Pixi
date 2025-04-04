@@ -1,5 +1,5 @@
 import React from "react";
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Sprite, Texture } from "pixi.js";
 import { BasePlot } from "../../../components/BasePlot/BasePlot";
 import { Container } from "pixi.js";
@@ -37,18 +37,7 @@ const OptimizedRecordCard: React.FC<OptimizedRecordCardProps> = ({
   const textureRef = useRef<Texture | null>(null);
   const [texture, setTexture] = useState<Texture | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [plotDimensions, setPlotDimensions] = useState({
-    width: 180,
-    height: 140,
-  });
-
-  const handleDimensionChange = useCallback(
-    (dimensions: { width: number; height: number }) => {
-      setPlotDimensions(dimensions);
-    },
-    []
-  );
-
+  
   const handleToggleSelection = (event: React.MouseEvent) => {
     if ((event.target as HTMLElement).tagName === "INPUT") {
       return;
@@ -159,13 +148,15 @@ const OptimizedRecordCard: React.FC<OptimizedRecordCardProps> = ({
         {texture && texture.width > 0 ? (
           <BasePlot
             ref={plotRef}
-            onDimensionChange={handleDimensionChange}
+            // onDimensionChange={handleDimensionChange}
+            forceWidth={180}
+            forceHeight={140}
           >
             <pixiContainer>
               <pixiSprite
                 texture={texture}
-                width={plotDimensions.width}
-                height={plotDimensions.height}
+                width={180}
+                height={140}
                 anchor={0}
                 x={0}
                 y={0}

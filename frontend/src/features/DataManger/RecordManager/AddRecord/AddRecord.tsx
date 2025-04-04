@@ -7,6 +7,7 @@ import { processGridsForPreview, processSingleGridForPreview } from "../../../..
 import { clearCache } from "../../../../store/slices/cacheSlice";
 import { setFreqData } from "../../../../store/slices/freqSlice";
 import { setSlowData } from "../../../../store/slices/slowSlice";
+import { addToast } from "../../../../store/slices/toastSlice";
 
 interface AddRecordProps {
   selectedRecordId?: string;
@@ -40,25 +41,24 @@ export default function AddRecord({
     
     const geometryData = JSON.stringify(geometry);
     
-    if (mode === "edit" && files.length === 1) {
-      dispatch(processSingleGridForPreview({
-        sgyFile: files[0],
-        geometryData,
-        maxSlowness: maxSlow,
-        maxFrequency: maxFreq,
-        numSlowPoints: numSlow,
-        numFreqPoints: numFreq
+    // Validate geometry data before processing
+    if (!geometry || Object.keys(geometry).length === 0) {
+      dispatch(addToast({
+        message: "Geometry data is required for processing files",
+        type: "error",
+        duration: 5000
       }));
-    } else {
-      dispatch(processGridsForPreview({
-        sgyFiles: Array.from(files),
-        geometryData,
-        maxSlowness: maxSlow,
-        maxFrequency: maxFreq,
-        numSlowPoints: numSlow,
-        numFreqPoints: numFreq
-      }));
+      return;
     }
+    
+    dispatch(processGridsForPreview({
+      sgyFiles: Array.from(files),
+      geometryData,
+      maxSlowness: maxSlow,
+      maxFrequency: maxFreq,
+      numSlowPoints: numSlow,
+      numFreqPoints: numFreq
+    }));
   };
 
   const handleConfirm = () => {
