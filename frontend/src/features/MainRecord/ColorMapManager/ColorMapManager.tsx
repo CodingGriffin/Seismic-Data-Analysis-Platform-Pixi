@@ -111,7 +111,7 @@ export const ColorMapManager = () => {
 
   return (
     <>
-      <div className="d-flex gap-2 w-full">
+      <div className="d-flex gap-3 w-full justify-content-between">
         <select
           value={selectedColorMap}
           onChange={(e) => dispatch(setSelectedColorMap(e.target.value as ColorMapKey))}

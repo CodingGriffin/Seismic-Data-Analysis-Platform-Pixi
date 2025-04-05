@@ -9,6 +9,8 @@ import { Matrix } from "../../types/record";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { addToast } from "../../store/slices/toastSlice";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
+import { ColorMapManager } from "./ColorMapManager/ColorMapManager";
+
 import { 
   setSelectedColorMap, 
   addPoint, 
@@ -519,24 +521,7 @@ export default function MainPlot() {
               {/* ColorMap Controls */}
               <div className="mb-3">
                 <label className="form-label">Color Map</label>
-                <div className="d-flex gap-2 mb-3">
-                  <select
-                    value={selectedColorMap}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (Object.keys(colorMaps).includes(value)) {
-                        dispatch(setSelectedColorMap(value as ColorMapKey));
-                      }
-                    }}
-                    className="form-select form-select-sm flex-grow-1"
-                  >
-                    {Object.keys(colorMaps).map((mapName) => (
-                      <option key={mapName} value={mapName}>
-                        {mapName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <ColorMapManager/>
               </div>
 
               {/* Transform Controls */}
