@@ -10,13 +10,9 @@ const CARD_WIDTH = 200;
 const CARD_MARGIN = 10;
 const TOTAL_CARD_WIDTH = CARD_WIDTH + CARD_MARGIN * 2;
 
-interface RecordCarouselProps {
-  scrollToRecordId?: string | null;
-}
+interface RecordCarouselProps {}
 
-const RecordCarousel: React.FC<RecordCarouselProps> = ({
-  scrollToRecordId,
-}) => {
+const RecordCarousel: React.FC<RecordCarouselProps> = () => {
   const { orderedIds } = useAppSelector(selectRecordItems);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -25,6 +21,20 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
   const [pageCount, setPageCount] = useState(1);
   const [current, setCurrent] = useState(0);
   const isScrolling = useRef(false);
+  const [scrollToRecordId, setScrollToRecordId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleScrollToRecord = (event: CustomEvent<{ recordId: string }>) => {
+      setScrollToRecordId(event.detail.recordId);
+      setTimeout(() => setScrollToRecordId(null), 300);
+    };
+
+    window.addEventListener('scrollToRecord', handleScrollToRecord as EventListener);
+
+    return () => {
+      window.removeEventListener('scrollToRecord', handleScrollToRecord as EventListener);
+    };
+  }, []);
 
   const calculateBlankItems = useCallback(() => {
     const totalItems = orderedIds.length;
@@ -37,15 +47,14 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
     ...Array(calculateBlankItems()).fill("blank"),
   ];
 
-  // Set up intersection observer to track visible cards
   useEffect(() => {
     if (!scrollContainerRef.current) return;
-    
+
     const observer = new IntersectionObserver(
       (entries) => {
         setVisibleCards(prev => {
           const newVisible = new Set(prev);
-          
+
           entries.forEach(entry => {
             const id = entry.target.getAttribute('data-record-id');
             if (id && id !== 'blank') {
@@ -56,7 +65,7 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
               }
             }
           });
-          
+
           return newVisible;
         });
       },
@@ -66,11 +75,10 @@ const RecordCarousel: React.FC<RecordCarouselProps> = ({
         rootMargin: '0px'
       }
     );
-    
-    // Observe all card containers
+
     const cardElements = scrollContainerRef.current.querySelectorAll('.record-card-container');
     cardElements.forEach(el => observer.observe(el));
-    
+
     return () => observer.disconnect();
   }, [orderedIds]);
 
