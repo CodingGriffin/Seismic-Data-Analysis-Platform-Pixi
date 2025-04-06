@@ -58,6 +58,16 @@ export const DataManager = () => {
                     </div>
                   </div>
                 </div>
+                <div className="modal-footer">
+                  <Button
+                    variant="primary"
+                  >
+                    Apply
+                  </Button>
+                  <Button variant="danger">
+                    Discard All
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

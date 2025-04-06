@@ -13,7 +13,8 @@ export const FreqSlowManger = () => {
 
   return (
     <div className="container mt-5 flex-1">
-      <div className="row mb-3">
+      <h2 className="mb-0 text-center">Frequency & Slowness</h2>
+      <div className="row mb-3 mt-3">
         <div className="col-md-6">
           <div className="d-flex align-items-center">
             <label className="me-3 w-50 text-end">Number of Frequency Points:</label>

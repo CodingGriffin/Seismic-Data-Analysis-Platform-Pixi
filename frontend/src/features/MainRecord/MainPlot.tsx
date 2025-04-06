@@ -12,7 +12,6 @@ import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import { ColorMapManager } from "./ColorMapManager/ColorMapManager";
 
 import { 
-  setSelectedColorMap, 
   addPoint, 
   removePoint,
   setHoveredPoint, 
@@ -24,7 +23,6 @@ import {
   setCoordinateMatrix,
   emptyTransformations,
 } from "../../store/slices/plotSlice";
-import { ColorMapKey } from "../../utils/record-util";
 import { getMatrixShape } from "../../utils/matrix-util";
 import { createTexture } from "../../utils/plot-util";
 import { applyTransformation, areMatricesEqual } from "../../utils/matrix-util";
