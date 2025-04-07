@@ -94,6 +94,15 @@ const recordSlice = createSlice({
     setShowEditRecord: (state, action: PayloadAction<boolean>) => {
       state.showEditRecord = action.payload;
     },
+    setStateMap: (state, action: PayloadAction<{ [key: string]: RecordState }>) => {
+      state.stateMap = action.payload;
+    },
+    setDataMap: (state, action: PayloadAction<{ [key: string]: RecordData }>) => {
+      state.dataMap = action.payload;
+    },
+    setOrderedIds: (state, action: PayloadAction<string[]>) => {
+      state.orderedIds = action.payload;
+    },
   },
 });
 
@@ -107,6 +116,9 @@ export const {
   updateRecordData,
   updateRecordState,
   reorderRecords,
+  setStateMap,
+  setDataMap,
+  setOrderedIds,
 } = recordSlice.actions;
 
 export default recordSlice.reducer;

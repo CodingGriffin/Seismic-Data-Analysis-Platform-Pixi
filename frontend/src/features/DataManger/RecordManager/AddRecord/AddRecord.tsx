@@ -3,7 +3,7 @@ import { FileControls } from "../../../../components/FileControls/FileControls";
 import { RecordItem } from "../../../../types/record";
 import { useAppDispatch } from "../../../../hooks/useAppDispatch";
 import { useAppSelector } from "../../../../hooks/useAppSelector";
-import { processGridsForPreview, processSingleGridForPreview } from "../../../../store/thunks/cacheThunks";
+import { processGridsForPreview } from "../../../../store/thunks/cacheThunks";
 import { clearCache } from "../../../../store/slices/cacheSlice";
 import { setFreqData } from "../../../../store/slices/freqSlice";
 import { setSlowData } from "../../../../store/slices/slowSlice";
