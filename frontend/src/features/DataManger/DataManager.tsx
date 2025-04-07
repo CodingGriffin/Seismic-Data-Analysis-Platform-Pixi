@@ -45,6 +45,13 @@ export const DataManager = () => {
   }, [showDataManager]);
   
   const handleApplyChanges = () => {
+    dispatch(setGeometry(savedGeometry));
+
+    dispatch(setNumFreq(savedFreqSettings.numFreq));
+    dispatch(updateMaxFreq(savedFreqSettings.maxFreq));
+    dispatch(setNumSlow(savedSlowSettings.numSlow));
+    dispatch(updateMaxSlow(savedSlowSettings.maxSlow));
+
     dispatch(addToast({
       message: "Changes applied successfully",
       type: "success",
@@ -54,13 +61,8 @@ export const DataManager = () => {
   };
   
   const handleDiscardChanges = () => {
-    dispatch(setGeometry(savedGeometry));
     
-    dispatch(setNumFreq(savedFreqSettings.numFreq));
-    dispatch(updateMaxFreq(savedFreqSettings.maxFreq));
     
-    dispatch(setNumSlow(savedSlowSettings.numSlow));
-    dispatch(updateMaxSlow(savedSlowSettings.maxSlow));
     dispatch(setDataMap(savedRecords.dataMap));
     dispatch(setStateMap(savedRecords.stateMap));
     dispatch(setOrderedIds(savedRecords.orderedIds));
@@ -108,20 +110,30 @@ export const DataManager = () => {
                   />
                 </div>
                 <div className="modal-body">
-                  <div className="container-fluid mt-5">
-                    <div className="row">
-                      <div className="col-md-5 border p-3 d-flex mt-2">
-                        <GeometryManager />
+                  <div className="container p-3">
+                    <div className="row mt-3 gy-5">
+                      <div className="col border m-3 p-3">
+                        <GeometryManager 
+                          geometry={savedGeometry} 
+                          onGeometryChange={(geometry) => setSavedGeometry(geometry)}
+                        />
                       </div>
-                      <div className="col-md-2">
-                      </div>
-                      <div className="col-md-5 border p-3 d-flex mt-2">
+                      <div className="col border m-3 p-3">
                         <RecordManager />
                       </div>
                     </div>
-                    <div className="row mt-4">
-                      <div className="border p-3 col d-flex mt-2">
-                        <FreqSlowManger />
+                    <div className="row">
+                      <div className="col border m-3">
+                        <FreqSlowManger 
+                          numFreq={savedFreqSettings.numFreq} 
+                          maxFreq={savedFreqSettings.maxFreq} 
+                          numSlow={savedSlowSettings.numSlow}
+                          maxSlow={savedSlowSettings.maxSlow}
+                          onNumFreqChange={(value) => setSavedFreqSettings({ ...savedFreqSettings, numFreq: value })}
+                          onMaxFreqChange={(value) => setSavedFreqSettings({ ...savedFreqSettings, maxFreq: value })}
+                          onNumSlowChange={(value) => setSavedSlowSettings({ ...savedSlowSettings, numSlow: value })}
+                          onMaxSlowChange={(value) => setSavedSlowSettings({ ...savedSlowSettings, maxSlow: value })}
+                          />
                       </div>
                     </div>
                   </div>

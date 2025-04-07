@@ -147,7 +147,7 @@ export default function EditGeometry({ initialPoints, onPointsChange, onClose }:
           >
             {points.length > 0 ? (
               <div className="table-responsive">
-                <table className="table table-striped table-bordered">
+                <table className="table table-hover table-bordered">
                   <thead className="table-light">
                     <tr>
                       <th>Index</th>

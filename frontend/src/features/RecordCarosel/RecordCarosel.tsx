@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { OptimizedRecordCard } from "./RecordCard";
+import RecordCard from "./RecordCard/RecordCard";
 import { useAppSelector } from "../../hooks/useAppSelector";
 import { selectRecordItems } from "../../store/selectors/recordSelectors";
 
@@ -195,7 +195,7 @@ const RecordCarousel: React.FC<RecordCarouselProps> = () => {
                     height: "100%",
                   }}
                 >
-                  <OptimizedRecordCard
+                  <RecordCard
                     id={recordId}
                     isVisible={visibleCards.has(recordId)}
                   />

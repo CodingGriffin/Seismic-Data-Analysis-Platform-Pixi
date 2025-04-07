@@ -7,7 +7,7 @@ import { Input } from '../../../../components/Input/Input';
 import { useInputValidation } from '../../../../components/Input/useInputValidation';
 
 interface AddGeometryProps {
-  onSetGeometry: (data: any) => void;
+  onSetGeometry: (data: GeometryItem[]) => void;
   onClose: () => void;
 }
 
@@ -252,19 +252,19 @@ export default function AddGeometry({
         z: geometryFormat === "NXYZ" ? row[3] : row[1],
       }));
 
-      onSetGeometry({ units, data: geometryData }); // Match GeometryArray interface
+      onSetGeometry(geometryData); // Match GeometryArray interface
       onClose();
     } else if (inputMethod === "Spreadsheet") {
       const selectedData = sheets.find((sheet) => sheet.name === selectedSheet);
       if (selectedData) {
         const parsedData = getDataFromExcel(selectedData.data);
         if (!parsedData) return;
-        onSetGeometry({ units, data: parsedData }); // Match GeometryArray interface
+        onSetGeometry( parsedData ); // Match GeometryArray interface
         onClose();
       }
     } else if (inputMethod === "SGY") {
       if (previewData) {
-        onSetGeometry({ units, data: previewData });
+        onSetGeometry( previewData);
         onClose();
       }
     } else if (inputMethod === "Array") {
@@ -278,7 +278,7 @@ export default function AddGeometry({
         })
       );
   
-      onSetGeometry({ units, data: geometryData });
+      onSetGeometry( geometryData);
       onClose();
     }
   };

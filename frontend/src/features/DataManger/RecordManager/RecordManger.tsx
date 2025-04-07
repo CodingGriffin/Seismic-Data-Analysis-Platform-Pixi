@@ -28,6 +28,7 @@ export const RecordManager = () => {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [addMode, setAddMode] = useState<"add" | "edit" | null>(null);
   const [selectedRecordId, setSelectedRecordId] = useState<string>("");
+  const [isUpdated, setIsUpdated] = useState<boolean>(false);
 
   const handleRecordAdd = (id: string | null, data: RecordItem[]|RecordItem) => {
     if (addMode === "edit" && id && !Array.isArray(data)) {
@@ -94,9 +95,10 @@ export const RecordManager = () => {
 
   return (
     <>
-      <div className="container mt-5 flex-1">
+      <div className="container">
         <RecordButton
-          records={orderedIds}
+          isUpdated={isUpdated}
+          recordsLength={orderedIds.length}
           addRecord={() => setAddMode("add")}
           editRecord={() => dispatch(setShowEditRecord(true))}
         />
