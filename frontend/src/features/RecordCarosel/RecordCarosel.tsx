@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import RecordCard from "./RecordCard/RecordCard";
 import { useAppSelector } from "../../hooks/useAppSelector";
 import { selectRecordItems } from "../../store/selectors/recordSelectors";
+import Pagination from "../../components/Pagination/Pagination";
 
 const CARD_WIDTH = 200;
 const CARD_MARGIN = 10;
@@ -146,10 +147,7 @@ const RecordCarousel: React.FC<RecordCarouselProps> = () => {
       return () => container.removeEventListener("scroll", handleScroll);
     }
   }, [handleScroll]);
-
-  const scrollNext = () => scrollToPage(Math.min(pageCount - 1, current + 1));
-  const scrollPrev = () => scrollToPage(Math.max(0, current - 1));
-
+  
   return (
     <div className="position-relative border-primary px-1">
       {orderedIds.length === 0 ? (
@@ -192,6 +190,8 @@ const RecordCarousel: React.FC<RecordCarouselProps> = () => {
                     minWidth: `${CARD_WIDTH}px`,
                     width: `${CARD_WIDTH}px`,
                     margin: `0 ${CARD_MARGIN}px`,
+                    marginLeft: index === 0 ? "0" : `${CARD_MARGIN}px`,
+                    marginRight: index === extendedOrderedIds.length - 1 ? "0" : `${CARD_MARGIN}px`,
                     height: "100%",
                   }}
                 >
@@ -203,40 +203,16 @@ const RecordCarousel: React.FC<RecordCarouselProps> = () => {
               )
             )}
           </div>
-          <button
-            className="btn btn-primary position-absolute top-50 start-0 translate-middle-y"
-            style={{ zIndex: 10, opacity: current > 0 ? 0.8 : 0.3 }}
-            onClick={scrollPrev}
-            disabled={current === 0}
-          >
-            &laquo;
-          </button>
-          <button
-            className="btn btn-primary position-absolute top-50 end-0 translate-middle-y"
-            style={{ zIndex: 10, opacity: current < pageCount - 1 ? 0.8 : 0.3 }}
-            onClick={scrollNext}
-            disabled={current >= pageCount - 1}
-          >
-            &raquo;
-          </button>
-          <div className="d-flex justify-content-center mt-1">
-            {Array.from({ length: pageCount }).map((_, index) => (
-              <button
-                key={index}
-                className={`btn btn-sm rounded-circle mx-1 ${
-                  current === index ? "btn-primary" : "btn-outline-primary"
-                }`}
-                style={{
-                  width: "24px",
-                  height: "24px",
-                  fontSize: "10px",
-                  padding: "0",
-                }}
-                onClick={() => scrollToPage(index)}
-              >
-                {index + 1}
-              </button>
-            ))}
+          <div className="d-flex justify-content-center mt-3">
+            <Pagination 
+              currentPage={current}
+              totalPages={pageCount}
+              onPageChange={scrollToPage}
+              size="sm"
+              maxVisiblePages={8}
+              siblingCount={2}
+              boundaryCount={1}
+            />
           </div>
         </>
       )}
