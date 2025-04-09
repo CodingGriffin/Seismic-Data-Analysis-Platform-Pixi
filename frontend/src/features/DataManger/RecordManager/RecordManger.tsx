@@ -1,145 +1,72 @@
+import { RecordOption } from "../../../types/record";
 import RecordButton from "./RecordButton/RecordButton";
-import AddRecord from "./AddRecord/AddRecord";
-import RecordEditor from "./EditRecord/EditRecord";
+import { useState } from "react";
+import AddRecordOptions from "./AddRecordOptions/AddRecordOptions";
+import EditRecordOptions from "./EditRecordOptions/EditRecordOptions";
 import { Modal } from "../../../components/Modal/Modal";
-import { useAppDispatch } from "../../../hooks/useAppDispatch";
-import { useAppSelector } from "../../../hooks/useAppSelector";
-import {
-  setRecords,
-  setShowAddRecord,
-  setShowEditRecord,
-  addRecord,
-  deleteRecord,
-  updateRecordData,
-  updateRecordState,
-  reorderRecords,
-} from "../../../store/slices/recordSlice";
-import { RecordItem} from "../../../types/record";
-import { useEffect, useState } from "react";
-import { selectRecordItems } from "../../../store/selectors/recordSelectors";
+import { RecordUploadFile } from "../../../types/record";
 
-export const RecordManager = () => {
-  const dispatch = useAppDispatch();
-  const { itemsMap, orderedIds } = useAppSelector(selectRecordItems);
-  const { showAddRecord, showEditRecord } = useAppSelector(
-    (state) => state.record
-  );
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [addMode, setAddMode] = useState<"add" | "edit" | null>(null);
-  const [selectedRecordId, setSelectedRecordId] = useState<string>("");
+interface RecordManagerProps {
+  recordOptions: RecordOption[];
+  recordUploadFiles:{[key:string]:File|null};
+  onUploadFiles: (files: RecordUploadFile[]|null) => void;
+  onFilesChange:(data: {[key:string]:File|null}) => void;
+  onRecordOptionsChange: (options: RecordOption[]) => void;
+}
+
+export default function RecordManager({ recordOptions, recordUploadFiles, onFilesChange, onUploadFiles, onRecordOptionsChange }: RecordManagerProps) {
+  const [modals, setModals] = useState({
+    addRecordOptions: false,
+    editRecordOptions: false
+  });
   const [isUpdated, setIsUpdated] = useState<boolean>(false);
 
-  const handleRecordAdd = (id: string | null, data: RecordItem[]|RecordItem) => {
-    if (addMode === "edit" && id && !Array.isArray(data)) {
-      const { enabled, weight, ...recordData } = data;
-      
-      dispatch(updateRecordData({ id, data: recordData }));
-      dispatch(updateRecordState({ 
-        id, 
-        state: { enabled, weight } 
-      }));
-    } else {
-      Array.isArray(data) && dispatch(addRecord(data));
-    }
-    setAddMode(null);
+  const handleRecordOptionsChange = (newRecordOptions: RecordOption[]) => {
+    onRecordOptionsChange(newRecordOptions);
+    setIsUpdated(true);
   };
 
-  const handleRecordDelete = (id: string) => {
-    dispatch(deleteRecord(id));
-    setShowConfirmation(false);
-  };
-
-  const handleRecordDeleteAll = () => {
-    dispatch(setRecords([]));
-    setShowDeleteConfirmation(false);
-  };
-
-  const handleRecordUpdate = (
-    id: string,
-    data: RecordItem | null
-  ) => {
-    setSelectedRecordId(id);
-    if (data !== null) {
-      const { enabled, weight, ...recordData } = data;
-      if (Object.keys(recordData).length > 0) {
-        dispatch(updateRecordData({ id, data: recordData }));
+  const handleModals = (modalName: string, value: boolean) => {
+    Object.keys(modals).forEach((key) => {
+      if (key !== modalName) {
+        setModals((prev) => ({ ...prev, [key]: false }));
       }
-      
-      dispatch(updateRecordState({ 
-        id, 
-        state: { enabled, weight } 
-      }));
-    } else {
-      setAddMode("edit");
-    }
+    });
+    setModals((prev) => ({ ...prev, [modalName]: value }));
   };
-
-  const handleRecordReorder = (orderedIds: string[]) => {
-    dispatch(reorderRecords(orderedIds));
-  };
-
-  const handleShowDeleteConfirm = (id: string) => {
-    setSelectedRecordId(id);
-    setShowConfirmation(true);
-  };
-
-  useEffect(() => {
-    console.log("AddMode:", addMode);
-    if (addMode !== null) {
-      dispatch(setShowAddRecord(true));
-    } else {
-      dispatch(setShowAddRecord(false));
-    }
-  }, [addMode, dispatch]);
 
   return (
     <>
       <div className="container">
         <RecordButton
+          recordOptionsLength={recordOptions.length}
           isUpdated={isUpdated}
-          recordsLength={orderedIds.length}
-          addRecord={() => setAddMode("add")}
-          editRecord={() => dispatch(setShowEditRecord(true))}
+          addRecordOptions={() => handleModals("addRecordOptions", true)}
+          editRecordOptions={() => handleModals("editRecordOptions", true)}
         />
       </div>
-
-      <Modal
-        isOpen={showAddRecord || showEditRecord}
-        onClose={() => {
-          setAddMode(null);
-          dispatch(setShowAddRecord(false));
-          dispatch(setShowEditRecord(false));
-        }}
-        className="Record-modal"
+      <Modal 
+        isOpen={modals.addRecordOptions}
+        onClose={() => handleModals("addRecordOptions", false)}
       >
-        {addMode && (
-          <AddRecord
-            selectedRecordId={selectedRecordId}
-            onAddRecord={handleRecordAdd}
-            mode={addMode}
-            onClose={() => setAddMode(null)}
-          />
-        )}
-        {showEditRecord && (
-          <RecordEditor
-            records={itemsMap}
-            orderedIds={orderedIds}
-            showConfirmation={showConfirmation}
-            showDeleteConfirmation={showDeleteConfirmation}
-            selectedRecordId={selectedRecordId}
-            onRecordDelete={handleRecordDelete}
-            onRecordDeleteAll={handleRecordDeleteAll}
-            onRecordReorder={handleRecordReorder}
-            onRecordUpdate={handleRecordUpdate}
-            onRecordAdd={() => setAddMode("add")}
-            onShowDeleteConfirm={handleShowDeleteConfirm}
-            onShowDeleteAllConfirm={() => setShowDeleteConfirmation(true)}
-            onCloseDeleteConfirm={() => setShowConfirmation(false)}
-            onCloseDeleteAllConfirm={() => setShowDeleteConfirmation(false)}
-            onClose={() => dispatch(setShowEditRecord(false))}
-          />
-        )}
+        <AddRecordOptions
+          mode="add"
+          onAddRecordOptions={handleRecordOptionsChange}
+          onUploadFiles={onUploadFiles}
+          onClose={() => handleModals("addRecordOptions", false)}
+        />
+      </Modal>
+      <Modal 
+        isOpen={modals.editRecordOptions}
+        onClose={() => handleModals("editRecordOptions", false)}
+      >
+        <EditRecordOptions
+          initialRecordOptions={recordOptions}
+          initialRecordUploadFiles={recordUploadFiles}
+          onRecordOptionsChange={handleRecordOptionsChange}
+          onFilesChange={onFilesChange}
+          onClose={() => handleModals("editRecordOptions", false)}
+        />
       </Modal>
     </>
   );

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { GeometryItem } from "../../../types/geometry";
 import GeometryButton from "./GeometryButton/GeometryButton";
 import AddGeometry from "./AddGeometry/AddGeometry";
-import GeometryEditor from "./EditGeometry/EditGeometry";
+import EditGeometry from "./EditGeometry/EditGeometry";
 import { Modal } from "../../../components/Modal/Modal";
 
 interface GeometryManagerProps {
@@ -14,9 +14,23 @@ export const GeometryManager = ({
   geometry,
   onGeometryChange,
 }:GeometryManagerProps) => {
-  const [showAddGeometry, setShowAddGeometry] = useState<boolean>(false);
-  const [showEditGeometry, setShowEditGeometry] = useState<boolean>(false);
+
+  const [modals, setModals] = useState({
+    addGeometry: false,
+    editGeometry: false,
+    deleteAllGeometry: false,
+  });
+
   const [isUpdated, setIsUpdated] = useState<boolean>(false);
+
+  const handleModals = (modalName: string, value: boolean) => {
+    Object.keys(modals).forEach((key) => {
+      if (key !== modalName) {
+        setModals((prev) => ({ ...prev, [key]: false }));
+      }
+    });
+    setModals((prev) => ({ ...prev, [modalName]: value }));
+  };
 
   const handleGeometryChange = (newGeometry: GeometryItem[]) => {
     onGeometryChange(newGeometry);
@@ -29,32 +43,29 @@ export const GeometryManager = ({
         <GeometryButton 
           geometryLength={geometry.length}
           isUpdated={isUpdated} 
-          addGeometry={() => setShowAddGeometry(true)} 
-          editGeometry={() => setShowEditGeometry(true)}
+          addGeometry={() => handleModals("addGeometry", true)} 
+          editGeometry={() => handleModals("editGeometry", true)}
         />
       </div>
 
       <Modal 
-        isOpen={showAddGeometry || showEditGeometry}
-        onClose={() => {
-          setShowAddGeometry(false);
-          setShowEditGeometry(false);
-        }}
-        className="geometry-modal"
+        isOpen={modals.addGeometry}
+        onClose={() => handleModals("addGeometry", false)}
       >
-        {showAddGeometry && (
-          <AddGeometry
-            onSetGeometry={handleGeometryChange}
-            onClose={() => setShowAddGeometry(false)}
-          />
-        )}
-        {showEditGeometry && (
-          <GeometryEditor
-            initialPoints={geometry}
-            onPointsChange={handleGeometryChange}
-            onClose={() => setShowEditGeometry(false)}
-          />
-        )}
+        <AddGeometry
+          onSetGeometry={handleGeometryChange}
+          onClose={() => handleModals("addGeometry", false)}
+        />
+      </Modal>
+      <Modal
+        isOpen={modals.editGeometry}
+        onClose={() => handleModals("editGeometry", false)}
+      >
+        <EditGeometry
+          initialPoints={geometry}
+          onPointsChange={handleGeometryChange}
+          onClose={() => handleModals("editGeometry", false)}
+        />
       </Modal>
     </>
   );

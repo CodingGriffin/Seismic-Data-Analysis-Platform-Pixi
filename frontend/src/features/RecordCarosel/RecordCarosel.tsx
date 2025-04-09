@@ -14,7 +14,9 @@ const TOTAL_CARD_WIDTH = CARD_WIDTH + CARD_MARGIN * 2;
 interface RecordCarouselProps {}
 
 const RecordCarousel: React.FC<RecordCarouselProps> = () => {
-  const { orderedIds } = useAppSelector(selectRecordItems);
+  const records = useAppSelector(selectRecordItems);
+  
+  const orderedIds = records.map(record => record.id);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [visibleCards, setVisibleCards] = useState<Set<string>>(new Set());

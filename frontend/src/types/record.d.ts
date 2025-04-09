@@ -7,13 +7,19 @@ export interface NpyData {
 
 export type Matrix = number[][];
 
-export interface RecordState {
+export interface RecordOption {
+  id:string;
   enabled: boolean;
   weight: number;
+  fileName: string;
+}
+
+export interface RecordUploadFile {
+  id:string;
+  file: File|null;
 }
 
 export interface RecordData {
-  fileName: string;
   data: number[][];
   shape: number[];
   dimensions: { width: number; height: number };
@@ -21,6 +27,5 @@ export interface RecordData {
   max: number;
 }
 
-export interface RecordItem extends RecordData, RecordState {}
 export type RGB = { r: number; g: number; b: number };
 export type ColorStop = { color: RGB; position: number };

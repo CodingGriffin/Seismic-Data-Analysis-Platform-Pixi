@@ -1,6 +1,12 @@
 import { Texture } from "pixi.js";
 import { RGB, ColorStop } from "../types/record";
-import { RecordItem } from "../types/record";
+import { RecordData } from "../types/record";
+
+export const generateRecordId = (): string => {
+  const timestamp = Date.now().toString(36);
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${randomStr}`;
+};
 
 export type ColorMapKey = string;
 export const parseColorStop = (colorStop: string): ColorStop => {
@@ -55,8 +61,8 @@ export interface ColorMap {
   stops: string[];
 }
 
-export const drawRecordItem = (recordItem: RecordItem, colorMap: string[]) => {
-  const { data, dimensions, min: min, max: max } = recordItem;
+export const drawRecordItem = (recordData: RecordData, colorMap: string[]) => {
+  const { data, dimensions, min: min, max: max } = recordData;
   const transformedData = data.flat();
   const dataRange = { min, max };
   const canvas = document.createElement("canvas");

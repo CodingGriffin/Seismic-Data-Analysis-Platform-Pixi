@@ -285,8 +285,6 @@ export default function AddGeometry({
 
   
   return (
-    <div className="modal show d-block" tabIndex={-1}>
-      <div className="modal-dialog">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title fs-4">Add Geometry</h5>
@@ -509,8 +507,6 @@ export default function AddGeometry({
               Load Data
             </button>
           </div>
-        </div>
-      </div>
     </div>
   );
 }

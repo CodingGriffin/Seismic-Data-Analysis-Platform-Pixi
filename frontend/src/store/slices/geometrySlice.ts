@@ -3,14 +3,10 @@ import { GeometryItem } from '../../types/geometry'
 
 interface GeometryState {
   items: GeometryItem[];
-  showAddGeometry: boolean;
-  showEditGeometry: boolean;
 }
 
 const initialState: GeometryState = {
   items: [],
-  showAddGeometry: false,
-  showEditGeometry: false,
 }
 
 const geometrySlice = createSlice({
@@ -20,14 +16,8 @@ const geometrySlice = createSlice({
     setGeometry: (state, action: PayloadAction<GeometryItem[]>) => {
       state.items = action.payload;
     },
-    setShowAddGeometry: (state, action: PayloadAction<boolean>) => {
-      state.showAddGeometry = action.payload;
-    },
-    setShowEditGeometry: (state, action: PayloadAction<boolean>) => {
-      state.showEditGeometry = action.payload;
-    },
   },
 })
 
-export const { setGeometry, setShowAddGeometry, setShowEditGeometry } = geometrySlice.actions
+export const { setGeometry } = geometrySlice.actions
 export default geometrySlice.reducer

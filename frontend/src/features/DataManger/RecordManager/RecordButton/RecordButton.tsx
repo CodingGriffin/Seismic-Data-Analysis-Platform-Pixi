@@ -1,15 +1,15 @@
 import { Button } from "../../../../components/Button/Button";
 
 export default function RecordButton({
-    recordsLength,
+    recordOptionsLength,
     isUpdated,
-    addRecord,
-    editRecord
+    addRecordOptions,
+    editRecordOptions
 }: {
-    recordsLength: number,
+    recordOptionsLength: number,
     isUpdated: boolean,
-    addRecord: () => void,
-    editRecord: () => void,
+    addRecordOptions: () => void,
+    editRecordOptions: () => void,
 }) {
     return (
         <div className="d-flex flex-column align-items-center gap-2 mt-3">
@@ -18,25 +18,25 @@ export default function RecordButton({
                 {isUpdated && <span className="badge bg-info ms-2">Updated</span>}
             </div>
             <span className="mb-0 text-secondary">
-                {recordsLength > 0
-                    ? `${recordsLength} Record available.`
+                {recordOptionsLength > 0
+                    ? `${recordOptionsLength} Record available.`
                     : "No Records present."
                 }
             </span>
             <Button
                 variant="primary"
                 className="w-auto ms-2 mb-0"
-                style={{cursor: "pointer"}}
+                style={{ cursor: "pointer" }}
                 onClick={(e) => {
                     e.preventDefault();
-                    if (recordsLength > 0) {
-                        editRecord();
+                    if (recordOptionsLength > 0) {
+                        editRecordOptions();
                     } else {
-                        addRecord();
+                        addRecordOptions();
                     }
                 }}
             >
-                {recordsLength > 0 ? "Edit Record" : "Add Record"}
+                {recordOptionsLength > 0 ? "Edit Record" : "Add Record"}
             </Button>
         </div>
     );

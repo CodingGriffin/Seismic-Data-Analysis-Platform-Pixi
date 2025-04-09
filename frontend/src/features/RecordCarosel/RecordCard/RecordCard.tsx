@@ -6,10 +6,10 @@ import { Container } from "pixi.js";
 import { extend } from "@pixi/react";
 import { createTexture } from "../../../utils/plot-util";
 import { useAppDispatch } from "../../../hooks/useAppDispatch";
-import { updateRecordState } from "../../../store/slices/recordSlice";
+import { updateRecordOption } from "../../../store/slices/recordSlice";
 import { updateRecordWeightDebounced } from "../../../store/thunks/recordThunks";
 import { useAppSelector } from "../../../hooks/useAppSelector";
-import { selectRecordData, selectRecordState } from "../../../store/selectors/recordSelectors";
+import { selectRecordById } from "../../../store/selectors/recordSelectors";
 import SectionHeader from "../../../components/SectionHeader/SectionHeader";
 
 extend({ Container, Sprite });
@@ -24,13 +24,12 @@ const RecordCard: React.FC<RecordCardProps> = ({
   isVisible,
 }) => {
   const { selectedColorMap, colorMaps } = useAppSelector((state) => state.plot);
-  const recordData = useAppSelector((state) => selectRecordData(state, id));
-  const recordState = useAppSelector((state) => selectRecordState(state, id));
-
+  const record = useAppSelector((state) => selectRecordById(state, id));
+  
   const colorMap = colorMaps[selectedColorMap];
   const dispatch = useAppDispatch();
 
-  const [sliderValue, setSliderValue] = useState(recordState.weight);
+  const [sliderValue, setSliderValue] = useState(record?.weight || 0);
 
   const plotRef = useRef<HTMLDivElement>(null);
 
@@ -44,10 +43,10 @@ const RecordCard: React.FC<RecordCardProps> = ({
     }
 
     dispatch(
-      updateRecordState({
+      updateRecordOption({
         id,
-        state: {
-          enabled: !recordState.enabled,
+        option: {
+          enabled: !record?.enabled,
         },
       })
     );
@@ -59,8 +58,10 @@ const RecordCard: React.FC<RecordCardProps> = ({
   };
 
   useEffect(() => {
-    setSliderValue(recordState.weight);
-  }, [recordState.weight]);
+    if (record?.weight !== undefined) {
+      setSliderValue(record.weight);
+    }
+  }, [record?.weight]);
 
   const textureParamsRef = useRef({
     colorMap: null as any,
@@ -71,23 +72,23 @@ const RecordCard: React.FC<RecordCardProps> = ({
   });
 
   useEffect(() => {
-    if (!isVisible) {
+    if (!isVisible || !record) {
       setIsLoading(true);
       return;
     }
 
-    if (!recordData.data || !Array.isArray(recordData.data)) {
+    if (!record.data || !Array.isArray(record.data)) {
       return;
     }
 
     const params = textureParamsRef.current;
     const needsUpdate =
       colorMap !== params.colorMap ||
-      recordData.data !== params.data ||
-      recordData.dimensions.width !== (params.dimensions?.width || 0) ||
-      recordData.dimensions.height !== (params.dimensions?.height || 0) ||
-      recordData.min !== params.min ||
-      recordData.max !== params.max;
+      record.data !== params.data ||
+      record.dimensions.width !== (params.dimensions?.width || 0) ||
+      record.dimensions.height !== (params.dimensions?.height || 0) ||
+      record.min !== params.min ||
+      record.max !== params.max;
 
     if (!needsUpdate) {
       if (textureRef.current) {
@@ -98,21 +99,21 @@ const RecordCard: React.FC<RecordCardProps> = ({
 
     textureParamsRef.current = {
       colorMap,
-      data: recordData.data,
-      dimensions: recordData.dimensions,
-      min: recordData.min,
-      max: recordData.max
+      data: record.data,
+      dimensions: record.dimensions,
+      min: record.min,
+      max: record.max
     };
 
-    const flatData = recordData.data.flat();
+    const flatData = record.data.flat();
     if (flatData.length === 0) {
       return;
     }
 
     const newTexture = createTexture(
       flatData,
-      recordData.dimensions,
-      { min: recordData.min, max: recordData.max },
+      record.dimensions,
+      { min: record.min, max: record.max },
       colorMap
     );
     if (!newTexture) {
@@ -120,7 +121,7 @@ const RecordCard: React.FC<RecordCardProps> = ({
     }
     textureRef.current = newTexture;
     setTexture(newTexture);
-  }, [colorMap, recordData.data, recordData.dimensions, recordData.min, recordData.max, id, isVisible]);
+  }, [colorMap, record, id, isVisible]);
 
   useEffect(() => {
     if (!isVisible) {
@@ -131,7 +132,7 @@ const RecordCard: React.FC<RecordCardProps> = ({
   }, [texture, isVisible]);
 
   const renderCardContent = () => {
-    if (!isVisible || (isVisible && isLoading)) {
+    if (!isVisible || (isVisible && isLoading) || !record) {
       return (
         <div className="d-flex justify-content-center align-items-center position-relative" style={{ height: "140px" }}>
           <div className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-light bg-opacity-75">
@@ -148,7 +149,6 @@ const RecordCard: React.FC<RecordCardProps> = ({
         {texture && texture.width > 0 ? (
           <BasePlot
             ref={plotRef}
-            // onDimensionChange={handleDimensionChange}
             forceWidth={180}
             forceHeight={140}
           >
@@ -175,13 +175,15 @@ const RecordCard: React.FC<RecordCardProps> = ({
   };
 
   const renderSlider = () => {
+    if (!record) return null;
+    
     return (
       <div
         className="mx-2 d-flex flex-column justify-content-center"
         style={{ height: "70px" }}
       >
         <label
-          htmlFor={`slider-${recordData.fileName}`}
+          htmlFor={`slider-${record.fileName}`}
           className="form-label d-flex justify-content-between"
         >
           <span>State:</span>
@@ -201,9 +203,13 @@ const RecordCard: React.FC<RecordCardProps> = ({
     );
   };
 
+  if (!record) {
+    return null;
+  }
+
   return (
     <div
-      className={`card p-0 no-select ${recordState.enabled ? "border-primary bg-light" : ""}`}
+      className={`card p-0 no-select ${record.enabled ? "border-primary bg-light" : ""}`}
       style={{
         cursor: isVisible ? "pointer" : "default",
         transition: "all 0.2s ease",
@@ -212,8 +218,8 @@ const RecordCard: React.FC<RecordCardProps> = ({
       onClick={isVisible ? handleToggleSelection : undefined}
     >
       <div>
-        <SectionHeader title={recordData.fileName}>
-          {recordState.enabled && <span className="badge bg-primary">Selected</span>}
+        <SectionHeader title={record.fileName}>
+          {record.enabled && <span className="badge bg-primary">Selected</span>}
         </SectionHeader>
       </div>
       <div className="card-body p-2">

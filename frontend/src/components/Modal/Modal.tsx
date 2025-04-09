@@ -17,9 +17,9 @@ export const Modal: React.FC<ModalProps> = ({
 
     return (
         <>
-            <div className="modal-backdrop show" />
+            <div className="modal-backdrop show" onClick={onClose}/>
             <div className="modal show d-block">
-                <div className={`modal-dialog ${className}`}>
+                <div className={`modal-dialog modal-dialog-centered ${className}`}>
                     {children}
                 </div>
             </div>

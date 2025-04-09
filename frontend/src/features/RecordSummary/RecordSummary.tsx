@@ -3,26 +3,20 @@
 import type React from "react";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { useAppSelector } from "../../hooks/useAppSelector";
-import { updateRecordState } from "../../store/slices/recordSlice";
-import { selectRecordItems } from "../../store/selectors/recordSelectors";
+import { updateRecordOption } from "../../store/slices/recordSlice";
+import { selectOptions } from "../../store/selectors/recordSelectors";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
 
 const RecordSummary: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { itemsMap, orderedIds } = useAppSelector(selectRecordItems);
+  const enabledRecords = useAppSelector(selectOptions).filter((item) => item.enabled);
   
-  const selectedRecordObjects = orderedIds.filter(
-    (recordId) => itemsMap[recordId].enabled
-  );
-
   const handleClearSelection = () => {
-    orderedIds.forEach((recordId) => {
+    enabledRecords.forEach((recordId) => {
       dispatch(
-        updateRecordState({
+        updateRecordOption({
           id: recordId,
-          state: {
-            enabled: false,
-          },
+          enabled: false,
         })
       );
     });
@@ -36,7 +30,7 @@ const RecordSummary: React.FC = () => {
   return (
     <div className="border rounded d-flex flex-column">
       <SectionHeader
-        title={`Selected (${selectedRecordObjects.length})`}
+        title={`Selected (${enabledRecords.length})`}
         actions={
           <button
             className="btn btn-sm btn-outline-danger"
@@ -48,25 +42,25 @@ const RecordSummary: React.FC = () => {
       />
 
       <div className="overflow-auto m-2 no-select" style={{ height: "210px" }}>
-        {selectedRecordObjects.length === 0 ? (
+        {enabledRecords.length === 0 ? (
           <div
             className="d-flex align-items-center justify-content-center h-100 w-100"
           >
             <p className="mb-0 text-muted">No records selected</p>
           </div>
         ) : (
-          selectedRecordObjects.map((recordId) => (
+          enabledRecords.map((recordOption) => (
             <div
-              key={recordId}
+              key={recordOption.id}
               className="card mb-2 cursor-pointer p-1"
-              onClick={() => handleSelectRecord(recordId)}
+              onClick={() => handleSelectRecord(recordOption.id)}
               style={{ cursor: "pointer", height: "62px" }}
             >
               <div className="card-body p-1 d-flex justify-content-between align-items-center">
                 <div>
-                  <h6 className="mb-0">{itemsMap[recordId].fileName}</h6>
+                  <h6 className="mb-0">{recordOption.fileName}</h6>
                   <small className="text-muted">
-                    State: {itemsMap[recordId].weight}
+                    State: {recordOption.weight}
                   </small>
                 </div>
                 <div
@@ -80,7 +74,7 @@ const RecordSummary: React.FC = () => {
                     fontSize: "10px",
                   }}
                 >
-                  {orderedIds.findIndex((id) => id === recordId) + 1}
+                  {enabledRecords.findIndex((currentRecordOption) => currentRecordOption.id === recordOption.id) + 1}
                 </div>
               </div>
             </div>

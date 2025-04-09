@@ -3,7 +3,7 @@ import { useCallback, useRef, useEffect, useMemo, useState } from "react";
 import { extend } from "@pixi/react";
 import { BasePlot } from "../../components/BasePlot/BasePlot";
 import { useAppSelector } from "../../hooks/useAppSelector";
-import { selectRecordItems } from "../../store/selectors/recordSelectors";
+import { selectEnabledRecordCount, selectEnabledRecords } from "../../store/selectors/recordSelectors";
 import { Window } from "../../types";
 import { Matrix } from "../../types/record";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
@@ -32,7 +32,9 @@ extend({ Container, Sprite, Graphics, Text });
 
 export default function MainPlot() {
   const dispatch = useAppDispatch();
-  const { itemsMap, orderedIds } = useAppSelector(selectRecordItems);
+  const enabledRecords = useAppSelector(selectEnabledRecords);
+  const enabledRecordCount = useAppSelector(selectEnabledRecordCount);
+
   const { 
     selectedColorMap, 
     colorMaps,
@@ -330,17 +332,8 @@ export default function MainPlot() {
   }, [points, dispatch]);
 
   useEffect(() => {
-    const selectedRecords = orderedIds
-      .filter(id => itemsMap[id].enabled)
-      .map(id => ({
-        data: itemsMap[id].data,
-        weight: itemsMap[id].weight,
-        dimensions: itemsMap[id].dimensions,
-        min: itemsMap[id].min,
-        max: itemsMap[id].max
-      }));
     
-    if (selectedRecords.length === 0) {
+    if (enabledRecordCount === 0) {
       setTexture(null);
       dispatch(setIsLoading(false));
       return;
@@ -360,7 +353,7 @@ export default function MainPlot() {
     // Create weighted texture from selected records
     const createWeightedTexture = async () => {
       try {
-        const totalWeight = selectedRecords.reduce(
+        const totalWeight = enabledRecords.reduce(
           (total: number, item) => total + item.weight,
           0
         );
@@ -369,7 +362,7 @@ export default function MainPlot() {
           return;
         }
         // Get the dimensions from the first record
-        const shape = getMatrixShape(selectedRecords[0].data as Matrix);
+        const shape = getMatrixShape(enabledRecords[0].data as Matrix);
         const width = shape[1];
         const height = shape[0];
        
@@ -380,7 +373,7 @@ export default function MainPlot() {
         );
 
         // Properly accumulate weighted values
-        for (const record of selectedRecords) {
+        for (const record of enabledRecords) {
           const recordMatrix = record.data as Matrix;
           
           for (let i = 0; i < height; i++) {
@@ -404,7 +397,7 @@ export default function MainPlot() {
         const mainRecord = flatMatrix;
         const newTexture = createTexture(
           mainRecord,
-          selectedRecords[0].dimensions,
+          enabledRecords[0].dimensions,
           { min, max }, // Use calculated min/max instead of from first record
           colorMaps[selectedColorMap]
         );
@@ -423,7 +416,7 @@ export default function MainPlot() {
     };
     
     createWeightedTexture();
-  }, [itemsMap, orderedIds, selectedColorMap, colorMaps, dispatch, transformations]);
+  }, [enabledRecords, selectedColorMap, colorMaps, dispatch, transformations]);
 
   useEffect(() => {
     console.log("Coordinates:", coordinateMatrix)

@@ -1,5 +1,5 @@
 import { AppThunk } from '../index';
-import { updateRecordState } from '../slices/recordSlice';
+import { updateRecordOption } from '../slices/recordSlice';
 
 const DEBOUNCE_TIME = 50;
 
@@ -26,9 +26,9 @@ export const updateRecordWeightDebounced =
     const timeoutId = setTimeout(() => {
       const currentValue = weightUpdateQueue[recordId].latestValue;
       
-      dispatch(updateRecordState({
+      dispatch(updateRecordOption({
         id: recordId,
-        state: { weight: currentValue }
+        weight: currentValue
       }));
       
       weightUpdateQueue[recordId].timeoutId = null;
