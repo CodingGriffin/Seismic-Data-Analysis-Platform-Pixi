@@ -44,6 +44,7 @@ export const createTexture = (
     ctx.putImageData(imgData, 0, 0);
 
     const texture = Texture.from(canvas);
+    texture.source.scaleMode = 'nearest';
     canvas.remove();
 
     if (!texture) {

@@ -216,6 +216,7 @@ export const BasePlot = forwardRef<HTMLDivElement, BasePlotProps>(({
             resizeTo={ref.current}
             autoDensity={true}
             resolution={window.devicePixelRatio || 1}
+            antialias={false}
           >
             {children}
           </Application>
