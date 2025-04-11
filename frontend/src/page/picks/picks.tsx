@@ -6,8 +6,7 @@ import SelectedRecordsSummary from "../../features/RecordSummary/RecordSummary";
 import MainPlot from "../../features/MainRecord/MainPlot";
 import { DataManager } from "../../features/DataManger/DataManager";
 
-const Dashboard: React.FC = () => {
-
+const PicksPage: React.FC = () => {
   return (
     <>
       <div className="responsive-container">
@@ -34,4 +33,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard;
+export default PicksPage;
