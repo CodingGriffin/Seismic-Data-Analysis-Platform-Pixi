@@ -4,7 +4,7 @@ import { extend } from "@pixi/react";
 import { BasePlot } from "../../components/BasePlot/BasePlot";
 import { useAppSelector } from "../../hooks/useAppSelector";
 import { selectEnabledRecordCount, selectEnabledRecords } from "../../store/selectors/recordSelectors";
-import { Window } from "../../types";
+import { Window } from "../../types/index";
 import { Matrix } from "../../types/record";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { addToast } from "../../store/slices/toastSlice";

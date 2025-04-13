@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Window } from '../../../types';
+import { Window } from '../../../types/index';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { useAppSelector } from '../../../hooks/useAppSelector';
 import { setSelectedColorMap, updateColorMap } from '../../../store/slices/plotSlice';
