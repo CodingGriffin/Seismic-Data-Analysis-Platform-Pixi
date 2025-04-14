@@ -14,7 +14,7 @@ export const FileControls = ({
   multiple = false,
 }: FileControlsProps) => {
   return (
-    <div className="d-flex justify-content-center gap-3 mb-3">
+    <div className="d-flex justify-content-between w-100 gap-4">
       <div className="form-group flex-grow-1">
         <input
           type="file"

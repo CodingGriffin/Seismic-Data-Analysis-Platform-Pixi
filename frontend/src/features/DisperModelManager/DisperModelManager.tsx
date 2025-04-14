@@ -14,6 +14,7 @@ import { useDisper } from "../../context/DisperContext";
 import { Window } from "../../types";
 import { BasePlot } from "../../components/BasePlot/BasePlot";
 import { FileControls } from "../../components/FileControls/FileControls";
+import SectionHeader from "../../components/SectionHeader/SectionHeader";
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -27,7 +28,7 @@ const VELOCITY_MARGIN_FACTOR = 1.1; // 110% of max velocity
 
 export const DisperModelManager = () => {
   const {
-    state: { layers, asceVersion, displayUnits},
+    state: { layers, asceVersion, displayUnits },
     setLayers,
     splitLayer,
     deleteLayer,
@@ -39,8 +40,8 @@ export const DisperModelManager = () => {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [tooltipContent, setTooltipContent] = useState<string>("");
   const [plotDimensions, setPlotDimensions] = useState({
-    width: 640,
-    height: 480,
+    width: 0,
+    height: 0,
   });
 
   const [axisLimits, setAxisLimits] = useState({
@@ -59,19 +60,18 @@ export const DisperModelManager = () => {
         // Add 10px offset for the left margin
         return (
           ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
-            (plotDimensions.width - 20) +
-          10
+          (plotDimensions.width)
         );
       },
       fromScreenX: (x: number) => {
         // Subtract the 10px offset and adjust for margin
-        const adjustedX = Math.max(0, x - 10);
+        const adjustedX = Math.max(0, x);
         if (adjustedX <= 0) return axisLimits.xmin;
 
         const value =
           axisLimits.xmin +
-          (adjustedX / (plotDimensions.width - 20)) *
-            (axisLimits.xmax - axisLimits.xmin);
+          (adjustedX / (plotDimensions.width)) *
+          (axisLimits.xmax - axisLimits.xmin);
 
         return Math.round(value * 10) / 10;
       },
@@ -79,19 +79,18 @@ export const DisperModelManager = () => {
         // Add 10px offset for the top margin and subtract from height for bottom margin
         return (
           ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
-            (plotDimensions.height - 20) +
-          10
+          (plotDimensions.height)
         );
       },
       fromScreenY: (y: number) => {
         // Subtract the 10px offset and adjust for margins
-        const adjustedY = Math.max(0, y - 10);
+        const adjustedY = Math.max(0, y);
         if (adjustedY <= 0) return axisLimits.ymin;
 
         const value =
           axisLimits.ymin +
-          (adjustedY / (plotDimensions.height - 20)) *
-            (axisLimits.ymax - axisLimits.ymin);
+          (adjustedY / (plotDimensions.height)) *
+          (axisLimits.ymax - axisLimits.ymin);
 
         return Math.round(value * 10) / 10;
       },
@@ -215,10 +214,9 @@ export const DisperModelManager = () => {
 
         // Update tooltip while dragging
         setTooltipContent(
-          `Velocity: ${
-            displayUnits === "ft"
-              ? ToFeet(constrainedVelocity).toFixed(1)
-              : constrainedVelocity.toFixed(1)
+          `Velocity: ${displayUnits === "ft"
+            ? ToFeet(constrainedVelocity).toFixed(1)
+            : constrainedVelocity.toFixed(1)
           } ${displayUnits}/s`
         );
       } else {
@@ -260,10 +258,9 @@ export const DisperModelManager = () => {
         setLayers(newLayers);
         // Update tooltip while dragging
         setTooltipContent(
-          `Depth: ${
-            displayUnits === "ft"
-              ? ToFeet(constrainedDepth).toFixed(1)
-              : constrainedDepth.toFixed(1)
+          `Depth: ${displayUnits === "ft"
+            ? ToFeet(constrainedDepth).toFixed(1)
+            : constrainedDepth.toFixed(1)
           } ${displayUnits}/s`
         );
       }
@@ -280,10 +277,9 @@ export const DisperModelManager = () => {
         const screenX = coordinateHelpers.toScreenX(layer.velocity);
         if (Math.abs(x - screenX) < 10) {
           setTooltipContent(
-            `Velocity: ${
-              displayUnits === "ft"
-                ? ToFeet(layer.velocity).toFixed(1)
-                : layer.velocity.toFixed(1)
+            `Velocity: ${displayUnits === "ft"
+              ? ToFeet(layer.velocity).toFixed(1)
+              : layer.velocity.toFixed(1)
             } ${displayUnits}/s`
           );
           found = true;
@@ -296,10 +292,9 @@ export const DisperModelManager = () => {
           const screenY = coordinateHelpers.toScreenY(layer.endDepth);
           if (Math.abs(y - screenY) < 10) {
             setTooltipContent(
-              `Depth: ${
-                displayUnits === "ft"
-                  ? ToFeet(layer.endDepth).toFixed(1)
-                  : layer.endDepth.toFixed(1)
+              `Depth: ${displayUnits === "ft"
+                ? ToFeet(layer.endDepth).toFixed(1)
+                : layer.endDepth.toFixed(1)
               } ${displayUnits}`
             );
 
@@ -450,12 +445,21 @@ export const DisperModelManager = () => {
   );
 
   return (
-    <div className="flex flex-col items-center border-2 border-gray-300 rounded-lg p-4 shadow-sm w-full">
-      <div className="w-full h-full relative">
-        <div className="flex gap-4 flex-wrap justify-center mb-4">
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-600">
+    <div className="card shadow-sm">
+      <SectionHeader title="Dispersion Model" />
+      <div className="card-body">
+        <div className="row g-4">
+          <div className="col d-flex">
+            <FileControls
+              onFileSelect={handleFileSelect}
+              onDownload={handleDownloadLayers}
+            />
+          </div>
+        </div>
+        <div className="row mb-4">
+          <div className="col-md-6">
+            <div className="mb-2 d-flex">
+              <label className="form-label w-50">
                 Max Depth:
               </label>
               <input
@@ -475,12 +479,12 @@ export const DisperModelManager = () => {
                     ymax: valueInMeters,
                   }));
                 }}
-                className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
+                className="form-control form-control-sm w-50"
                 step={displayUnits === "ft" ? "0.5" : "0.1"}
               />
             </div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-600">
+            <div className="mb-3 d-flex">
+              <label className="form-label w-50">
                 Min Depth:
               </label>
               <input
@@ -500,14 +504,14 @@ export const DisperModelManager = () => {
                     ymin: valueInMeters,
                   }));
                 }}
-                className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
+                className="form-control form-control-sm w-50"
                 step={displayUnits === "ft" ? "0.5" : "0.1"}
               />
             </div>
           </div>
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-600">
+          <div className="col-md-6">
+            <div className="mb-3 d-flex">
+              <label className="form-label w-50">
                 Max Velocity:
               </label>
               <input
@@ -527,12 +531,12 @@ export const DisperModelManager = () => {
                     xmax: valueInMeters,
                   }));
                 }}
-                className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
+                className="form-control form-control-sm w-50"
                 step={displayUnits === "ft" ? "1.0" : "0.5"}
               />
             </div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-600">
+            <div className="mb-3 d-flex">
+              <label className="form-label w-50">
                 Min Velocity:
               </label>
               <input
@@ -552,190 +556,189 @@ export const DisperModelManager = () => {
                     xmin: valueInMeters,
                   }));
                 }}
-                className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
+                className="form-control form-control-sm w-50"
                 min="0"
                 step={displayUnits === "ft" ? "1.0" : "0.5"}
               />
             </div>
           </div>
         </div>
+        <div className="row mb-4"></div>
+        <div className="row">
+          <div className="col">
+            <div className="d-flex">
+              <label className="form-label w-50">
+                ASCE Version:
+              </label>
+              <select
+                value={asceVersion}
+                onChange={(e) => setAsceVersion(e.target.value)}
+                className="w-30 px-2 py-1 text-sm border rounded shadow-sm"
+              >
+                <option value="ASCE 7-22">ASCE 7-22</option>
+                <option value="ASCE 7-16">ASCE 7-16</option>
+              </select>
+            </div>
+          </div>
+        </div>
 
-        <FileControls
-          onFileSelect={handleFileSelect}
-          onDownload={handleDownloadLayers}
-        />
-
-        <BasePlot
-          xLabel={`Velocity (${displayUnits}/s)`}
-          yLabel={`Depth (${displayUnits})`}
-          xMin={axisLimits.xmin}
-          xMax={axisLimits.xmax}
-          yMin={axisLimits.ymin}
-          yMax={axisLimits.ymax}
-          display={(value) =>
-            displayUnits === "ft" ? ToFeet(value).toFixed(3) : value.toFixed(3)
-          }
-          tooltipContent={tooltipContent}
-          onPointerMove={handlePointerMove}
-          onPointerUp={() => {
-            setDragState(null);
-            setTooltipContent("");
-          }}
-          onPointerDown={handlePlotClick}
-          onDimensionChange={handleDimensionChange}
-          ref={plotRef}
-        >
-          <pixiContainer>
-            <pixiGraphics
-              draw={(g) => {
-                g.clear();
-                // Draw the main plot area boundary
-                // g.setStrokeStyle({ width: 1, color: 0xCCCCCC });
-                // g.setFillStyle({color:0xEEEEEE, alpha:0.5});
-                // g.rect(10, 10, plotDimensions.width - 20, plotDimensions.height - 20);
-                // g.fill();
-
-                // Draw grid lines
-                g.setStrokeStyle({ width: 1, color: 0xeeeeee, alpha: 0.8 });
-
-                // Vertical grid lines (velocity)
-                const velocityStep = (axisLimits.xmax - axisLimits.xmin) / 10;
-                for (
-                  let v = axisLimits.xmin;
-                  v <= axisLimits.xmax;
-                  v += velocityStep
-                ) {
-                  const x = coordinateHelpers.toScreenX(v);
-                  g.moveTo(x, 10);
-                  g.lineTo(x, plotDimensions.height - 10);
-                }
-
-                // Horizontal grid lines (depth)
-                const depthStep = (axisLimits.ymax - axisLimits.ymin) / 10;
-                for (
-                  let d = axisLimits.ymin;
-                  d <= axisLimits.ymax;
-                  d += depthStep
-                ) {
-                  const y = coordinateHelpers.toScreenY(d);
-                  g.moveTo(10, y);
-                  g.lineTo(plotDimensions.width - 10, y);
-                }
-                g.stroke();
-              }}
-            />
-            {layers.slice(0, -1).map((layer: any, index: number) => (
+        <div className="position-relative m-5">
+          <BasePlot
+            xLabel={`Velocity (${displayUnits}/s)`}
+            yLabel={`Depth (${displayUnits})`}
+            xMin={axisLimits.xmin}
+            xMax={axisLimits.xmax}
+            yMin={axisLimits.ymin}
+            yMax={axisLimits.ymax}
+            display={(value) =>
+              displayUnits === "ft" ? ToFeet(value).toFixed(3) : value.toFixed(3)
+            }
+            tooltipContent={tooltipContent}
+            onPointerMove={handlePointerMove}
+            onPointerUp={() => {
+              setDragState(null);
+              setTooltipContent("");
+            }}
+            onPointerDown={handlePlotClick}
+            onDimensionChange={handleDimensionChange}
+            ref={plotRef}
+          >
+            <pixiContainer>
               <pixiGraphics
-                key={`boundary-${index}-${Date.now()}`}
                 draw={(g) => {
                   g.clear();
-                  g.setStrokeStyle({
-                    width: 2,
-                    color: 0x000000,
-                    alignment: 0.5,
-                  }); // alignment: 0.5 for crisp lines
-                  const y = Math.round(
-                    coordinateHelpers.toScreenY(layer.endDepth)
-                  );
-                  g.moveTo(10, y);
-                  g.lineTo(plotDimensions.width - 10, y);
+                  // Draw the main plot area boundary
+                  // g.setStrokeStyle({ width: 1, color: 0xCCCCCC });
+                  // g.setFillStyle({color:0xEEEEEE, alpha:0.5});
+                  // g.rect(10, 10, plotDimensions.width, plotDimensions.height);
+                  // g.fill();
+
+                  // Draw grid lines
+                  g.setStrokeStyle({ width: 1, color: 0xeeeeee, alpha: 0.8 });
+
+                  // Vertical grid lines (velocity)
+                  const velocityStep = (axisLimits.xmax - axisLimits.xmin) / 10;
+                  for (
+                    let v = axisLimits.xmin;
+                    v <= axisLimits.xmax;
+                    v += velocityStep
+                  ) {
+                    const x = coordinateHelpers.toScreenX(v);
+                    g.moveTo(x, 0);
+                    g.lineTo(x, plotDimensions.height);
+                  }
+
+                  // Horizontal grid lines (depth)
+                  const depthStep = (axisLimits.ymax - axisLimits.ymin) / 10;
+                  for (
+                    let d = axisLimits.ymin;
+                    d <= axisLimits.ymax;
+                    d += depthStep
+                  ) {
+                    const y = coordinateHelpers.toScreenY(d);
+                    g.moveTo(0, y);
+                    g.lineTo(plotDimensions.width, y);
+                  }
                   g.stroke();
                 }}
-                eventMode="static"
-                cursor="ns-resize"
-                hitArea={
-                  new Rectangle(
-                    10,
-                    coordinateHelpers.toScreenY(layer.endDepth) - 5,
-                    plotDimensions.width - 20,
-                    10
-                  )
-                }
-                onPointerDown={(e: any) =>
-                  handlePointerDown(e, index + 1, "boundary")
-                }
               />
-            ))}
-
-            {layers.map((layer: any, index: number) => (
-              <pixiContainer key={`velocity-container-${index}-${Date.now()}`}>
+              {layers.slice(0, -1).map((layer: any, index: number) => (
                 <pixiGraphics
+                  key={`boundary-${index}-${Date.now()}`}
                   draw={(g) => {
                     g.clear();
                     g.setStrokeStyle({
                       width: 2,
-                      color: 0xff0000,
+                      color: 0x000000,
                       alignment: 0.5,
                     }); // alignment: 0.5 for crisp lines
-                    const x = Math.round(
-                      coordinateHelpers.toScreenX(layer.velocity)
+                    const y = Math.round(
+                      coordinateHelpers.toScreenY(layer.endDepth)
                     );
-                    const startY = Math.round(
-                      coordinateHelpers.toScreenY(layer.startDepth)
-                    );
-                    const endY =
-                      index === layers.length - 1
-                        ? plotDimensions.height - 10
-                        : Math.round(
-                            coordinateHelpers.toScreenY(layer.endDepth)
-                          );
-                    g.moveTo(x, startY);
-                    g.lineTo(x, endY);
+                    g.moveTo(0, y);
+                    g.lineTo(plotDimensions.width, y);
                     g.stroke();
                   }}
                   eventMode="static"
-                  cursor="ew-resize"
+                  cursor="ns-resize"
                   hitArea={
                     new Rectangle(
-                      coordinateHelpers.toScreenX(layer.velocity) - 5,
-                      coordinateHelpers.toScreenY(layer.startDepth),
                       10,
-                      coordinateHelpers.toScreenY(layer.endDepth) -
-                        coordinateHelpers.toScreenY(layer.startDepth)
+                      coordinateHelpers.toScreenY(layer.endDepth) - 5,
+                      plotDimensions.width,
+                      10
                     )
                   }
                   onPointerDown={(e: any) =>
-                    handlePointerDown(e, index, "velocity")
+                    handlePointerDown(e, index + 1, "boundary")
                   }
                 />
-                <pixiText
-                  text={`${
-                    displayUnits === "ft"
-                      ? ToFeet(layer.velocity).toFixed(0)
-                      : layer.velocity.toFixed(0)
-                  }`}
-                  x={coordinateHelpers.toScreenX(layer.velocity) + 5}
-                  y={
-                    (coordinateHelpers.toScreenY(layer.startDepth) +
-                      coordinateHelpers.toScreenY(layer.endDepth)) /
+              ))}
+
+              {layers.map((layer: any, index: number) => (
+                <pixiContainer key={`velocity-container-${index}-${Date.now()}`}>
+                  <pixiGraphics
+                    draw={(g) => {
+                      g.clear();
+                      g.setStrokeStyle({
+                        width: 2,
+                        color: 0xff0000,
+                        alignment: 0.5,
+                      }); // alignment: 0.5 for crisp lines
+                      const x = Math.round(
+                        coordinateHelpers.toScreenX(layer.velocity)
+                      );
+                      const startY = Math.round(
+                        coordinateHelpers.toScreenY(layer.startDepth)
+                      );
+                      const endY =
+                        index === layers.length - 1
+                          ? plotDimensions.height
+                          : Math.round(
+                            coordinateHelpers.toScreenY(layer.endDepth)
+                          );
+                      g.moveTo(x, startY);
+                      g.lineTo(x, endY);
+                      g.stroke();
+                    }}
+                    eventMode="static"
+                    cursor="ew-resize"
+                    hitArea={
+                      new Rectangle(
+                        coordinateHelpers.toScreenX(layer.velocity) - 5,
+                        coordinateHelpers.toScreenY(layer.startDepth),
+                        10,
+                        coordinateHelpers.toScreenY(layer.endDepth) -
+                        coordinateHelpers.toScreenY(layer.startDepth)
+                      )
+                    }
+                    onPointerDown={(e: any) =>
+                      handlePointerDown(e, index, "velocity")
+                    }
+                  />
+                  <pixiText
+                    text={`${displayUnits === "ft"
+                        ? ToFeet(layer.velocity).toFixed(0)
+                        : layer.velocity.toFixed(0)
+                      }`}
+                    x={coordinateHelpers.toScreenX(layer.velocity) + 5}
+                    y={
+                      (coordinateHelpers.toScreenY(layer.startDepth) +
+                        coordinateHelpers.toScreenY(layer.endDepth)) /
                       2 -
-                    7
-                  }
-                  style={
-                    new TextStyle({
-                      fontSize: 12,
-                      fill: 0xff0000,
-                    })
-                  }
-                />
-              </pixiContainer>
-            ))}
-          </pixiContainer>
-        </BasePlot>
-      </div>
-      <div className="mt-4 p-4 border-t border-gray-200">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-gray-600">
-            ASCE Version:
-          </label>
-          <select
-            value={asceVersion}
-            onChange={(e) => setAsceVersion(e.target.value)}
-            className="w-30 px-2 py-1 text-sm border rounded shadow-sm"
-          >
-            <option value="ASCE 7-22">ASCE 7-22</option>
-            <option value="ASCE 7-16">ASCE 7-16</option>
-          </select>
+                      7
+                    }
+                    style={
+                      new TextStyle({
+                        fontSize: 12,
+                        fill: 0xff0000,
+                      })
+                    }
+                  />
+                </pixiContainer>
+              ))}
+            </pixiContainer>
+          </BasePlot>
         </div>
       </div>
     </div>

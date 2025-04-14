@@ -48,6 +48,7 @@ export const BasePlot = forwardRef<HTMLDivElement, BasePlotProps>(({
     height: 480,
   });
 
+  const [isFullyMounted, SetIsFullyMounted] = useState(false);
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
 
   const handlePointerMove = useCallback((event: React.PointerEvent) => {
@@ -165,6 +166,10 @@ export const BasePlot = forwardRef<HTMLDivElement, BasePlotProps>(({
     getDisplayedYMin, getDisplayedYMax
   ]);
 
+  useEffect(() => {
+    SetIsFullyMounted(true);
+  }, [plotDimensions]);
+
   return (
     <div
       className="position-relative border bg-white shadow-sm w-100 h-100 min-vh-50"
@@ -201,17 +206,17 @@ export const BasePlot = forwardRef<HTMLDivElement, BasePlotProps>(({
       </div>
       
       <div 
-        className="w-100 h-100 d-flex"
+        className="w-full h-full"
         onPointerMove={handlePointerMove}
         onPointerUp={onPointerUp}
         onPointerDown={onPointerDown}
         ref={ref}
       >
-        {ref && 'current' in ref && ref.current && (
+        {isFullyMounted && ref && 'current' in ref && ref.current ? (
           <Application
             className="flex-1"
             width={plotDimensions.width}
-            height={plotDimensions.height}
+            height={plotDimensions.width /4 * 3}
             background="white"
             resizeTo={ref.current}
             autoDensity={true}
@@ -220,7 +225,7 @@ export const BasePlot = forwardRef<HTMLDivElement, BasePlotProps>(({
           >
             {children}
           </Application>
-        )}
+        ): <div className="flex-1 spinner-border spinner-border-sm text-primary"></div>}
 
         <Tooltip
           x={cursorPosition?.x ?? 0}

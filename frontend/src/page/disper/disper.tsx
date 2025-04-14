@@ -13,23 +13,13 @@ export default function App() {
                         <SectionHeader title="Dispersion Analysis" actions={<UnitsSelector />} />
                     </div>
                 </div>
-                
+
                 <div className="row g-4">
                     <div className="col-lg-6">
-                        <div className="card h-100">
-                            <SectionHeader title="Dispersion Curve" />
-                            <div className="card-body">
-                                <DisperCurveManager />
-                            </div>
-                        </div>
+                        <DisperCurveManager />
                     </div>
                     <div className="col-lg-6">
-                        <div className="card h-100">
-                            <SectionHeader title="Velocity Model" />
-                            <div className="card-body">
-                                <DisperModelManager />
-                            </div>
-                        </div>
+                        <DisperModelManager />
                     </div>
                 </div>
             </div>

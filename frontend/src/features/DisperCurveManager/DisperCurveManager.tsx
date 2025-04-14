@@ -8,6 +8,7 @@ import VelModel from "../../utils/disper-util";
 import { useDisper } from "../../context/DisperContext";
 import { BasePlot } from "../../components/BasePlot/BasePlot";
 import { FileControls } from "../../components/FileControls/FileControls";
+import SectionHeader from "../../components/SectionHeader/SectionHeader";
 
 extend({ Graphics, Container });
 
@@ -16,7 +17,7 @@ const VELOCITY_MIN_MARGIN_FACTOR = 0.9; // 90% of min velocity
 const ABS_MIN_VELOCITY = 0.0000000001;
 const ABS_MIN_PERIOD = 0.0000000001;
 const ABS_MIN_SLOWNESS = 0.0000000001;
-const ABS_MIN_FREQUENCY= 0.0000000001;
+const ABS_MIN_FREQUENCY = 0.0000000001;
 
 export const DisperCurveManager = () => {
   const {
@@ -47,7 +48,7 @@ export const DisperCurveManager = () => {
     height: 480,
   });
 
-  const plotRef = useRef<HTMLDivElement>(null);
+  const plotRef = useRef<any>(null);
   const [vs30, setVs30] = useState<number | null>(null);
   const [siteClass, setSiteClass] = useState<string | null>(null);
   const [velocityUnit, setVelocityUnit] = useState<"velocity" | "slowness">(
@@ -66,19 +67,18 @@ export const DisperCurveManager = () => {
         // Add 10px offset for the left margin
         return (
           ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
-            (plotDimensions.width - 20) +
-          10
+          (plotDimensions.width)
         );
       },
       fromScreenX: (x: number) => {
         // Subtract the 10px offset and adjust for margin
-        const adjustedX = Math.max(0, x - 10);
+        const adjustedX = Math.max(0, x);
         if (adjustedX <= 0) return axisLimits.xmin;
 
         const value =
           axisLimits.xmin +
-          (adjustedX / (plotDimensions.width - 20)) *
-            (axisLimits.xmax - axisLimits.xmin);
+          (adjustedX / (plotDimensions.width)) *
+          (axisLimits.xmax - axisLimits.xmin);
 
         return Math.round(value * 10000) / 10000;
       },
@@ -86,19 +86,18 @@ export const DisperCurveManager = () => {
         // Add 10px offset for the top margin and subtract from height for bottom margin
         return (
           ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
-            (plotDimensions.height - 20) +
-          10
+          (plotDimensions.height)
         );
       },
       fromScreenY: (y: number) => {
         // Subtract the 10px offset and adjust for margins
-        const adjustedY = Math.max(0, y - 10);
+        const adjustedY = Math.max(0, y);
         if (adjustedY <= 0) return axisLimits.ymin;
 
         const value =
           axisLimits.ymin +
-          (adjustedY / (plotDimensions.height - 20)) *
-            (axisLimits.ymax - axisLimits.ymin);
+          (adjustedY / (plotDimensions.height)) *
+          (axisLimits.ymax - axisLimits.ymin);
 
         return Math.round(value * 10000) / 10000;
       },
@@ -320,14 +319,14 @@ export const DisperCurveManager = () => {
     if (!plotRef.current) return;
     event.stopPropagation();
     const rect = plotRef.current.getBoundingClientRect();
-    const screenX = periodReversed? rect.width - (event.clientX - rect.left) : event.clientX - rect.left;
-    const screenY = velocityReversed? event.clientY - rect.top : rect.height - (event.clientY - rect.top);
+    const screenX = periodReversed ? rect.width - (event.clientX - rect.left) : event.clientX - rect.left;
+    const screenY = velocityReversed ? event.clientY - rect.top : rect.height - (event.clientY - rect.top);
 
     const nearestPoint = pickPoints
       .map((point) => {
         const dist = Math.sqrt(
           (coordinateHelpers.toScreenX(point.x) - screenX) ** 2 +
-            (coordinateHelpers.toScreenY(point.y) - screenY) ** 2
+          (coordinateHelpers.toScreenY(point.y) - screenY) ** 2
         );
         return { ...point, dist };
       })
@@ -385,17 +384,17 @@ export const DisperCurveManager = () => {
     setAxisLimits(() =>
       axesSwapped
         ? {
-            xmin: ymin,
-            xmax: ymax,
-            ymin: xmin * VELOCITY_MIN_MARGIN_FACTOR,
-            ymax: xmax * VELOCITY_MAX_MARGIN_FACTOR,
-          }
+          xmin: ymin,
+          xmax: ymax,
+          ymin: xmin * VELOCITY_MIN_MARGIN_FACTOR,
+          ymax: xmax * VELOCITY_MAX_MARGIN_FACTOR,
+        }
         : {
-            xmin: xmin,
-            xmax: xmax,
-            ymin: ymin * VELOCITY_MIN_MARGIN_FACTOR,
-            ymax: ymax * VELOCITY_MAX_MARGIN_FACTOR,
-          }
+          xmin: xmin,
+          xmax: xmax,
+          ymin: ymin * VELOCITY_MIN_MARGIN_FACTOR,
+          ymax: ymax * VELOCITY_MAX_MARGIN_FACTOR,
+        }
     );
   }, [dataLimits, axesSwapped, periodUnit, velocityUnit]);
 
@@ -406,33 +405,31 @@ export const DisperCurveManager = () => {
   useEffect(() => {
     hoveredPoint
       ? setTooltipContent(
-          (() => {
-            // Handle x-axis (period/frequency) conversion
-            let xValue = hoveredPoint.x;
+        (() => {
+          // Handle x-axis (period/frequency) conversion
+          let xValue = hoveredPoint.x;
 
-            // Handle y-axis (velocity/slowness) conversion
-            let yValue = hoveredPoint.y;
+          // Handle y-axis (velocity/slowness) conversion
+          let yValue = hoveredPoint.y;
 
-            // Convert to display units if needed
-            if (displayUnits === "ft") {
-              if (velocityUnit === "velocity") {
-                yValue = ToFeet(yValue);
-              } else {
-                // slowness
-                yValue = yValue / 3.28084; // Convert s/m to s/ft
-              }
+          // Convert to display units if needed
+          if (displayUnits === "ft") {
+            if (velocityUnit === "velocity") {
+              yValue = ToFeet(yValue);
+            } else {
+              // slowness
+              yValue = yValue / 3.28084; // Convert s/m to s/ft
             }
+          }
 
-            // Format the display string
-            return `(${xValue.toFixed(4)} ${
-              periodUnit === "period" ? "s" : "Hz"
-            }, ${yValue.toFixed(4)} ${
-              velocityUnit === "velocity"
-                ? `${displayUnits}/s`
-                : `s/${displayUnits}`
+          // Format the display string
+          return `(${xValue.toFixed(4)} ${periodUnit === "period" ? "s" : "Hz"
+            }, ${yValue.toFixed(4)} ${velocityUnit === "velocity"
+              ? `${displayUnits}/s`
+              : `s/${displayUnits}`
             })`;
-          })()
-        )
+        })()
+      )
       : setTooltipContent("");
   }, [
     hoveredPoint,
@@ -450,10 +447,10 @@ export const DisperCurveManager = () => {
   useEffect(() => {
     // Generate points that exactly match the axis limits
     const xValues = generateEvenlySpacedPoints(
-          1/dataLimits.minFrequency,
-          1/dataLimits.minFrequency,
-          numPoints + 1
-        );
+      1 / dataLimits.minFrequency,
+      1 / dataLimits.minFrequency,
+      numPoints + 1
+    );
     // Convert periods based on current unit before calculation
     const calcPeriods = (
       periodUnit === "frequency"
@@ -525,8 +522,8 @@ export const DisperCurveManager = () => {
         densities,
         vels_compression,
         vels_shear,
-        1/dataLimits.maxSlowness,
-        1/dataLimits.minSlowness,
+        1 / dataLimits.maxSlowness,
+        1 / dataLimits.minSlowness,
         2.0
       );
 
@@ -547,13 +544,13 @@ export const DisperCurveManager = () => {
         num_layers,
         layer_thicknesses,
         vels_shear,
-        1/dataLimits.maxSlowness*0.9,
-        1/dataLimits.minSlowness*1.1,
+        1 / dataLimits.maxSlowness * 0.9,
+        1 / dataLimits.minSlowness * 1.1,
         2.0,
         densities
       );
-      console.log( 1/dataLimits.maxSlowness,
-        1/dataLimits.minSlowness,)
+      console.log(1 / dataLimits.maxSlowness,
+        1 / dataLimits.minSlowness,)
       if (pointIdxs != null) {
         const curveVels = pointIdxs.map((i) => newVelocities[i]);
         const pointVels: number[] = pickData.map((p) =>
@@ -592,25 +589,25 @@ export const DisperCurveManager = () => {
           if (period === null || newVelocities[index] === null) return null;
           return axesSwapped
             ? {
-                y:
-                  periodUnit === "frequency"
-                    ? convertUnit(period, "period", "frequency")
-                    : period,
-                x:
-                  velocityUnit === "slowness"
-                    ? convertUnit(newVelocities[index], "velocity", "slowness")
-                    : newVelocities[index],
-              }
+              y:
+                periodUnit === "frequency"
+                  ? convertUnit(period, "period", "frequency")
+                  : period,
+              x:
+                velocityUnit === "slowness"
+                  ? convertUnit(newVelocities[index], "velocity", "slowness")
+                  : newVelocities[index],
+            }
             : {
-                x:
-                  periodUnit === "frequency"
-                    ? convertUnit(period, "period", "frequency")
-                    : period,
-                y:
-                  velocityUnit === "slowness"
-                    ? convertUnit(newVelocities[index], "velocity", "slowness")
-                    : newVelocities[index],
-              };
+              x:
+                periodUnit === "frequency"
+                  ? convertUnit(period, "period", "frequency")
+                  : period,
+              y:
+                velocityUnit === "slowness"
+                  ? convertUnit(newVelocities[index], "velocity", "slowness")
+                  : newVelocities[index],
+            };
         })
         .filter(
           (point): point is Point =>
@@ -634,145 +631,25 @@ export const DisperCurveManager = () => {
     axesSwapped,
   ]);
 
-  return (
-    <div className="flex flex-col items-center border-2 border-gray-300 rounded-lg p-4 shadow-sm">
-      <div className="w-full">
-        <div className="flex gap-4 flex-wrap justify-center mb-4">
-          <div className="flex flex-col">
-            <div className="mb-2 flex items-center gap-2">
-              <select
-                value={velocityUnit}
-                onChange={(e) => handleUnitChange("velocity", e.target.value)}
-                className="bg-white border border-gray-300 rounded px-2 py-1 text-sm"
-              >
-                <option value="velocity">Velocity ({displayUnits}/s)</option>
-                <option value="slowness">Slowness (s/{displayUnits})</option>
-              </select>
-              <button
-                onClick={() => handleReverseAxis("velocity")}
-                className={`px-2 py-1 text-sm border rounded transition-colors duration-200
-                  ${
-                    velocityReversed
-                      ? "bg-blue-500 text-white hover:bg-blue-600"
-                      : "bg-gray-100 hover:bg-gray-200"
-                  }`}
-                title={`Reverse ${
-                  axesSwapped ? "Horizontal" : "Vertical"
-                } Axis`}
-              >
-                {axesSwapped ? "←→" : "↑↓"}
-              </button>
-            </div>
+  useEffect(() => {
+    console.log("Plot Dimesions:", plotDimensions)
+  }, [plotDimensions]);
 
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-600">
-                Max {axesSwapped?periodUnit==="period"?"Period":"Frequency":velocityUnit === "velocity" ? "Velocity" : "Slowness"}:
-              </label>
-              <input
-                type="number"
-                value={
-                  displayUnits === "ft"
-                    ? ToFeet(axisLimits.ymax)
-                    : axisLimits.ymax
-                }
-                onChange={(e) => handleAxisLimitChange("ymax", e.target.value)}
-                className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step={velocityUnit === "velocity" ? "1" : "0.0001"}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-600">
-                Min {axesSwapped?periodUnit==="period"?"Period":"Frequency":velocityUnit === "velocity" ? "Velocity" : "Slowness"}:
-              </label>
-              <input
-                type="number"
-                value={
-                  displayUnits === "ft"
-                    ? ToFeet(axisLimits.ymin)
-                    : axisLimits.ymin
-                }
-                onChange={(e) => handleAxisLimitChange("ymin", e.target.value)}
-                className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step={velocityUnit === "velocity" ? "1" : "0.0001"}
-              />
-            </div>
+  return (
+    <div className="card shadow-sm">
+      <SectionHeader title="Dispersion Curve" />
+      <div className="card-body">
+        <div className="row g-4">
+          <div className="col-md-6 d-flex">
+            <FileControls
+              onFileSelect={handleFileSelect}
+              showDownload={false}
+              accept=".pck"
+            />
           </div>
-          <div className="flex flex-col">
-            <div className="mb-2 flex items-center gap-2">
-              <select
-                value={periodUnit}
-                onChange={(e) => handleUnitChange("period", e.target.value)}
-                className="bg-white border border-gray-300 rounded px-2 py-1 text-sm"
-              >
-                <option value="period">Period (s)</option>
-                <option value="frequency">Frequency (Hz)</option>
-              </select>
-              <button
-                onClick={() => handleReverseAxis("period")}
-                className={`px-2 py-1 text-sm border rounded transition-colors duration-200
-                  ${
-                    periodReversed
-                      ? "bg-blue-500 text-white hover:bg-blue-600"
-                      : "bg-gray-100 hover:bg-gray-200"
-                  }`}
-                title={`Reverse ${
-                  axesSwapped ? "Vertical" : "Horizontal"
-                } Axis`}
-              >
-                {axesSwapped ? "↑↓" : "←→"}
-              </button>
-            </div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-600">
-                Max {axesSwapped? velocityUnit === "velocity" ? "Velocity" : "Slowness":periodUnit === "period" ? "Period" : "Frequency"}:
-              </label>
-              <input
-                type="number"
-                value={axisLimits.xmax}
-                onChange={(e) => handleAxisLimitChange("xmax", e.target.value)}
-                className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step={periodUnit === "period" ? "0.001" : "0.1"}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-600">
-                Min {axesSwapped? velocityUnit === "velocity" ? "Velocity" : "Slowness":periodUnit === "period" ? "Period" : "Frequency"}:
-              </label>
-              <input
-                type="number"
-                value={axisLimits.xmin}
-                onChange={(e) => handleAxisLimitChange("xmin", e.target.value)}
-                className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
-                step={periodUnit === "period" ? "0.001" : "0.1"}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-center gap-4 mb-4">
-          <button
-            onClick={handleSwapAxes}
-            className={`px-3 py-1 text-sm border rounded transition-colors duration-200
-              ${
-                axesSwapped
-                  ? "bg-blue-500 text-white hover:bg-blue-600"
-                  : "bg-gray-100 hover:bg-gray-200"
-              }`}
-            title="Swap Axes"
-          >
-            Swap Axes
-          </button>
-        </div>
-        <div className="flex justify-center gap-4 mb-4">
-          <FileControls
-            onFileSelect={handleFileSelect}
-            showDownload={false}
-            accept=".pck"
-          />
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-600">
-                Number of Points:
-              </label>
+          <div className="col-md-6">
+            <div className="d-flex">
+              <label className="form-label w-50">Number of Points:</label>
               <input
                 type="number"
                 value={numPoints}
@@ -782,7 +659,7 @@ export const DisperCurveManager = () => {
                     setNumPoints(value);
                   }
                 }}
-                className="w-24 px-2 py-1 text-sm border rounded shadow-sm"
+                className="form-control form-control-sm w-50"
                 min="1"
                 max="100"
                 step="1"
@@ -790,18 +667,163 @@ export const DisperCurveManager = () => {
             </div>
           </div>
         </div>
-        <div className="relative border border-gray-200 rounded-lg bg-white shadow-sm w-full aspect-[4/3] min-h-[300px]">
+        <div className="row mb-4">
+          <div className="col-md-5">
+            <div className="mb-2">
+              <div className="d-flex align-items-center mb-2">
+                {axesSwapped ?
+                  (<select
+                    value={periodUnit}
+                    onChange={(e) => handleUnitChange("period", e.target.value)}
+                    className="form-select form-select-sm me-2"
+                  >
+                    <option value="period">Period (s)</option>
+                    <option value="frequency">Frequency (Hz)</option>
+                  </select>) :
+                  (<select
+                    value={velocityUnit}
+                    onChange={(e) => handleUnitChange("velocity", e.target.value)}
+                    className="form-select form-select-sm me-2"
+                  >
+                    <option value="velocity">Velocity ({displayUnits}/s)</option>
+                    <option value="slowness">Slowness (s/{displayUnits})</option>
+                  </select>)
+                }
+                <button
+                  onClick={() => handleReverseAxis("velocity")}
+                  className={`btn btn-sm ${velocityReversed ? "btn-primary" : "btn-outline-secondary"}`}
+                  title={`Reverse ${axesSwapped ? "Horizontal" : "Vertical"} Axis`}
+                >
+                  {axesSwapped ? "←→" : "↑↓"}
+                </button>
+              </div>
+
+              <div className="mb-2 d-flex">
+                <label className="form-label w-50">
+                  Max {axesSwapped ? periodUnit === "period" ? "Period" : "Frequency" : velocityUnit === "velocity" ? "Velocity" : "Slowness"}:
+                </label>
+                <input
+                  type="number"
+                  value={displayUnits === "ft" ? ToFeet(axisLimits.ymax) : axisLimits.ymax}
+                  onChange={(e) => handleAxisLimitChange("ymax", e.target.value)}
+                  className="form-control form-control-sm w-50"
+                  step={velocityUnit === "velocity" ? "1" : "0.0001"}
+                />
+              </div>
+              <div className="mb-2 d-flex">
+                <label className="form-label w-50">
+                  Min {axesSwapped ? periodUnit === "period" ? "Period" : "Frequency" : velocityUnit === "velocity" ? "Velocity" : "Slowness"}:
+                </label>
+                <input
+                  type="number"
+                  value={displayUnits === "ft" ? ToFeet(axisLimits.ymin) : axisLimits.ymin}
+                  onChange={(e) => handleAxisLimitChange("ymin", e.target.value)}
+                  className="form-control form-control-sm w-50"
+                  step={velocityUnit === "velocity" ? "1" : "0.0001"}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="col-md-2 d-flex justify-content-center align-items-center p-1">
+            <div>
+              <button
+                onClick={handleSwapAxes}
+                className={`btn flex-grow-1 ${axesSwapped ? "btn-primary" : "btn-outline-secondary"}`}
+                title="Swap Axes"
+              >
+                Swap Axes
+              </button>
+            </div>
+          </div>
+          <div className="col-md-5">
+            <div className="mb-3">
+              <div className="d-flex align-items-center mb-2">
+                {!axesSwapped ?
+                  (<select
+                    value={periodUnit}
+                    onChange={(e) => handleUnitChange("period", e.target.value)}
+                    className="form-select form-select-sm me-2"
+                  >
+                    <option value="period">Period (s)</option>
+                    <option value="frequency">Frequency (Hz)</option>
+                  </select>) :
+                  (<select
+                    value={velocityUnit}
+                    onChange={(e) => handleUnitChange("velocity", e.target.value)}
+                    className="form-select form-select-sm me-2"
+                  >
+                    <option value="velocity">Velocity ({displayUnits}/s)</option>
+                    <option value="slowness">Slowness (s/{displayUnits})</option>
+                  </select>)
+                }
+                <button
+                  onClick={() => handleReverseAxis("period")}
+                  className={`btn btn-sm ${periodReversed ? "btn-primary" : "btn-outline-secondary"}`}
+                  title={`Reverse ${axesSwapped ? "Vertical" : "Horizontal"} Axis`}
+                >
+                  {axesSwapped ? "↑↓" : "←→"}
+                </button>
+              </div>
+              <div className="mb-2 d-flex">
+                <label className="form-label w-50">
+                  Max {axesSwapped ? velocityUnit === "velocity" ? "Velocity" : "Slowness" : periodUnit === "period" ? "Period" : "Frequency"}:
+                </label>
+                <input
+                  type="number"
+                  value={axisLimits.xmax}
+                  onChange={(e) => handleAxisLimitChange("xmax", e.target.value)}
+                  className="form-control form-control-sm w-50"
+                  step={periodUnit === "period" ? "0.001" : "0.1"}
+                />
+              </div>
+              <div className="mb-2 d-flex">
+                <label className="form-label w-50">
+                  Min {axesSwapped ? velocityUnit === "velocity" ? "Velocity" : "Slowness" : periodUnit === "period" ? "Period" : "Frequency"}:
+                </label>
+                <input
+                  type="number"
+                  value={axisLimits.xmin}
+                  onChange={(e) => handleAxisLimitChange("xmin", e.target.value)}
+                  className="form-control form-control-sm w-50"
+                  step={periodUnit === "period" ? "0.001" : "0.1"}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-md-4">
+            <span className="fw-semibold">Vs30:</span>{" "}
+            <span className="fw-bold">
+              {vs30
+                ? displayUnits === "ft"
+                  ? `${ToFeet(vs30).toFixed(3)} ft/s`
+                  : `${vs30.toFixed(3)} m/s`
+                : "N/A"}
+            </span>
+          </div>
+          <div className="col-md-4">
+            <span className="fw-semibold">RMSE:</span>{" "}
+            <span className="fw-bold">{displayRMSE()}</span>
+          </div>
+          <div className="col-md-4">
+            <span className="fw-semibold">Site Class:</span>{" "}
+            <span className="fw-bold">{siteClass || "N/A"}</span>
+          </div>
+        </div>
+        <div className="position-relative m-5">
           <BasePlot
+            ref={plotRef}
             yLabel={
               velocityUnit === "velocity"
                 ? `Velocity (${displayUnits}/s)`
                 : `Slowness (s/${displayUnits})`
             }
             xLabel={periodUnit === "period" ? "Period (s)" : "Frequency (Hz)"}
-            xMin={axesSwapped? axisLimits.ymin: axisLimits.xmin}
-            xMax={axesSwapped? axisLimits.ymax: axisLimits.xmax}
-            yMin={axesSwapped? axisLimits.xmin: axisLimits.ymin}
-            yMax={axesSwapped? axisLimits.xmax: axisLimits.ymax}
+            xMin={axesSwapped ? axisLimits.ymin : axisLimits.xmin}
+            xMax={axesSwapped ? axisLimits.ymax : axisLimits.xmax}
+            yMin={axesSwapped ? axisLimits.xmin : axisLimits.ymin}
+            yMax={axesSwapped ? axisLimits.xmax : axisLimits.ymax}
             display={(value) =>
               displayUnits === "ft"
                 ? ToFeet(value).toFixed(3)
@@ -813,7 +835,6 @@ export const DisperCurveManager = () => {
             axesSwapped={axesSwapped}
             xAxisReversed={periodReversed}
             yAxisReversed={velocityReversed}
-            ref={plotRef}
           >
             <pixiContainer>
               <pixiGraphics
@@ -823,7 +844,7 @@ export const DisperCurveManager = () => {
                   // Draw the main plot area boundary
                   // g.setStrokeStyle({ width: 1, color: 0xCCCCCC });
                   // g.setFillStyle({color:0xEEEEEE, alpha:0.5});
-                  // g.rect(10, 10, plotDimensions.width - 20, plotDimensions.height - 20);
+                  // g.rect(10, 10, plotDimensions.width, plotDimensions.height);
                   // g.fill();
 
                   // Draw grid lines
@@ -837,8 +858,8 @@ export const DisperCurveManager = () => {
                     v += velocityStep
                   ) {
                     const x = coordinateHelpers.toScreenX(v);
-                    g.moveTo(x, 10);
-                    g.lineTo(x, plotDimensions.height - 10);
+                    g.moveTo(x, 0);
+                    g.lineTo(x, plotDimensions.height);
                   }
 
                   // Horizontal grid lines (depth)
@@ -849,8 +870,8 @@ export const DisperCurveManager = () => {
                     d += depthStep
                   ) {
                     const y = coordinateHelpers.toScreenY(d);
-                    g.moveTo(10, y);
-                    g.lineTo(plotDimensions.width - 10, y);
+                    g.moveTo(0, y);
+                    g.lineTo(plotDimensions.width, y);
                   }
                   g.stroke();
                 }}
@@ -918,28 +939,6 @@ export const DisperCurveManager = () => {
               }}
             />
           </BasePlot>
-        </div>
-      </div>
-      <div className="mt-4 p-4 border-t border-gray-200">
-        <div className="flex justify-center space-x-8">
-          <div className="text-center">
-            <span className="font-semibold">Vs30:</span>{" "}
-            <span className="font-bold">
-              {vs30
-                ? displayUnits === "ft"
-                  ? `${ToFeet(vs30)} ft/s`
-                  : `${vs30} m/s`
-                : "N/A"}
-            </span>
-          </div>
-          <div className="text-center">
-            <span className="font-semibold">RMSE:</span>
-            <span className="font-bold">{displayRMSE()}</span>
-          </div>
-          <div className="text-center">
-            <span className="font-semibold">Site Class:</span>{" "}
-            <span className="font-bold">{siteClass || "N/A"}</span>
-          </div>
         </div>
       </div>
     </div>
