@@ -27,6 +27,7 @@ import { getMatrixShape } from "../../utils/matrix-util";
 import { createTexture } from "../../utils/plot-util";
 import { applyTransformation, areMatricesEqual } from "../../utils/matrix-util";
 import { ORIGINAL_COORDINATE_MATRIX } from "../../utils/plot-util";
+import { PickData } from "../../types/data";
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -177,7 +178,15 @@ export default function MainPlot() {
         : coordinateHelpers.fromScreenY(y);
       
       console.log("Adding new point at coordinates:", { slow, freq });
-      const newPoint = { slow, freq };
+      const newPoint:PickData = {
+        d1: 0,
+        d2: 0,
+        frequency: freq,
+        d3: 0,
+        slowness: slow,
+        d4: 0,
+        d5: 0
+      }
       dispatch(addPoint(newPoint));
       return;
     }
@@ -185,11 +194,11 @@ export default function MainPlot() {
     const clickedPointIndex = points.findIndex(point => {
       // Convert slow/freq to screen coordinates for comparison
       const screenX = isAxisSwapped() 
-        ? coordinateHelpers.toScreenX(point.freq) 
-        : coordinateHelpers.toScreenX(point.slow);
+        ? coordinateHelpers.toScreenX(point.frequency) 
+        : coordinateHelpers.toScreenX(point.slowness);
       const screenY = isAxisSwapped() 
-        ? coordinateHelpers.toScreenY(point.slow) 
-        : coordinateHelpers.toScreenY(point.freq);
+        ? coordinateHelpers.toScreenY(point.slowness) 
+        : coordinateHelpers.toScreenY(point.frequency);
       
       const distance = Math.sqrt(
         Math.pow(screenX - x, 2) + Math.pow(screenY - y, 2)
@@ -240,7 +249,15 @@ export default function MainPlot() {
       
       // Update the dragged point position
       dispatch(removePoint(draggedPoint));
-      const newPoint = { slow, freq };
+      const newPoint:PickData = {
+        d1: 0,
+        d2: 0,
+        frequency: freq,
+        d3: 0,
+        slowness: slow,
+        d4: 0,
+        d5: 0
+      };
       dispatch(addPoint(newPoint));
       dispatch(setDraggedPoint(newPoint));
       
@@ -251,11 +268,11 @@ export default function MainPlot() {
       const hovered = points.find(point => {
         // Convert slow/freq to screen coordinates for comparison
         const screenX = isAxisSwapped() 
-          ? coordinateHelpers.toScreenX(point.freq) 
-          : coordinateHelpers.toScreenX(point.slow);
+          ? coordinateHelpers.toScreenX(point.frequency) 
+          : coordinateHelpers.toScreenX(point.slowness);
         const screenY = isAxisSwapped() 
-          ? coordinateHelpers.toScreenY(point.slow) 
-          : coordinateHelpers.toScreenY(point.freq);
+          ? coordinateHelpers.toScreenY(point.slowness) 
+          : coordinateHelpers.toScreenY(point.frequency);
         
         const distance = Math.sqrt(
           Math.pow(screenX - x, 2) + Math.pow(screenY - y, 2)
@@ -267,7 +284,7 @@ export default function MainPlot() {
       
       // Update tooltip content for hovered point
       if (hovered) {
-        setTooltipContent(`(Slow:${hovered.slow.toFixed(6)}, Freq:${hovered.freq.toFixed(6)})`);
+        setTooltipContent(`(Slow:${hovered.slowness.toFixed(6)}, Freq:${hovered.frequency.toFixed(6)})`);
       } else {
         setTooltipContent('');
       }
@@ -289,7 +306,7 @@ export default function MainPlot() {
       return;
     }
     
-    const pointsData = points.map(p => `${p.slow.toFixed(6)},${p.freq.toFixed(6)}`).join('\n');
+    const pointsData = points.map(p => `${p.d1.toFixed(6)},${p.d2.toFixed(6)}, ${p.frequency.toFixed(6)}, ${p.d3.toFixed(6)}, ${p.slowness.toFixed(6)}, ${p.d4.toFixed(6)}, ${p.d5.toFixed(6)}`).join('\n');
     const blob = new Blob([pointsData], { type: 'text/plain' });
     
     // Use showSaveFilePicker API for native file save dialog
@@ -431,7 +448,7 @@ export default function MainPlot() {
       <div className="card-body p-0">
         <div className="row g-0">
           <div className="col-lg-9">
-            <div className="aspect-ratio-container" style={{ aspectRatio: '4/3' }}>
+            <div className="aspect-ratio-container">
               <div className="plot-container">
                 {isLoading ? (
                   <div className="d-flex align-items-center justify-content-center h-100">
@@ -473,11 +490,11 @@ export default function MainPlot() {
                             const isDragged = draggedPoint === point;
                             
                             const screenX = isAxisSwapped() 
-                              ? coordinateHelpers.toScreenX(point.freq) 
-                              : coordinateHelpers.toScreenX(point.slow);
+                              ? coordinateHelpers.toScreenX(point.frequency) 
+                              : coordinateHelpers.toScreenX(point.slowness);
                             const screenY = isAxisSwapped() 
-                              ? coordinateHelpers.toScreenY(point.slow) 
-                              : coordinateHelpers.toScreenY(point.freq);
+                              ? coordinateHelpers.toScreenY(point.slowness) 
+                              : coordinateHelpers.toScreenY(point.frequency);
                             
                             g.setFillStyle({
                               color: isHovered || isDragged ? 0x00ff00 : 0xff0000,

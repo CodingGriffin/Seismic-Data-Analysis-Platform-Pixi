@@ -4,20 +4,16 @@ import { Matrix } from "../../types/record";
 import { ORIGINAL_COORDINATE_MATRIX } from "../../utils/plot-util";
 // import { transformPoint } from "../../utils/plot-util";
 export type Transformation = 'flipHorizontal' | 'flipVertical' | 'rotateClockwise' | 'rotateCounterClockwise';
-
-export interface PickedPoint {
-  slow: number;
-  freq: number;
-}
+import { PickData } from "../../types/data";
 
 interface PlotState {
     colorMaps: { [key: string]: string[] },
     selectedColorMap: string,
     isLoading: boolean,
-    points: PickedPoint[],
-    hoveredPoint: PickedPoint | null,
+    points: PickData[],
+    hoveredPoint: PickData | null,
     isDragging: boolean,
-    draggedPoint: PickedPoint | null,
+    draggedPoint: PickData | null,
     dataLimits: {
         slowMin: number,
         slowMax: number,
@@ -150,23 +146,23 @@ const PlotSlice = createSlice({
         setIsLoading: (state, action: PayloadAction<boolean>) => {
             state.isLoading = action.payload;
         },
-        setPoints: (state, action: PayloadAction<PickedPoint[]>) => {
+        setPoints: (state, action: PayloadAction<PickData[]>) => {
             state.points = action.payload;
         },
-        addPoint: (state, action: PayloadAction<PickedPoint>) => {
+        addPoint: (state, action: PayloadAction<PickData>) => {
             state.points.push(action.payload);
         },
-        removePoint: (state, action: PayloadAction<PickedPoint>) => {
+        removePoint: (state, action: PayloadAction<PickData>) => {
             state.points = state.points.filter(point => 
-                point.slow !== action.payload.slow || point.freq !== action.payload.freq);
+                point.slowness !== action.payload.slowness || point.frequency !== action.payload.frequency);
         },
-        setHoveredPoint: (state, action: PayloadAction<PickedPoint | null>) => {
+        setHoveredPoint: (state, action: PayloadAction<PickData | null>) => {
             state.hoveredPoint = action.payload;
         },
         setIsDragging: (state, action: PayloadAction<boolean>) => {
             state.isDragging = action.payload;
         },
-        setDraggedPoint: (state, action: PayloadAction<PickedPoint | null>) => {
+        setDraggedPoint: (state, action: PayloadAction<PickData | null>) => {
             state.draggedPoint = action.payload;
         },
         updateDataLimits: (state, action: PayloadAction<Partial<PlotState['dataLimits']>>) => {

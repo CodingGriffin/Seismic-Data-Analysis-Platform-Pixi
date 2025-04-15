@@ -1,4 +1,5 @@
 import { createContext, useContext, useReducer, useCallback, ReactNode, useEffect } from 'react';
+import { useAppSelector } from '../hooks/useAppSelector';
 import VelModel from '../utils/disper-util';
 import { Layer, PickData } from '../types/data';
 
@@ -87,6 +88,8 @@ export function useDisper() {
 
 export function DisperProvider({ children }: { children: ReactNode }) {
     const [state, dispatch] = useReducer(reducer, initialState);
+    // const reduxDispatch = useDispatch();
+    const points = useAppSelector((state: any) => state.plot.points || []);
 
     const addLayer = useCallback((newLayer: Layer) => {
         dispatch({ type: 'ADD_LAYER', payload: newLayer });
@@ -172,6 +175,7 @@ export function DisperProvider({ children }: { children: ReactNode }) {
     }, [state.layers, state.phaseVelMin, state.phaseVelMax]);
 
     useEffect(() => {
+        console.log("Pick Data Changed:", state.pickData)
         if (state.pickData.length > 0) {
             const minFrequency = Math.min(...state.pickData.map((data: PickData) => data.frequency));
             const maxFrequency = Math.max(...state.pickData.map((data: PickData) => data.frequency));
@@ -184,6 +188,13 @@ export function DisperProvider({ children }: { children: ReactNode }) {
             });
         }
     }, [state.pickData]);
+    
+    useEffect(() => {
+        console.log("Points from redux:", points)
+        if (points && points.length > 0) {
+            setPickData(points);
+        }
+    }, [points]);
 
     return (
         <DisperContext.Provider
