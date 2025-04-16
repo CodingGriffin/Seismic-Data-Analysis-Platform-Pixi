@@ -619,8 +619,8 @@ export const DisperModelManager = () => {
             yLabel={`Depth (${displayUnits})`}
             xMin={axisLimits.xmin}
             xMax={axisLimits.xmax}
-            yMin={axisLimits.ymin}
-            yMax={axisLimits.ymax}
+            yMin={axisLimits.ymax}
+            yMax={axisLimits.ymin}
             display={(value) =>
               displayUnits === "ft" ? ToFeet(value).toFixed(3) : value.toFixed(3)
             }
