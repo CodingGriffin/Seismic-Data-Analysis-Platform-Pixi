@@ -464,6 +464,10 @@ export const DisperModelManager = () => {
     }
   }, [axisLimits.ymax]);
 
+  useEffect(() => {
+    console.log("Layers Changed:", layers);
+  }, [layers])
+  
   const handleDimensionChange = useCallback(
     (dimensions: { width: number; height: number }) => {
       setPlotDimensions(dimensions);

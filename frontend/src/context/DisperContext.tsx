@@ -140,8 +140,30 @@ export function DisperProvider({ children }: { children: ReactNode }) {
     }, [state.layers]);
 
     const deleteLayer = useCallback((index: number) => {
-        if (state.layers.length <= 1) return; // Don't delete the last layer
-        dispatch({ type: 'REMOVE_LAYER', payload: index });
+        
+        const selectedLayer = state.layers[index];
+        console.log("Removing Layer:", index, selectedLayer);
+        const prevLayers = [...state.layers];
+        console.log("Layers:", prevLayers);
+        if (prevLayers.length <= 1) {
+            return prevLayers;
+        }
+        
+        const newLayers = [...prevLayers];
+        
+        newLayers.splice(index, 1);
+        
+        if (index > 0 && index < prevLayers.length - 1) {
+            newLayers[index - 1].endDepth = prevLayers[index + 1].startDepth;
+        } else if (index === 0 && newLayers.length > 0) {
+            newLayers[0].startDepth = 0;
+        } else if (index === prevLayers.length - 1 && newLayers.length > 0) {
+            newLayers[newLayers.length - 1].endDepth = prevLayers[prevLayers.length - 1].endDepth;
+        }
+        
+        console.log("After removing Layers:", newLayers)
+        
+        dispatch({ type: 'SET_LAYERS', payload: newLayers });
     }, [state.layers]);
 
     const ToFeet = useCallback((value: number) => {
@@ -196,6 +218,9 @@ export function DisperProvider({ children }: { children: ReactNode }) {
         }
     }, [points]);
 
+    useEffect(() => {
+        console.log("Context Layers Changed:", state.layers);
+    }, [state.layers])
     return (
         <DisperContext.Provider
             value={{
