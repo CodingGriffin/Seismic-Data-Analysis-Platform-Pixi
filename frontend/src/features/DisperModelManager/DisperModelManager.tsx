@@ -696,23 +696,24 @@ export const DisperModelManager = () => {
                   <pixiGraphics
                     draw={(g) => {
                       g.clear();
+                      // Fill the region to the left of the velocity line with light red
+                      g.setFillStyle({ color: 0xff0000, alpha: 0.1 });
+                      const x = Math.round(coordinateHelpers.toScreenX(layer.velocity));
+                      const startY = Math.round(coordinateHelpers.toScreenY(layer.startDepth));
+                      const endY = index === layers.length - 1
+                        ? plotDimensions.height
+                        : Math.round(coordinateHelpers.toScreenY(layer.endDepth));
+                      
+                      // Draw the filled rectangle from left edge to velocity line
+                      g.rect(0, startY, x, endY - startY);
+                      g.fill();
+                      
+                      // Draw the velocity line
                       g.setStrokeStyle({
                         width: 2,
                         color: 0xff0000,
                         alignment: 0.5,
                       });
-                      const x = Math.round(
-                        coordinateHelpers.toScreenX(layer.velocity)
-                      );
-                      const startY = Math.round(
-                        coordinateHelpers.toScreenY(layer.startDepth)
-                      );
-                      const endY =
-                        index === layers.length - 1
-                          ? plotDimensions.height
-                          : Math.round(
-                            coordinateHelpers.toScreenY(layer.endDepth)
-                          );
                       g.moveTo(x, startY);
                       g.lineTo(x, endY);
                       g.stroke();
