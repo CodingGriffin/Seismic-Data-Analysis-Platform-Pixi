@@ -643,36 +643,52 @@ export const DisperModelManager = () => {
                 }}
               />
               {layers.slice(0, -1).map((layer: any, index: number) => (
-                <pixiGraphics
-                  key={`boundary-${index}-${Date.now()}`}
-                  draw={(g) => {
-                    g.clear();
-                    g.setStrokeStyle({
-                      width: 2,
-                      color: 0x000000,
-                      alignment: 0.5,
-                    }); // alignment: 0.5 for crisp lines
-                    const y = Math.round(
-                      coordinateHelpers.toScreenY(layer.endDepth)
-                    );
-                    g.moveTo(0, y);
-                    g.lineTo(plotDimensions.width, y);
-                    g.stroke();
-                  }}
-                  eventMode="static"
-                  cursor="ns-resize"
-                  hitArea={
-                    new Rectangle(
-                      10,
-                      coordinateHelpers.toScreenY(layer.endDepth) - 5,
-                      plotDimensions.width,
-                      10
-                    )
-                  }
-                  onPointerDown={(e: any) =>
-                    handlePointerDown(e, index + 1, "boundary")
-                  }
-                />
+                <pixiContainer key={`boundary-container-${index}-${Date.now()}`}>
+                  <pixiGraphics
+                    key={`boundary-${index}-${Date.now()}`}
+                    draw={(g) => {
+                      g.clear();
+                      g.setStrokeStyle({
+                        width: 2,
+                        color: 0x000000,
+                        alignment: 0.5,
+                      });
+                      const y = Math.round(
+                        coordinateHelpers.toScreenY(layer.endDepth)
+                      );
+                      g.moveTo(0, y);
+                      g.lineTo(plotDimensions.width, y);
+                      g.stroke();
+                    }}
+                    eventMode="static"
+                    cursor="ns-resize"
+                    hitArea={
+                      new Rectangle(
+                        10,
+                        coordinateHelpers.toScreenY(layer.endDepth) - 5,
+                        plotDimensions.width,
+                        10
+                      )
+                    }
+                    onPointerDown={(e: any) =>
+                      handlePointerDown(e, index + 1, "boundary")
+                    }
+                  />
+                  <pixiText
+                    text={`${displayUnits === "ft"
+                      ? ToFeet(layer.endDepth).toFixed(1)
+                      : layer.endDepth.toFixed(1)
+                    }`}
+                    x={5}
+                    y={coordinateHelpers.toScreenY(layer.endDepth) - 20}
+                    style={
+                      new TextStyle({
+                        fontSize: 12,
+                        fill: 0x000000,
+                      })
+                    }
+                  />
+                </pixiContainer>
               ))}
 
               {layers.map((layer: any, index: number) => (
@@ -684,7 +700,7 @@ export const DisperModelManager = () => {
                         width: 2,
                         color: 0xff0000,
                         alignment: 0.5,
-                      }); // alignment: 0.5 for crisp lines
+                      });
                       const x = Math.round(
                         coordinateHelpers.toScreenX(layer.velocity)
                       );
