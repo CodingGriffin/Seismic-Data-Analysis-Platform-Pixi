@@ -379,37 +379,64 @@ export const DisperModelManager = () => {
 
   // Add click handler for the plot area
   const handlePlotClick = (event: React.PointerEvent) => {
-    if (layers.length > 0) {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const y = event.clientY - rect.top;
+    // If shift key is pressed, handle layer splitting
+    // If alt key is pressed, handle layer deletion
+    if (event.shiftKey || event.altKey) {
+      if (layers.length > 0) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const y = event.clientY - rect.top;
 
+        // Find which layer was clicked
+        for (let i = 0; i < layers.length; i++) {
+          const layer = layers[i];
+          const startY = coordinateHelpers.toScreenY(layer.startDepth);
+          const endY = coordinateHelpers.toScreenY(layer.endDepth);
+
+          if (y >= startY && y <= endY) {
+            const newDepth =
+              axisLimits.ymin +
+              (y / plotDimensions.height) * (axisLimits.ymax - axisLimits.ymin);
+
+            if (newDepth > layer.startDepth && newDepth < layer.endDepth) {
+              if (event.shiftKey) {
+                splitLayer(i, newDepth);
+              } else if (event.altKey) {
+                if (deleteLayer) {
+                  deleteLayer(i);
+                }
+              }
+              break;
+            }
+          }
+        }
+      }
+    } 
+    // If no modifier keys are pressed, update velocity
+    else {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      
+      // Convert screen coordinates to plot values
+      const clickVelocity = coordinateHelpers.fromScreenX(x);
+      const clickDepth = coordinateHelpers.fromScreenY(y);
+      
       // Find which layer was clicked
       for (let i = 0; i < layers.length; i++) {
         const layer = layers[i];
-        const startY =
-          ((layer.startDepth - axisLimits.ymin) /
-            (axisLimits.ymax - axisLimits.ymin)) *
-          plotDimensions.height;
-        const endY =
-          ((layer.endDepth - axisLimits.ymin) /
-            (axisLimits.ymax - axisLimits.ymin)) *
-          plotDimensions.height;
-
-        if (y >= startY && y <= endY) {
-          const newDepth =
-            axisLimits.ymin +
-            (y / plotDimensions.height) * (axisLimits.ymax - axisLimits.ymin);
-
-          if (newDepth > layer.startDepth && newDepth < layer.endDepth) {
-            if (event.shiftKey) {
-              splitLayer(i, newDepth);
-            } else if (event.altKey) {
-              if (deleteLayer) {
-                deleteLayer(i);
-              }
-            }
-            break;
-          }
+        if (clickDepth >= layer.startDepth && 
+            (i === layers.length - 1 || clickDepth <= layer.endDepth)) {
+          
+          // Create a new layers array with updated velocity
+          const newLayers = [...layers];
+          newLayers[i].velocity = Math.max(
+            axisLimits.xmin,
+            Math.min(axisLimits.xmax, clickVelocity)
+          );
+          
+          // Update the layers
+          setLayers(newLayers);
+          break;
         }
       }
     }
