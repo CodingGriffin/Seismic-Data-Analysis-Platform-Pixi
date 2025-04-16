@@ -412,7 +412,7 @@ export const DisperModelManager = () => {
       }
     } 
     // If no modifier keys are pressed, update velocity
-    else {
+    else if (!dragState?.isDragging){
       const rect = event.currentTarget.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
