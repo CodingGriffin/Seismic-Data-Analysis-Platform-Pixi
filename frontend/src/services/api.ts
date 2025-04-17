@@ -92,3 +92,11 @@ export const processSlownessWithParams = async (
   
   return api.post('/process/frequency_with_params', formData);
 };
+
+export const saveVelocityModel = async (projectId: string, modelData: any) => {
+  return api.post(`/project/${projectId}/model`, modelData);
+};
+
+export const getVelocityModel = async (projectId: string) => {
+  return api.get(`/project/${projectId}/model`);
+};

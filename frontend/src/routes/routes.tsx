@@ -8,11 +8,11 @@ export const routes = [
     element: <RootLayout />,
     children: [
       {
-        path: 'picks',
+        path: '/picks/:projectId',
         element: <PicksPage />
       },
       {
-        path: 'disper',
+        path: '/disper/:projectId',
         element: <DisperPage />
       }
     ]

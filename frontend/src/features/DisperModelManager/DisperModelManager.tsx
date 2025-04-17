@@ -15,6 +15,10 @@ import { Window } from "../../types";
 import { BasePlot } from "../../components/BasePlot/BasePlot";
 import { FileControls } from "../../components/FileControls/FileControls";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
+import { useParams } from "react-router";
+import { saveVelocityModel, getVelocityModel } from '../../services/api';
+import { useAppDispatch } from "../../hooks/useAppDispatch";
+import { addToast } from "../../store/slices/toastSlice";
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -36,6 +40,13 @@ export const DisperModelManager = () => {
     ToFeet,
     ToMeter,
   } = useDisper();
+
+  const dispatch = useAppDispatch();
+  // Add projectId from URL params
+  const { projectId } = useParams();
+  
+  // Add state for saving status
+  const [isSaving, setIsSaving] = useState(false);
 
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [tooltipContent, setTooltipContent] = useState<string>("");
@@ -475,9 +486,54 @@ export const DisperModelManager = () => {
     []
   );
 
+  // load model from backend when component mounts
+  useEffect(() => {
+    const fetchVelocityModel = async () => {
+      if (!projectId) return;
+      
+      try {
+        const response = await getVelocityModel(projectId);
+        if (response.data && response.data.layers) {
+          setLayers(response.data.layers);
+        }
+      } catch (error) {
+        console.error("Failed to load velocity model:", error);
+      }
+    };
+    
+    fetchVelocityModel();
+  }, [projectId]);
+
+  // Add save function
+  const handleSaveModel = async () => {
+    if (!projectId) {
+      dispatch(addToast({ message: "No project ID available", type:"error"}));
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      await saveVelocityModel(projectId, { layers });
+      dispatch(addToast({ message: "Velocity model saved successfully", type:"success"}));
+    } catch (error) {
+      console.error("Failed to save velocity model:", error);
+      dispatch(addToast({ message: "Failed to save velocity model", type:"error"}));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="card shadow-sm">
-      <SectionHeader title="Dispersion Model" />
+      <SectionHeader title="Dispersion Model">
+        <button 
+          className="btn btn-primary btn-sm" 
+          onClick={handleSaveModel}
+          disabled={isSaving}
+        >
+          {isSaving ? 'Saving...' : 'Save Model'}
+        </button>
+      </SectionHeader>
       <div className="card-body">
         <div className="row g-4">
           <div className="col d-flex">

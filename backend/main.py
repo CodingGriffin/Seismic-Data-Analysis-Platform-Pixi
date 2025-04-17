@@ -17,6 +17,21 @@ from starlette.responses import FileResponse
 
 from utils import close_and_remove_file, get_sheets_from_excel, get_geometry_from_sgy
 from utils import get_geometry_from_excel
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
+
+class VelocityLayer(BaseModel):
+    startDepth: float
+    endDepth: float
+    velocity: float
+    density: float
+    ignore: int
+
+class VelocityModel(BaseModel):
+    layers: List[VelocityLayer]
+
+#model storage
+velocity_models = {}
 
 app = FastAPI()
 CHUNK_SIZE = 1024 * 1024  # adjust the chunk size as desired
@@ -299,3 +314,22 @@ async def dummy_freq_endpoint_from_sgy(
     return FileResponse(
         path=temp_file_path,
     )
+
+#model
+@app.get("/project/{project_id}/model")
+async def get_velocity_model(project_id: str):
+    if project_id not in velocity_models:
+        # Return a default model if none exists
+        return {
+            "layers": [
+                    { "startDepth": 0.0, "endDepth": 30.0, "velocity": 760.0, "density": 2.0, "ignore": 0 },
+                    { "startDepth": 30.0, "endDepth": 44.0, "velocity": 1061.0, "density": 2.0, "ignore": 0 },
+                    { "startDepth": 44.0, "endDepth": 144.0, "velocity": 1270.657, "density": 2.0, "ignore": 0 },
+            ]
+        }
+    return velocity_models[project_id]
+
+@app.post("/project/{project_id}/model")
+async def save_velocity_model(project_id: str, model: VelocityModel):
+    velocity_models[project_id] = model.dict()
+    return {"status": "success"}
