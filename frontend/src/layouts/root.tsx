@@ -1,10 +1,11 @@
-import { Outlet, Link } from "react-router";
+import { Outlet, Link, useParams } from "react-router";
 import { Provider } from "react-redux";
 import { store } from "../store";
 import { Toast } from "../components/Toast/Toast";
 import "../App.scss";
-
 export default function RootLayout() {
+    const { projectId } = useParams();
+
     return (
         <Provider store={store}>
             <Toast />
@@ -18,10 +19,10 @@ export default function RootLayout() {
                         <div className="collapse navbar-collapse" id="navbarNav">
                             <ul className="navbar-nav">
                                 <li className="nav-item">
-                                    <Link className="nav-link" to="/picks">Picks</Link>
+                                    <Link className="nav-link" to={`/picks/${projectId}`}>Picks</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link" to="/disper">Disper</Link>
+                                    <Link className="nav-link" to={`/disper/${projectId}`}>Disper</Link>
                                 </li>
                             </ul>
                         </div>

@@ -6,9 +6,13 @@ import { useAppSelector } from "../../hooks/useAppSelector";
 import { updateRecordOption } from "../../store/slices/recordSlice";
 import { selectOptions } from "../../store/selectors/recordSelectors";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
+import { useParams } from "react-router";
+import { saveOptionsByProjectId } from "../../store/thunks/cacheThunks";
 
 const RecordSummary: React.FC = () => {
   const dispatch = useAppDispatch();
+  const { projectId } = useParams();
+
   const enabledRecords = useAppSelector(selectOptions).filter((item) => item.enabled);
   
   const handleClearSelection = () => {
@@ -27,17 +31,29 @@ const RecordSummary: React.FC = () => {
     window.dispatchEvent(event);
   };
 
+  const handleSaveOptions = () => {
+    dispatch(saveOptionsByProjectId(projectId));
+  }
+
   return (
     <div className="border rounded d-flex flex-column">
       <SectionHeader
         title={`Selected (${enabledRecords.length})`}
         actions={
-          <button
-            className="btn btn-sm btn-outline-danger"
-            onClick={handleClearSelection}
-          >
-            Clear
-          </button>
+          <div className="d-flex gap-2">
+            <button
+              className="btn btn-sm btn-outline-danger"
+              onClick={handleSaveOptions}
+            >
+              Save Options
+            </button>
+            <button
+              className="btn btn-sm btn-outline-danger"
+              onClick={handleClearSelection}
+            >
+              Clear
+            </button>
+          </div>
         }
       />
 

@@ -28,6 +28,8 @@ import { createTexture } from "../../utils/plot-util";
 import { applyTransformation, areMatricesEqual } from "../../utils/matrix-util";
 import { ORIGINAL_COORDINATE_MATRIX } from "../../utils/plot-util";
 import { PickData } from "../../types/data";
+import { useParams } from "react-router";
+import { savePicksByProjectId } from "../../store/thunks/cacheThunks";
 
 extend({ Container, Sprite, Graphics, Text });
 
@@ -50,6 +52,8 @@ export default function MainPlot() {
     transformations
   } = useAppSelector((state) => state.plot);
   
+  const { projectId } = useParams();
+
   const plotRef = useRef<any>(null);
   
   const [texture, setTexture] = useState<Texture | null>(null);
@@ -296,7 +300,7 @@ export default function MainPlot() {
     dispatch(setDraggedPoint(null));
   }, [dispatch]);
 
-  const handleSavePoints = useCallback(() => {
+  const handleDownloadPoints = useCallback(() => {
     if (points.length === 0) {
       dispatch(addToast({
         message: "No points to save",
@@ -347,6 +351,11 @@ export default function MainPlot() {
       URL.revokeObjectURL(url);
     }
   }, [points, dispatch]);
+
+  const handleSavePoints = () => {
+    dispatch(savePicksByProjectId(projectId))
+  }
+
 
   useEffect(() => {
     
@@ -444,6 +453,13 @@ export default function MainPlot() {
   return (
     <div className="card shadow-sm mb-4">
       <SectionHeader title="Main Plot">
+        <button 
+          className="btn btn-outline-secondary btn-sm"
+          onClick={handleSavePoints}
+          disabled={points.length === 0}
+        >
+          Save Picks
+        </button>
       </SectionHeader>
       <div className="card-body p-0">
         <div className="row g-0">
@@ -583,7 +599,7 @@ export default function MainPlot() {
               <div className="d-grid gap-2 mt-4">
                 <button 
                   className="btn btn-outline-secondary btn-sm"
-                  onClick={handleSavePoints}
+                  onClick={handleDownloadPoints}
                   disabled={points.length === 0}
                 >
                   Download Points

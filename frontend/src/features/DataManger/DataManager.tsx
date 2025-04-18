@@ -18,10 +18,12 @@ import {
 } from "../../store/selectors/recordSelectors";
 import { Modal } from "../../components/Modal/Modal";
 import { processGridsForPreview } from "../../store/thunks/cacheThunks";
+import { useParams } from "react-router";
 
 export const DataManager = () => {
   const dispatch = useAppDispatch();
   const [showDataManager, setShowDataManager] = useState<boolean>(false);
+  const { projectId } = useParams();
 
   const geometry = useAppSelector((state) => state.geometry.items);
   const { numFreq, maxFreq } = useAppSelector((state) => state.freq);
@@ -48,6 +50,7 @@ export const DataManager = () => {
   }
 
   const getRecordDataFromBackend = useCallback(() => {
+    if (!projectId) return;
     const files = Object.values(uploadFiles).filter(Boolean) as File[];
     
     if (JSON.stringify(savedGeometry) !== JSON.stringify(geometry) ||
@@ -58,6 +61,7 @@ export const DataManager = () => {
       
       dispatch(
         processGridsForPreview({
+          projectId: projectId,
           sgyFiles: files,
           geometryData: JSON.stringify(savedGeometry),
           maxSlowness: savedSlowSettings.maxSlow,

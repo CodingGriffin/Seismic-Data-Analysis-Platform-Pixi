@@ -9,7 +9,7 @@ import aiofiles
 import aiofiles.os as aios
 import numpy as np
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File, Request, status, Form
+from fastapi import FastAPI, BackgroundTasks, HTTPException, UploadFile, File, Request, status, Form, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -18,20 +18,8 @@ from starlette.responses import FileResponse
 from utils import close_and_remove_file, get_sheets_from_excel, get_geometry_from_sgy
 from utils import get_geometry_from_excel
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
-
-class VelocityLayer(BaseModel):
-    startDepth: float
-    endDepth: float
-    velocity: float
-    density: float
-    ignore: int
-
-class VelocityModel(BaseModel):
-    layers: List[VelocityLayer]
-
-#model storage
-velocity_models = {}
+from typing import List, Dict, Any, Optional, Union
+import json
 
 app = FastAPI()
 CHUNK_SIZE = 1024 * 1024  # adjust the chunk size as desired
@@ -48,6 +36,82 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+# data models
+class GeometryItem(BaseModel):
+    x: float
+    y: float
+    z: float
+    index: Union[str, int]  # Accept either string or integer
+
+class PlotLimits(BaseModel):
+    numFreq: int
+    maxFreq: float
+    numSlow: int
+    maxSlow: float
+
+class VelocityLayer(BaseModel):
+    startDepth: float
+    endDepth: float
+    velocity: float
+    density: float
+    ignore: int
+
+class VelocityModel(BaseModel):
+    layers: List[VelocityLayer]
+
+class RecordOption(BaseModel):
+    id:str
+    enabled: bool
+    weight: float
+    fileName: str
+
+class PickData(BaseModel):
+    d1: float
+    d2: float
+    frequency: float
+    d3: float
+    slowness: float
+    d4: float
+    d5: float
+class Grid(BaseModel):
+    name: str
+    data: list
+    shape: list
+    
+class OptionsModel(BaseModel):
+    geometry: List[GeometryItem]
+    records: List[RecordOption]
+    plotLimits: PlotLimits
+
+# In-memory storage (in a real app, use a database)
+project_data = {}
+
+# Initialize project data structure if it doesn't exist
+def init_project(project_id: str):
+    if project_id not in project_data:
+        project_data[project_id] = {
+            "geometry": [],
+            "records":[],
+            "plotLimits": {
+                "numFreq": 50,
+                "maxFreq": 50,
+                "numSlow": 50,
+                "maxSlow": 0.015
+            },
+            "freq":[],
+            "slow":[],
+            "grids":[],
+            "picks":[],
+            "model": {
+                "layers": [
+                    { "startDepth": 0.0, "endDepth": 30.0, "velocity": 760.0, "density": 2.0, "ignore": 0 },
+                    { "startDepth": 30.0, "endDepth": 44.0, "velocity": 1061.0, "density": 2.0, "ignore": 0 },
+                    { "startDepth": 44.0, "endDepth": 144.0, "velocity": 1270.657, "density": 2.0, "ignore": 0 },
+                ]
+            },
+        }
+    return project_data[project_id]
 
 dummy_freq_data = np.load("small_freq_0.npy")
 dummy_slow_data = np.load("small_slow_0.npy")
@@ -152,9 +216,10 @@ async def get_geometry_from_sgy_endpoint(
         raise HTTPException(400, "Failed to parse sgy file.")
     return geometry
 
-
-@app.post("/process/grids")
-async def dummy_grids_endpoint(
+#grids endpoint
+@app.post("/project/{project_id}/grids")
+async def dummy_grids_save(
+        project_id:str,
         background_tasks: BackgroundTasks,
         sgy_files: Annotated[list[UploadFile], File(...)],
         geometry_data: Annotated[str, Form(...)],  # Format as json
@@ -197,6 +262,9 @@ async def dummy_grids_endpoint(
         response_data["data"]["slow"] = {
             "data": dummy_slow_data.tolist(),
         }
+        
+        project_data[project_id]["freq"] = response_data["data"]["freq"]
+        project_data[project_id]["slow"] = response_data["data"]["slow"]
     
     # Add grid data for each sgy file as array elements
     for i, sgy_file in enumerate(sgy_files):
@@ -205,8 +273,31 @@ async def dummy_grids_endpoint(
             "data": dummy_grid_data.tolist(),
             "shape": dummy_grid_data.shape
         })
+        
+    project_data[project_id]["grids"] = response_data["data"]["grids"]
     
     return response_data
+
+@app.get("/project/{project_id}/grids")
+async def dummy_grids_get(project_id: str, return_freq_and_slow = True):
+    project = init_project(project_id)
+    response_data = {
+        "data": {
+            "grids": project["grids"]
+        }
+    }
+    
+    # Add frequency and slowness data if requested
+    if return_freq_and_slow:
+        response_data["data"]["freq"] = {
+            "data": project["freq"],
+        }
+        response_data["data"]["slow"] = {
+            "data": project["slow"],
+        }
+    
+    return response_data
+
 
 @app.post("/process/grid")
 async def dummy_grid_endpoint(
@@ -315,21 +406,69 @@ async def dummy_freq_endpoint_from_sgy(
         path=temp_file_path,
     )
 
-#model
+# Geometry endpoints
+# @app.get("/project/{project_id}/geometry")
+# async def get_geometry(project_id: str):
+#     project = init_project(project_id)
+#     return {"geometry": project["geometry"]}
+
+# @app.post("/project/{project_id}/geometry")
+# async def save_geometry(project_id: str, geometry: List[GeometryItem]):
+#     project = init_project(project_id)
+#     project["geometry"] = [item.dict() for item in geometry]
+#     return {"status": "success", "count": len(geometry)}
+
+# # Plot limits endpoints
+# @app.get("/project/{project_id}/pickPlotLimits")
+# async def get_plot_limits(project_id: str):
+#     project = init_project(project_id)
+#     return project["plotLimits"]
+
+# @app.post("/project/{project_id}/pickPlotLimits")
+# async def save_plot_limits(project_id: str, limits: PlotLimits):
+#     project = init_project(project_id)
+#     project["plotLimits"] = limits.dict()
+#     return {"status": "success"}
+
+# model endpoints
 @app.get("/project/{project_id}/model")
 async def get_velocity_model(project_id: str):
-    if project_id not in velocity_models:
-        # Return a default model if none exists
-        return {
-            "layers": [
-                    { "startDepth": 0.0, "endDepth": 30.0, "velocity": 760.0, "density": 2.0, "ignore": 0 },
-                    { "startDepth": 30.0, "endDepth": 44.0, "velocity": 1061.0, "density": 2.0, "ignore": 0 },
-                    { "startDepth": 44.0, "endDepth": 144.0, "velocity": 1270.657, "density": 2.0, "ignore": 0 },
-            ]
-        }
-    return velocity_models[project_id]
+    project = init_project(project_id)
+    return project["model"]
 
 @app.post("/project/{project_id}/model")
 async def save_velocity_model(project_id: str, model: VelocityModel):
-    velocity_models[project_id] = model.dict()
+    project = init_project(project_id)
+    project["model"] = model.dict()
     return {"status": "success"}
+
+#pick data endpoints
+@app.get("/project/{project_id}/options")
+async def get_options(project_id:str):
+    project = init_project(project_id)
+    response_data = {}
+    response_data["geometry"] = project["geometry"]
+    response_data["records"] = project["records"]
+    response_data["plotLimits"] = project["plotLimits"]
+    
+    return response_data
+
+@app.post("/project/{project_id}/options")
+async def save_options(project_id: str, options: OptionsModel):
+    project = init_project(project_id)
+    project["geometry"] = options.geometry
+    project["records"] = options.records
+    project["plotLimits"] = options.plotLimits
+    return {"status": "success"}
+
+#pick data endpoint
+@app.post("/project/{project_id}/picks")
+async def save_picks(project_id: str, picks: List[PickData]):
+    project = init_project(project_id)
+    project["picks"] = [item.dict() for item in picks]
+    return {"status": "success", "count": len(picks)}
+
+@app.get("/project/{project_id}/picks")
+async def get_picks(project_id:str):
+    project = init_project(project_id)
+    return project["picks"]
