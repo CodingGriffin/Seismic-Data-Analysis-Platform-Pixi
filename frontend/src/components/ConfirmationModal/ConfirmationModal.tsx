@@ -8,8 +8,10 @@ interface ConfirmationModalProps {
   isOpen: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  onAlternative?: () => void;
   confirmText?: string;
   cancelText?: string;
+  alternativeText?: string;
   confirmVariant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning';
 }
 
@@ -19,8 +21,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isOpen,
   onConfirm,
   onCancel,
+  onAlternative,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
+  alternativeText,
   confirmVariant = 'danger'
 }) => {
   return (
@@ -45,6 +49,14 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           >
             {cancelText}
           </Button>
+          {onAlternative && alternativeText && (
+            <Button
+              variant="primary"
+              onClick={onAlternative}
+            >
+              {alternativeText}
+            </Button>
+          )}
           <Button
             variant={confirmVariant}
             onClick={onConfirm}

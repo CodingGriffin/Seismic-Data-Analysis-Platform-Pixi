@@ -10,6 +10,7 @@ import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { addToast } from "../../store/slices/toastSlice";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import { ColorMapManager } from "./ColorMapManager/ColorMapManager";
+import ConfirmationModal from "../../components/ConfirmationModal/ConfirmationModal";
 
 import { 
   addPoint, 
@@ -353,6 +354,9 @@ export default function MainPlot() {
     }
   }, [points, dispatch]);
 
+  const [showUploadConfirmation, setShowUploadConfirmation] = useState(false);
+  const [pendingNewPoints, setPendingNewPoints] = useState<PickData[]>([]);
+
   const handleUploadPoints = useCallback(async () => {
     try {
       const [fileHandle] = await (window as unknown as Window & { showOpenFilePicker: Function }).showOpenFilePicker({
@@ -399,13 +403,17 @@ export default function MainPlot() {
         return;
       }
       
-      dispatch(setPoints(newPoints))
-      
-      dispatch(addToast({
-        message: `Successfully loaded ${newPoints.length} points`,
-        type: "success",
-        duration: 5000
-      }));
+      if (points.length > 0) {
+        setPendingNewPoints(newPoints);
+        setShowUploadConfirmation(true);
+      } else {
+        dispatch(setPoints(newPoints));
+        dispatch(addToast({
+          message: `Successfully loaded ${newPoints.length} points`,
+          type: "success",
+          duration: 5000
+        }));
+      }
       
     } catch (err) {
       console.error("Error uploading file:", err);
@@ -479,7 +487,34 @@ export default function MainPlot() {
       }
     }
   }, [dispatch, points]);
-  
+
+  const handleMergePoints = useCallback(() => {
+    if (pendingNewPoints.length > 0) {
+      const mergedPoints = [...points, ...pendingNewPoints];
+      dispatch(setPoints(mergedPoints));
+      dispatch(addToast({
+        message: `Added ${pendingNewPoints.length} points to existing ${points.length} points`,
+        type: "success",
+        duration: 5000
+      }));
+      setPendingNewPoints([]);
+      setShowUploadConfirmation(false);
+    }
+  }, [dispatch, points, pendingNewPoints]);
+
+  const handleReplacePoints = useCallback(() => {
+    if (pendingNewPoints.length > 0) {
+      dispatch(setPoints(pendingNewPoints));
+      dispatch(addToast({
+        message: `Replaced existing points with ${pendingNewPoints.length} new points`,
+        type: "success",
+        duration: 5000
+      }));
+      setPendingNewPoints([]);
+      setShowUploadConfirmation(false);
+    }
+  }, [dispatch, pendingNewPoints]);
+
   const handleSavePoints = () => {
     dispatch(savePicksByProjectId(projectId))
   }
@@ -759,6 +794,17 @@ export default function MainPlot() {
           </div>
         </div>
       </div>
+      <ConfirmationModal
+        isOpen={showUploadConfirmation}
+        title="Upload Points"
+        message={`You have ${points.length} existing points. Do you want to add the ${pendingNewPoints.length} new points to them or replace them?`}
+        onConfirm={handleMergePoints}
+        onCancel={() => setShowUploadConfirmation(false)}
+        onAlternative={handleReplacePoints}
+        confirmText="Add to Existing"
+        cancelText="Cancel"
+        alternativeText="Replace Existing"
+      />
     </div>
   );
 }
