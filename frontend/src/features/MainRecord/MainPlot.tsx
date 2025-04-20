@@ -519,6 +519,24 @@ export default function MainPlot() {
     dispatch(savePicksByProjectId(projectId))
   }
 
+  // Add a new handler function for clearing all points
+  const handleClearPoints = useCallback(() => {
+    if (points.length === 0) {
+      dispatch(addToast({
+        message: "No points to clear",
+        type: "info",
+        duration: 3000
+      }));
+      return;
+    }
+    
+    dispatch(setPoints([]));
+    dispatch(addToast({
+      message: "All points cleared",
+      type: "success",
+      duration: 3000
+    }));
+  }, [dispatch, points.length]);
 
   useEffect(() => {
     
@@ -619,17 +637,22 @@ export default function MainPlot() {
         <div className="d-flex gap-2">
           <button 
             className="btn btn-outline-secondary btn-sm"
+            onClick={handleSavePoints}
+          >
+            Save Picks
+          </button>
+          <button 
+            className="btn btn-outline-secondary btn-sm"
             onClick={handleUploadPoints}
-            disabled={points.length === 0}
           >
             Upload Picks
           </button>
           <button 
             className="btn btn-outline-secondary btn-sm"
-            onClick={handleSavePoints}
+            onClick={handleDownloadPoints}
             disabled={points.length === 0}
           >
-            Save Picks
+            Download Picks
           </button>
         </div>
       </SectionHeader>
@@ -770,11 +793,11 @@ export default function MainPlot() {
               {/* Action Buttons */}
               <div className="d-grid gap-2 mt-4">
                 <button 
-                  className="btn btn-outline-secondary btn-sm"
-                  onClick={handleDownloadPoints}
+                  className="btn btn-outline-danger btn-sm"
+                  onClick={handleClearPoints}
                   disabled={points.length === 0}
                 >
-                  Download Picks
+                  Clear All Picks
                 </button>
               </div>
               

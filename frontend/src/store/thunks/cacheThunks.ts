@@ -267,14 +267,14 @@ export const savePicksByProjectId = createAsyncThunk(
     const state = getState() as RootState;
     const points = state.plot.points;
     
-    if (points.length === 0) {
-      dispatch(addToast({
-        message: "No points to save",
-        type: "warning",
-        duration: 5000
-      }));
-      return;
-    }
+    // if (points.length === 0) {
+    //   dispatch(addToast({
+    //     message: "No points to save",
+    //     type: "warning",
+    //     duration: 5000
+    //   }));
+    //   return;
+    // }
 
     try {
       const response = await savePicks(projectId, points);
