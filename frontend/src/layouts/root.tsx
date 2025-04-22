@@ -3,6 +3,7 @@ import { Provider } from "react-redux";
 import { store } from "../store";
 import { Toast } from "../components/Toast/Toast";
 import "../App.scss";
+
 export default function RootLayout() {
     const { projectId } = useParams();
 

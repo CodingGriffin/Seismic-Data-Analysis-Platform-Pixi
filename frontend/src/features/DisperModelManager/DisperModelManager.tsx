@@ -16,7 +16,6 @@ import { BasePlot } from "../../components/BasePlot/BasePlot";
 import { FileControls } from "../../components/FileControls/FileControls";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import { useParams } from "react-router";
-import { saveVelocityModel, getVelocityModel } from '../../services/api';
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { addToast } from "../../store/slices/toastSlice";
 
@@ -32,11 +31,12 @@ const VELOCITY_MARGIN_FACTOR = 1.1; // 110% of max velocity
 
 export const DisperModelManager = () => {
   const {
-    state: { layers, asceVersion, displayUnits },
+    state: { layers, asceVersion, displayUnits, modelAxisLimits },
     setLayers,
     splitLayer,
     deleteLayer,
     setAsceVersion,
+    setModelAxisLimits,
     ToFeet,
     ToMeter,
   } = useDisper();
@@ -55,13 +55,6 @@ export const DisperModelManager = () => {
     height: 0,
   });
 
-  const [axisLimits, setAxisLimits] = useState({
-    xmin: 50,
-    xmax: 1400,
-    ymin: 0,
-    ymax: 100,
-  });
-
   const plotRef = useRef<HTMLDivElement>(null);
 
   // Update coordinate helpers to use dynamic dimensions
@@ -70,43 +63,43 @@ export const DisperModelManager = () => {
       toScreenX: (value: number) => {
         // Add 10px offset for the left margin
         return (
-          ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
+          ((value - modelAxisLimits.xmin) / (modelAxisLimits.xmax - modelAxisLimits.xmin)) *
           (plotDimensions.width)
         );
       },
       fromScreenX: (x: number) => {
         // Subtract the 10px offset and adjust for margin
         const adjustedX = Math.max(0, x);
-        if (adjustedX <= 0) return axisLimits.xmin;
+        if (adjustedX <= 0) return modelAxisLimits.xmin;
 
         const value =
-          axisLimits.xmin +
+          modelAxisLimits.xmin +
           (adjustedX / (plotDimensions.width)) *
-          (axisLimits.xmax - axisLimits.xmin);
+          (modelAxisLimits.xmax - modelAxisLimits.xmin);
 
         return Math.round(value * 10) / 10;
       },
       toScreenY: (value: number) => {
         // Add 10px offset for the top margin and subtract from height for bottom margin
         return (
-          ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
+          ((value - modelAxisLimits.ymin) / (modelAxisLimits.ymax - modelAxisLimits.ymin)) *
           (plotDimensions.height)
         );
       },
       fromScreenY: (y: number) => {
         // Subtract the 10px offset and adjust for margins
         const adjustedY = Math.max(0, y);
-        if (adjustedY <= 0) return axisLimits.ymin;
+        if (adjustedY <= 0) return modelAxisLimits.ymin;
 
         const value =
-          axisLimits.ymin +
+          modelAxisLimits.ymin +
           (adjustedY / (plotDimensions.height)) *
-          (axisLimits.ymax - axisLimits.ymin);
+          (modelAxisLimits.ymax - modelAxisLimits.ymin);
 
         return Math.round(value * 10) / 10;
       },
     }),
-    [axisLimits, plotDimensions]
+    [modelAxisLimits, plotDimensions]
   );
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,7 +138,7 @@ export const DisperModelManager = () => {
           const velocityValues = data.map((d) => d.velocity);
           const maxVelocity = Math.max(...velocityValues);
 
-          const newAxisLimits = {
+          const newmodelAxisLimits = {
             xmin: 0,
             xmax: Math.ceil(maxVelocity * VELOCITY_MARGIN_FACTOR), // Set max velocity to 110% of highest velocity
             ymin: 0,
@@ -153,7 +146,7 @@ export const DisperModelManager = () => {
           };
 
           setLayers(newLayers);
-          setAxisLimits(newAxisLimits);
+          setModelAxisLimits(newmodelAxisLimits);
         }
       };
       reader.readAsText(file);
@@ -202,41 +195,41 @@ export const DisperModelManager = () => {
   const handleDrag = useCallback(
     (x: number, y: number) => {
       if (!dragState) return;
-
-      const newLayers = [...layers];
-
+  
+      const newLayers = layers.map(layer => ({...layer}));
+  
       if (dragState.type === "velocity") {
-        // Handle velocity drag (red line)
         let newVelocity = coordinateHelpers.fromScreenX(x);
-
-        // Special handling for near-zero/xmin values
+  
         if (x <= 10) {
-          newVelocity = axisLimits.xmin;
+          newVelocity = modelAxisLimits.xmin;
         }
-
-        // Constrain velocity between xmin and xmax
+  
         const constrainedVelocity = Math.max(
-          axisLimits.xmin,
-          Math.min(axisLimits.xmax, newVelocity)
+          modelAxisLimits.xmin,
+          Math.min(modelAxisLimits.xmax, newVelocity)
         );
-
-        newLayers[dragState.layerIndex].velocity = constrainedVelocity;
+  
+        newLayers[dragState.layerIndex] = {
+          ...newLayers[dragState.layerIndex],
+          velocity: constrainedVelocity
+        };
+        
         setLayers(newLayers);
-
-        // Update tooltip while dragging
+  
         setTooltipContent(
           `Velocity: ${displayUnits === "ft"
             ? ToFeet(constrainedVelocity).toFixed(1)
             : constrainedVelocity.toFixed(1)
           } ${displayUnits}/s`
         );
-      } else {
+      } else if (dragState.type === "boundary") {
         // Handle boundary drag (black line)
         const newDepth = coordinateHelpers.fromScreenY(y);
 
         // Determine the valid range for the current boundary
         let minDepth = 0;
-        let maxDepth = axisLimits.ymax;
+        let maxDepth = modelAxisLimits.ymax;
 
         if (dragState.layerIndex === 0) {
           // First layer's start depth
@@ -255,28 +248,40 @@ export const DisperModelManager = () => {
           minDepth,
           Math.min(maxDepth, newDepth)
         );
-
-        // Update the appropriate layer boundaries
+  
         if (dragState.layerIndex === 0) {
-          newLayers[0].startDepth = constrainedDepth;
+          newLayers[0] = {
+            ...newLayers[0],
+            startDepth: constrainedDepth
+          }
         } else if (dragState.layerIndex === layers.length) {
-          newLayers[layers.length - 1].endDepth = constrainedDepth;
+          newLayers[layers.length - 1] = {
+            ...newLayers[layers.length - 1],
+            endDepth: constrainedDepth
+          };
         } else {
-          newLayers[dragState.layerIndex - 1].endDepth = constrainedDepth;
-          newLayers[dragState.layerIndex].startDepth = constrainedDepth;
+          newLayers[dragState.layerIndex - 1] = {
+            ...newLayers[dragState.layerIndex - 1],
+            endDepth: constrainedDepth
+          };
+          
+          newLayers[dragState.layerIndex] = {
+            ...newLayers[dragState.layerIndex],
+            startDepth: constrainedDepth
+          };
         }
-
+  
         setLayers(newLayers);
-        // Update tooltip while dragging
+        
         setTooltipContent(
           `Depth: ${displayUnits === "ft"
             ? ToFeet(constrainedDepth).toFixed(1)
             : constrainedDepth.toFixed(1)
-          } ${displayUnits}/s`
+          } ${displayUnits}`
         );
       }
     },
-    [dragState, layers, coordinateHelpers, axisLimits, displayUnits]
+    [dragState, layers, coordinateHelpers, modelAxisLimits, displayUnits, ToFeet]
   );
 
   const handleHover = useCallback(
@@ -332,9 +337,9 @@ export const DisperModelManager = () => {
         velocity: current.velocity,
       });
 
-      // For the last layer, use max(50, axisLimits.ymax) as the end depth
+      // For the last layer, use max(50, modelAxisLimits.ymax) as the end depth
       const endDepth =
-        i === layers.length - 1 ? axisLimits.ymax : current.endDepth;
+        i === layers.length - 1 ? modelAxisLimits.ymax : current.endDepth;
 
       OutputData.push({
         depth: endDepth,
@@ -386,7 +391,7 @@ export const DisperModelManager = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }
-  }, [layers, axisLimits.ymax]);
+  }, [layers, modelAxisLimits.ymax]);
 
   // Add click handler for the plot area
   const handlePlotClick = (event: React.PointerEvent) => {
@@ -402,12 +407,12 @@ export const DisperModelManager = () => {
           const layer = layers[i];
           const startY = coordinateHelpers.toScreenY(layer.startDepth);
           const endY = coordinateHelpers.toScreenY(layer.endDepth);
-
+  
           if (y >= startY && y <= endY) {
             const newDepth =
-              axisLimits.ymin +
-              (y / plotDimensions.height) * (axisLimits.ymax - axisLimits.ymin);
-
+              modelAxisLimits.ymin +
+              (y / plotDimensions.height) * (modelAxisLimits.ymax - modelAxisLimits.ymin);
+  
             if (newDepth > layer.startDepth && newDepth < layer.endDepth) {
               if (event.shiftKey) {
                 splitLayer(i, newDepth);
@@ -438,12 +443,18 @@ export const DisperModelManager = () => {
         if (clickDepth >= layer.startDepth && 
             (i === layers.length - 1 || clickDepth <= layer.endDepth)) {
           
-          // Create a new layers array with updated velocity
-          const newLayers = [...layers];
-          newLayers[i].velocity = Math.max(
-            axisLimits.xmin,
-            Math.min(axisLimits.xmax, clickVelocity)
-          );
+          const newLayers = layers.map((l, index) => {
+            if (index === i) {
+              return {
+                ...l,
+                velocity: Math.max(
+                  modelAxisLimits.xmin,
+                  Math.min(modelAxisLimits.xmax, clickVelocity)
+                )
+              };
+            }
+            return {...l};
+          });
           
           // Update the layers
           setLayers(newLayers);
@@ -469,16 +480,17 @@ export const DisperModelManager = () => {
 
   useEffect(() => {
     if (layers.length > 0) {
-      const newLayers = [...layers];
-      newLayers[layers.length - 1].endDepth = axisLimits.ymax;
+      const newLayers = layers.map((layer, index) => {
+        if (index === layers.length - 1) {
+          return { ...layer, endDepth: modelAxisLimits.ymax };
+        }
+        return { ...layer };
+      });
+      
       setLayers(newLayers);
     }
-  }, [axisLimits.ymax]);
+  }, [modelAxisLimits.ymax]);
 
-  useEffect(() => {
-    console.log("Layers Changed:", layers);
-  }, [layers])
-  
   const handleDimensionChange = useCallback(
     (dimensions: { width: number; height: number }) => {
       setPlotDimensions(dimensions);
@@ -486,54 +498,9 @@ export const DisperModelManager = () => {
     []
   );
 
-  // load model from backend when component mounts
-  useEffect(() => {
-    const fetchVelocityModel = async () => {
-      if (!projectId) return;
-      
-      try {
-        const response = await getVelocityModel(projectId);
-        if (response.data && response.data.layers) {
-          setLayers(response.data.layers);
-        }
-      } catch (error) {
-        console.error("Failed to load velocity model:", error);
-      }
-    };
-    
-    fetchVelocityModel();
-  }, [projectId]);
-
-  // Add save function
-  const handleSaveModel = async () => {
-    if (!projectId) {
-      dispatch(addToast({ message: "No project ID available", type:"error"}));
-      return;
-    }
-    
-    setIsSaving(true);
-    try {
-      await saveVelocityModel(projectId, { layers });
-      dispatch(addToast({ message: "Velocity model saved successfully", type:"success"}));
-    } catch (error) {
-      console.error("Failed to save velocity model:", error);
-      dispatch(addToast({ message: "Failed to save velocity model", type:"error"}));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <div className="card shadow-sm">
-      <SectionHeader title="Dispersion Model">
-        <button 
-          className="btn btn-primary btn-sm" 
-          onClick={handleSaveModel}
-          disabled={isSaving}
-        >
-          {isSaving ? 'Saving...' : 'Save Model'}
-        </button>
-      </SectionHeader>
+      <SectionHeader title="Dispersion Model"/>
       <div className="card-body">
         <div className="row g-4">
           <div className="col d-flex">
@@ -553,18 +520,18 @@ export const DisperModelManager = () => {
                 type="number"
                 value={
                   displayUnits === "ft"
-                    ? ToFeet(axisLimits.ymax)
-                    : axisLimits.ymax
+                    ? ToFeet(modelAxisLimits.ymax)
+                    : modelAxisLimits.ymax
                 }
                 onChange={(e) => {
                   const value = parseFloat(e.target.value);
                   if (value < 0) return;
                   const valueInMeters =
                     displayUnits === "ft" ? ToMeter(value) : value;
-                  setAxisLimits((prev) => ({
-                    ...prev,
+                  setModelAxisLimits({
+                    ...modelAxisLimits,
                     ymax: valueInMeters,
-                  }));
+                  });
                 }}
                 className="form-control form-control-sm w-50"
                 step={displayUnits === "ft" ? "0.5" : "0.1"}
@@ -578,18 +545,18 @@ export const DisperModelManager = () => {
                 type="number"
                 value={
                   displayUnits === "ft"
-                    ? ToFeet(axisLimits.ymin)
-                    : axisLimits.ymin
+                    ? ToFeet(modelAxisLimits.ymin)
+                    : modelAxisLimits.ymin
                 }
                 onChange={(e) => {
                   const value = parseFloat(e.target.value);
                   if (value < 0) return;
                   const valueInMeters =
                     displayUnits === "ft" ? ToMeter(value) : value;
-                  setAxisLimits((prev) => ({
-                    ...prev,
+                  setModelAxisLimits({
+                    ...modelAxisLimits,
                     ymin: valueInMeters,
-                  }));
+                  });
                 }}
                 className="form-control form-control-sm w-50"
                 step={displayUnits === "ft" ? "0.5" : "0.1"}
@@ -605,18 +572,18 @@ export const DisperModelManager = () => {
                 type="number"
                 value={
                   displayUnits === "ft"
-                    ? ToFeet(axisLimits.xmax)
-                    : axisLimits.xmax
+                    ? ToFeet(modelAxisLimits.xmax)
+                    : modelAxisLimits.xmax
                 }
                 onChange={(e) => {
                   const value = parseFloat(e.target.value);
                   if (value < 0) return;
                   const valueInMeters =
                     displayUnits === "ft" ? ToMeter(value) : value;
-                  setAxisLimits((prev) => ({
-                    ...prev,
+                  setModelAxisLimits({
+                    ...modelAxisLimits,
                     xmax: valueInMeters,
-                  }));
+                  });
                 }}
                 className="form-control form-control-sm w-50"
                 step={displayUnits === "ft" ? "1.0" : "0.5"}
@@ -630,18 +597,18 @@ export const DisperModelManager = () => {
                 type="number"
                 value={
                   displayUnits === "ft"
-                    ? ToFeet(axisLimits.xmin)
-                    : axisLimits.xmin
+                    ? ToFeet(modelAxisLimits.xmin)
+                    : modelAxisLimits.xmin
                 }
                 onChange={(e) => {
                   const value = parseFloat(e.target.value);
                   if (value < 0) return;
                   const valueInMeters =
                     displayUnits === "ft" ? ToMeter(value) : value;
-                  setAxisLimits((prev) => ({
-                    ...prev,
+                  setModelAxisLimits({
+                    ...modelAxisLimits,
                     xmin: valueInMeters,
-                  }));
+                  });
                 }}
                 className="form-control form-control-sm w-50"
                 min="0"
@@ -673,10 +640,10 @@ export const DisperModelManager = () => {
           <BasePlot
             xLabel={`Velocity (${displayUnits}/s)`}
             yLabel={`Depth (${displayUnits})`}
-            xMin={axisLimits.xmin}
-            xMax={axisLimits.xmax}
-            yMin={axisLimits.ymax}
-            yMax={axisLimits.ymin}
+            xMin={modelAxisLimits.xmin}
+            xMax={modelAxisLimits.xmax}
+            yMin={modelAxisLimits.ymax}
+            yMax={modelAxisLimits.ymin}
             display={(value) =>
               displayUnits === "ft" ? ToFeet(value).toFixed(3) : value.toFixed(3)
             }
@@ -704,10 +671,10 @@ export const DisperModelManager = () => {
                   g.setStrokeStyle({ width: 1, color: 0xeeeeee, alpha: 0.8 });
 
                   // Vertical grid lines (velocity)
-                  const velocityStep = (axisLimits.xmax - axisLimits.xmin) / 10;
+                  const velocityStep = (modelAxisLimits.xmax - modelAxisLimits.xmin) / 10;
                   for (
-                    let v = axisLimits.xmin;
-                    v <= axisLimits.xmax;
+                    let v = modelAxisLimits.xmin;
+                    v <= modelAxisLimits.xmax;
                     v += velocityStep
                   ) {
                     const x = coordinateHelpers.toScreenX(v);
@@ -716,10 +683,10 @@ export const DisperModelManager = () => {
                   }
 
                   // Horizontal grid lines (depth)
-                  const depthStep = (axisLimits.ymax - axisLimits.ymin) / 10;
+                  const depthStep = (modelAxisLimits.ymax - modelAxisLimits.ymin) / 10;
                   for (
-                    let d = axisLimits.ymin;
-                    d <= axisLimits.ymax;
+                    let d = modelAxisLimits.ymin;
+                    d <= modelAxisLimits.ymax;
                     d += depthStep
                   ) {
                     const y = coordinateHelpers.toScreenY(d);

@@ -99,13 +99,22 @@ export const processSlownessWithParams = async (
   return api.post('/process/frequency_with_params', formData);
 };
 
-//models
-export const saveVelocityModel = async (projectId: string, modelData: any) => {
-  return api.post(`/project/${projectId}/model`, modelData);
+//disper-settings
+export const saveDisperSettings = async (projectId: string, disperData: any) => {
+  return api.post(`/project/${projectId}/disper-settings`, disperData);
 };
 
-export const getVelocityModel = async (projectId: string) => {
-  return api.get(`/project/${projectId}/model`);
+export const getDisperSettings = async (projectId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/project/${projectId}/disper-settings`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch disper settings: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching disper settings:', error);
+    throw error;
+  }
 };
 
 //options

@@ -50,15 +50,37 @@ class PlotLimits(BaseModel):
     numSlow: int
     maxSlow: float
 
-class VelocityLayer(BaseModel):
+class Layer(BaseModel):
     startDepth: float
     endDepth: float
     velocity: float
     density: float
     ignore: int
 
-class VelocityModel(BaseModel):
-    layers: List[VelocityLayer]
+class DisperSettingsModel(BaseModel):
+    displayUnits: str
+    #model settings
+    layers: List[Layer]
+    asceVersion: str
+    modelAxisLimits: dict = {
+        "xmin": float,
+        "xmax": float,
+        "ymin": float,
+        "ymax": float
+    }
+    #curve settings
+    curveAxisLimits: dict = {
+        "xmin": float,
+        "xmax": float,
+        "ymin": float,
+        "ymax": float
+    }
+    numPoints: int
+    velocityUnit: str
+    periodUnit: str
+    velocityReversed: bool
+    periodReversed: bool
+    axesSwapped: bool
 
 class RecordOption(BaseModel):
     id:str
@@ -103,13 +125,33 @@ def init_project(project_id: str):
             "slow":[],
             "grids":[],
             "picks":[],
-            "model": {
+            "disperSettings": {
                 "layers": [
                     { "startDepth": 0.0, "endDepth": 30.0, "velocity": 760.0, "density": 2.0, "ignore": 0 },
                     { "startDepth": 30.0, "endDepth": 44.0, "velocity": 1061.0, "density": 2.0, "ignore": 0 },
                     { "startDepth": 44.0, "endDepth": 144.0, "velocity": 1270.657, "density": 2.0, "ignore": 0 },
-                ]
-            },
+                ],
+                "displayUnits": "m",
+                "asceVersion": "ASCE 7-22",
+                "curveAxisLimits": {
+                    "xmin": 0.001,
+                    "xmax": 0.6,
+                    "ymin": 30,
+                    "ymax": 500
+                },
+                "modelAxisLimits": {
+                    "xmin": 50,
+                    "xmax": 1400,
+                    "ymin": 0,
+                    "ymax": 144
+                },
+                "numPoints": 10,
+                "velocityUnit": "velocity",
+                "periodUnit": "period",
+                "velocityReversed": False,
+                "periodReversed": False,
+                "axesSwapped": False
+            }
         }
     return project_data[project_id]
 
@@ -431,15 +473,15 @@ async def dummy_freq_endpoint_from_sgy(
 #     return {"status": "success"}
 
 # model endpoints
-@app.get("/project/{project_id}/model")
-async def get_velocity_model(project_id: str):
+@app.get("/project/{project_id}/disper-settings")
+async def get_disper_settings(project_id: str):
     project = init_project(project_id)
-    return project["model"]
+    return project["disperSettings"]
 
-@app.post("/project/{project_id}/model")
-async def save_velocity_model(project_id: str, model: VelocityModel):
+@app.post("/project/{project_id}/disper-settings")
+async def save_disper_settings(project_id: str, model: DisperSettingsModel):
     project = init_project(project_id)
-    project["model"] = model.dict()
+    project["disperSettings"] = model.dict()
     return {"status": "success"}
 
 #pick data endpoints

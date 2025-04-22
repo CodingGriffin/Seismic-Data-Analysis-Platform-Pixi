@@ -21,10 +21,36 @@ const ABS_MIN_FREQUENCY = 0.0000000001;
 
 export const DisperCurveManager = () => {
   const {
-    state: { layers, displayUnits, pickData, asceVersion, dataLimits },
+    state: { 
+      layers, 
+      displayUnits, 
+      pickData, 
+      asceVersion, 
+      dataLimits, 
+      curveAxisLimits,
+      numPoints,
+      rmseVel,
+      vs30,
+      siteClass,
+      velocityUnit,
+      periodUnit,
+      velocityReversed,
+      periodReversed,
+      axesSwapped
+     },
     ToMeter,
     ToFeet,
     setPickData,
+    setCurveAxisLimits,
+    setNumPoints,
+    setRmseVel,
+    setVs30,
+    setSiteClass,
+    setVelocityUnit,
+    setPeriodUnit,
+    setVelocityReversed,
+    setPeriodReversed,
+    setAxesSwapped
   } = useDisper();
 
   const [curvePoints, setCurvePoints] = useState<Point[]>([]);
@@ -34,75 +60,52 @@ export const DisperCurveManager = () => {
   const [hoveredPoint, setHoveredPoint] = useState<Point | undefined>(
     undefined
   );
-  const [numPoints, setNumPoints] = useState<number>(10);
-  const [rmseVel, setRmseVel] = useState<number | null>(null);
-  const [axisLimits, setAxisLimits] = useState({
-    xmin: 0.001, // Period min
-    xmax: 0.6, // Period max
-    ymin: 30, // Velocity min
-    ymax: 500, // Velocity max
-  });
-
+  
   const [plotDimensions, setPlotDimensions] = useState({
     width: 640,
     height: 480,
   });
-
+  
   const plotRef = useRef<any>(null);
-  const [vs30, setVs30] = useState<number | null>(null);
-  const [siteClass, setSiteClass] = useState<string | null>(null);
-  const [velocityUnit, setVelocityUnit] = useState<"velocity" | "slowness">(
-    "velocity"
-  );
-  const [periodUnit, setPeriodUnit] = useState<"period" | "frequency">(
-    "period"
-  );
-  const [velocityReversed, setVelocityReversed] = useState(false);
-  const [periodReversed, setPeriodReversed] = useState(false);
-  const [axesSwapped, setAxesSwapped] = useState(false);
 
   const coordinateHelpers = useMemo(
     () => ({
       toScreenX: (value: number) => {
-        // Add 10px offset for the left margin
         return (
-          ((value - axisLimits.xmin) / (axisLimits.xmax - axisLimits.xmin)) *
+          ((value - curveAxisLimits.xmin) / (curveAxisLimits.xmax - curveAxisLimits.xmin)) *
           (plotDimensions.width)
         );
       },
       fromScreenX: (x: number) => {
-        // Subtract the 10px offset and adjust for margin
         const adjustedX = Math.max(0, x);
-        if (adjustedX <= 0) return axisLimits.xmin;
+        if (adjustedX <= 0) return curveAxisLimits.xmin;
 
         const value =
-          axisLimits.xmin +
+          curveAxisLimits.xmin +
           (adjustedX / (plotDimensions.width)) *
-          (axisLimits.xmax - axisLimits.xmin);
+          (curveAxisLimits.xmax - curveAxisLimits.xmin);
 
         return Math.round(value * 10000) / 10000;
       },
       toScreenY: (value: number) => {
-        // Add 10px offset for the top margin and subtract from height for bottom margin
         return (
-          ((value - axisLimits.ymin) / (axisLimits.ymax - axisLimits.ymin)) *
+          ((value - curveAxisLimits.ymin) / (curveAxisLimits.ymax - curveAxisLimits.ymin)) *
           (plotDimensions.height)
         );
       },
       fromScreenY: (y: number) => {
-        // Subtract the 10px offset and adjust for margins
         const adjustedY = Math.max(0, y);
-        if (adjustedY <= 0) return axisLimits.ymin;
+        if (adjustedY <= 0) return curveAxisLimits.ymin;
 
         const value =
-          axisLimits.ymin +
+          curveAxisLimits.ymin +
           (adjustedY / (plotDimensions.height)) *
-          (axisLimits.ymax - axisLimits.ymin);
+          (curveAxisLimits.ymax - curveAxisLimits.ymin);
 
         return Math.round(value * 10000) / 10000;
       },
     }),
-    [axisLimits, plotDimensions]
+    [curveAxisLimits, plotDimensions]
   );
 
   const convertUnit = (value: number, from: string, to: string): number => {
@@ -196,24 +199,14 @@ export const DisperCurveManager = () => {
   };
 
   const handleUnitChange = (type: "velocity" | "period", newUnit: string) => {
-    const updateFn = type === "velocity" ? setVelocityUnit : setPeriodUnit;
     const currentUnit = type === "velocity" ? velocityUnit : periodUnit;
 
     if (newUnit !== currentUnit) {
-      updateFn(newUnit as any);
-      // setAxisLimits((prev) => ({
-      //   ...prev,
-      //   [type === "velocity" ? "ymin" : "xmin"]: convertUnit(
-      //     prev[type === "velocity" ? "ymax" : "xmax"],
-      //     currentUnit,
-      //     newUnit
-      //   ),
-      //   [type === "velocity" ? "ymax" : "xmax"]: convertUnit(
-      //     prev[type === "velocity" ? "ymin" : "xmin"],
-      //     currentUnit,
-      //     newUnit
-      //   ),
-      // }));
+      if (type === "velocity") {
+        setVelocityUnit(newUnit as "velocity" | "slowness");
+      } else {
+        setPeriodUnit(newUnit as "period" | "frequency");
+      }
     }
   };
 
@@ -229,52 +222,40 @@ export const DisperCurveManager = () => {
       // Period/Frequency limits
       const minLimit = periodUnit === "period" ? ABS_MIN_PERIOD : ABS_MIN_FREQUENCY;
 
-      setAxisLimits((prev) => {
-        let newLimits = { ...prev };
+      let newLimits = { ...curveAxisLimits };
 
-        if (axis === "xmin") {
-          // Ensure min is at least minLimit
-          newLimits.xmin = Math.max(minLimit, numValue);
-          // If min becomes greater than or equal to max, adjust max
-          if (newLimits.xmin >= newLimits.xmax) {
-            newLimits.xmax =
-              newLimits.xmin + (periodUnit === "period" ? ABS_MIN_PERIOD : ABS_MIN_FREQUENCY);
-          }
-        } else {
-          // xmax
-          // Ensure max is greater than min by at least the minimum delta
-          const minDelta = periodUnit === "period" ? ABS_MIN_PERIOD : ABS_MIN_FREQUENCY;
-          newLimits.xmax = Math.max(newLimits.xmin + minDelta, numValue);
+      if (axis === "xmin") {
+        newLimits.xmin = Math.max(minLimit, numValue);
+        if (newLimits.xmin >= newLimits.xmax) {
+          newLimits.xmax =
+            newLimits.xmin + (periodUnit === "period" ? ABS_MIN_PERIOD : ABS_MIN_FREQUENCY);
         }
+      } else {
+        const minDelta = periodUnit === "period" ? ABS_MIN_PERIOD : ABS_MIN_FREQUENCY;
+        newLimits.xmax = Math.max(newLimits.xmin + minDelta, numValue);
+      }
 
-        return newLimits;
-      });
+      setCurveAxisLimits(newLimits);
     } else {
       // Velocity/Slowness limits
       const minLimit = velocityUnit === "velocity" ? ABS_MIN_VELOCITY : ABS_MIN_SLOWNESS;
       const valueInMeters =
         displayUnits === "ft" ? ToMeter(numValue) : numValue;
 
-      setAxisLimits((prev) => {
-        let newLimits = { ...prev };
+      let newLimits = { ...curveAxisLimits };
 
-        if (axis === "ymin") {
-          // Ensure min is at least minLimit
-          newLimits.ymin = Math.max(minLimit, valueInMeters);
-          // If min becomes greater than or equal to max, adjust max
-          if (newLimits.ymin >= newLimits.ymax) {
-            newLimits.ymax =
-              newLimits.ymin + (velocityUnit === "velocity" ? ABS_MIN_VELOCITY : ABS_MIN_SLOWNESS);
-          }
-        } else {
-          // ymax
-          // Ensure max is greater than min by at least the minimum delta
-          const minDelta = velocityUnit === "velocity" ? ABS_MIN_VELOCITY : ABS_MIN_SLOWNESS;
-          newLimits.ymax = Math.max(newLimits.ymin + minDelta, valueInMeters);
+      if (axis === "ymin") {
+        newLimits.ymin = Math.max(minLimit, valueInMeters);
+        if (newLimits.ymin >= newLimits.ymax) {
+          newLimits.ymax =
+            newLimits.ymin + (velocityUnit === "velocity" ? ABS_MIN_VELOCITY : ABS_MIN_SLOWNESS);
         }
+      } else {
+        const minDelta = velocityUnit === "velocity" ? ABS_MIN_VELOCITY : ABS_MIN_SLOWNESS;
+        newLimits.ymax = Math.max(newLimits.ymin + minDelta, valueInMeters);
+      }
 
-        return newLimits;
-      });
+      setCurveAxisLimits(newLimits);
     }
   };
 
@@ -288,8 +269,8 @@ export const DisperCurveManager = () => {
   };
 
   const handleSwapAxes = () => {
-    setAxesSwapped((prev) => !prev);
-    // setAxisLimits(prev => ({
+    setAxesSwapped(!axesSwapped);
+    // setCurveAxisLimits(prev => ({
     //   xmin: prev.ymin,
     //   xmax: prev.ymax,
     //   ymin: prev.xmin,
@@ -299,15 +280,15 @@ export const DisperCurveManager = () => {
 
   const handleReverseAxis = (type: "velocity" | "period") => {
     if (type === "velocity") {
-      setVelocityReversed((prev) => !prev);
-      // setAxisLimits(prev => ({
+      setVelocityReversed(!velocityReversed);
+      // setCurveAxisLimits(prev => ({
       //   ...prev,
       //   ymin: prev.ymax,
       //   ymax: prev.ymin
       // }));
     } else {
-      setPeriodReversed((prev) => !prev);
-      // setAxisLimits(prev => ({
+      setPeriodReversed(!periodReversed);
+      // setCurveAxisLimits(prev => ({
       //   ...prev,
       //   xmin: prev.xmax,
       //   xmax: prev.xmin
@@ -381,7 +362,7 @@ export const DisperCurveManager = () => {
         : 1 / dataLimits.minSlowness
     );
 
-    setAxisLimits(() =>
+    setCurveAxisLimits(
       axesSwapped
         ? {
           xmin: ymin,
@@ -399,8 +380,8 @@ export const DisperCurveManager = () => {
   }, [dataLimits, axesSwapped, periodUnit, velocityUnit]);
 
   useEffect(() => {
-    console.log("axisLimits:", axisLimits, dataLimits);
-  }, [axisLimits]);
+    console.log("curveAxisLimits:", curveAxisLimits, dataLimits);
+  }, [curveAxisLimits]);
 
   useEffect(() => {
     hoveredPoint
@@ -441,7 +422,7 @@ export const DisperCurveManager = () => {
   ]);
 
   useEffect(() => {
-    // console.log("Pick Points After Changed:", axisLimits, pickPoints);
+    // console.log("Pick Points After Changed:", curveAxisLimits, pickPoints);
   }, [pickPoints]);
 
   useEffect(() => {
@@ -623,7 +604,7 @@ export const DisperCurveManager = () => {
     }
   }, [
     layers,
-    axisLimits,
+    curveAxisLimits,
     numPoints,
     asceVersion,
     periodUnit,
@@ -704,7 +685,7 @@ export const DisperCurveManager = () => {
                 </label>
                 <input
                   type="number"
-                  value={displayUnits === "ft" ? ToFeet(axisLimits.ymax) : axisLimits.ymax}
+                  value={displayUnits === "ft" ? ToFeet(curveAxisLimits.ymax) : curveAxisLimits.ymax}
                   onChange={(e) => handleAxisLimitChange("ymax", e.target.value)}
                   className="form-control form-control-sm w-50"
                   step={velocityUnit === "velocity" ? "1" : "0.0001"}
@@ -716,7 +697,7 @@ export const DisperCurveManager = () => {
                 </label>
                 <input
                   type="number"
-                  value={displayUnits === "ft" ? ToFeet(axisLimits.ymin) : axisLimits.ymin}
+                  value={displayUnits === "ft" ? ToFeet(curveAxisLimits.ymin) : curveAxisLimits.ymin}
                   onChange={(e) => handleAxisLimitChange("ymin", e.target.value)}
                   className="form-control form-control-sm w-50"
                   step={velocityUnit === "velocity" ? "1" : "0.0001"}
@@ -770,7 +751,7 @@ export const DisperCurveManager = () => {
                 </label>
                 <input
                   type="number"
-                  value={axisLimits.xmax}
+                  value={curveAxisLimits.xmax}
                   onChange={(e) => handleAxisLimitChange("xmax", e.target.value)}
                   className="form-control form-control-sm w-50"
                   step={periodUnit === "period" ? "0.001" : "0.1"}
@@ -782,7 +763,7 @@ export const DisperCurveManager = () => {
                 </label>
                 <input
                   type="number"
-                  value={axisLimits.xmin}
+                  value={curveAxisLimits.xmin}
                   onChange={(e) => handleAxisLimitChange("xmin", e.target.value)}
                   className="form-control form-control-sm w-50"
                   step={periodUnit === "period" ? "0.001" : "0.1"}
@@ -820,10 +801,10 @@ export const DisperCurveManager = () => {
                 : `Slowness (s/${displayUnits})`
             }
             xLabel={periodUnit === "period" ? "Period (s)" : "Frequency (Hz)"}
-            xMin={axesSwapped ? axisLimits.ymin : axisLimits.xmin}
-            xMax={axesSwapped ? axisLimits.ymax : axisLimits.xmax}
-            yMin={axesSwapped ? axisLimits.xmin : axisLimits.ymin}
-            yMax={axesSwapped ? axisLimits.xmax : axisLimits.ymax}
+            xMin={axesSwapped ? curveAxisLimits.ymin : curveAxisLimits.xmin}
+            xMax={axesSwapped ? curveAxisLimits.ymax : curveAxisLimits.xmax}
+            yMin={axesSwapped ? curveAxisLimits.xmin : curveAxisLimits.ymin}
+            yMax={axesSwapped ? curveAxisLimits.xmax : curveAxisLimits.ymax}
             display={(value) =>
               displayUnits === "ft"
                 ? ToFeet(value).toFixed(3)
@@ -851,10 +832,10 @@ export const DisperCurveManager = () => {
                   g.setStrokeStyle({ width: 1, color: 0xeeeeee, alpha: 0.8 });
 
                   // Vertical grid lines (velocity)
-                  const velocityStep = (axisLimits.xmax - axisLimits.xmin) / 10;
+                  const velocityStep = (curveAxisLimits.xmax - curveAxisLimits.xmin) / 10;
                   for (
-                    let v = axisLimits.xmin;
-                    v <= axisLimits.xmax;
+                    let v = curveAxisLimits.xmin;
+                    v <= curveAxisLimits.xmax;
                     v += velocityStep
                   ) {
                     const x = coordinateHelpers.toScreenX(v);
@@ -863,10 +844,10 @@ export const DisperCurveManager = () => {
                   }
 
                   // Horizontal grid lines (depth)
-                  const depthStep = (axisLimits.ymax - axisLimits.ymin) / 10;
+                  const depthStep = (curveAxisLimits.ymax - curveAxisLimits.ymin) / 10;
                   for (
-                    let d = axisLimits.ymin;
-                    d <= axisLimits.ymax;
+                    let d = curveAxisLimits.ymin;
+                    d <= curveAxisLimits.ymax;
                     d += depthStep
                   ) {
                     const y = coordinateHelpers.toScreenY(d);
