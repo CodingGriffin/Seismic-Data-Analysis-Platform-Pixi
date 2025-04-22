@@ -754,7 +754,7 @@ export const DisperCurveManager = () => {
               className="btn btn-outline-secondary btn-sm"
               onClick={handleUploadPoints}
             >
-              Upload Picks
+              Upload Points
             </button>
           </div>
           <div className="col-md-6">

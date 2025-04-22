@@ -102,56 +102,131 @@ export const DisperModelManager = () => {
     [modelAxisLimits, plotDimensions]
   );
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event?.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        const text = e.target?.result as string;
-        const lines = text.split("\n");
-        const data = lines
-          .map((line: string) => {
-            const [depth, density, ignore, velocity] = line
-              .trim()
-              .split(" ")
-              .map(Number);
-            return { depth, density, ignore, velocity };
-          })
-          .filter((item) => !isNaN(item.depth) && !isNaN(item.velocity));
+  // const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = event?.target.files?.[0];
+  //   if (file) {
+  //     const reader = new FileReader();
+  //     reader.onload = (e: ProgressEvent<FileReader>) => {
+  //       const text = e.target?.result as string;
+  //       const lines = text.split("\n");
+  //       const data = lines
+  //         .map((line: string) => {
+  //           const [depth, density, ignore, velocity] = line
+  //             .trim()
+  //             .split(" ")
+  //             .map(Number);
+  //           return { depth, density, ignore, velocity };
+  //         })
+  //         .filter((item) => !isNaN(item.depth) && !isNaN(item.velocity));
 
-        if (data.length > 0) {
-          // Create layers from consecutive points
-          const newLayers: Layer[] = [];
-          for (let i = 0; i < data.length - 1; i += 2) {
-            const layer: Layer = {
-              startDepth: i === 0 ? 0 : data[i].depth, // Force first layer to start at 0
-              endDepth: data[i + 1].depth,
-              velocity: data[i].velocity,
-              density: data[i].density,
-              ignore: data[i].ignore,
-            };
-            newLayers.push(layer);
-          }
+  //       if (data.length > 0) {
+  //         // Create layers from consecutive points
+  //         const newLayers: Layer[] = [];
+  //         for (let i = 0; i < data.length - 1; i += 2) {
+  //           const layer: Layer = {
+  //             startDepth: i === 0 ? 0 : data[i].depth, // Force first layer to start at 0
+  //             endDepth: data[i + 1].depth,
+  //             velocity: data[i].velocity,
+  //             density: data[i].density,
+  //             ignore: data[i].ignore,
+  //           };
+  //           newLayers.push(layer);
+  //         }
 
-          // Update axis limits based on data
-          const depthValues = data.map((d) => d.depth);
-          const velocityValues = data.map((d) => d.velocity);
-          const maxVelocity = Math.max(...velocityValues);
+  //         // Update axis limits based on data
+  //         const depthValues = data.map((d) => d.depth);
+  //         const velocityValues = data.map((d) => d.velocity);
+  //         const maxVelocity = Math.max(...velocityValues);
 
-          const newmodelAxisLimits = {
-            xmin: 0,
-            xmax: Math.ceil(maxVelocity * VELOCITY_MARGIN_FACTOR), // Set max velocity to 110% of highest velocity
-            ymin: 0,
-            ymax: Math.ceil(Math.max(...depthValues)),
+  //         const newmodelAxisLimits = {
+  //           xmin: 0,
+  //           xmax: Math.ceil(maxVelocity * VELOCITY_MARGIN_FACTOR), // Set max velocity to 110% of highest velocity
+  //           ymin: 0,
+  //           ymax: Math.ceil(Math.max(...depthValues)),
+  //         };
+
+  //         setLayers(newLayers);
+  //         setModelAxisLimits(newmodelAxisLimits);
+  //       }
+  //     };
+  //     reader.readAsText(file);
+  //   }
+  // };
+
+  const handleUploadLayers = useCallback(async () => {
+    try {
+      const [fileHandle] = await (window as unknown as Window & { showOpenFilePicker: Function }).showOpenFilePicker({
+        types: [
+          {
+            description: "Select Model file",
+            accept: {
+              "text/plain": [".txt"],
+            },
+          },
+        ],
+        multiple: false,
+      });
+      
+      const file = await fileHandle.getFile();
+      const content = await file.text();
+      
+      const lines = content.trim().split('\n');
+      const data = lines
+        .map((line: string) => {
+          const [depth, density, ignore, velocity] = line
+            .trim()
+            .split(" ")
+            .map(Number);
+          return { depth, density, ignore, velocity };
+        })
+        .filter((item:any) => !isNaN(item.depth) && !isNaN(item.velocity));
+
+      if (data.length > 0) {
+        // Create layers from consecutive points
+        const newLayers: Layer[] = [];
+        for (let i = 0; i < data.length - 1; i += 2) {
+          const layer: Layer = {
+            startDepth: i === 0 ? 0 : data[i].depth, // Force first layer to start at 0
+            endDepth: data[i + 1].depth,
+            velocity: data[i].velocity,
+            density: data[i].density,
+            ignore: data[i].ignore,
           };
-
-          setLayers(newLayers);
-          setModelAxisLimits(newmodelAxisLimits);
+          newLayers.push(layer);
         }
-      };
-      reader.readAsText(file);
+
+        // Update axis limits based on data
+        const depthValues = data.map((d:any) => d.depth);
+        const velocityValues = data.map((d:any) => d.velocity);
+        const maxVelocity = Math.max(...velocityValues);
+
+        const newmodelAxisLimits = {
+          xmin: 0,
+          xmax: Math.ceil(maxVelocity * VELOCITY_MARGIN_FACTOR), // Set max velocity to 110% of highest velocity
+          ymin: 0,
+          ymax: Math.ceil(Math.max(...depthValues)),
+        };
+
+        if (newLayers.length === 0) {
+          dispatch(addToast({
+            message: "No valid layers found in file",
+            type: "warning",
+            duration: 5000
+          }));
+          return;
+        }
+        setLayers(newLayers);
+        setModelAxisLimits(newmodelAxisLimits);
+        dispatch(addToast({
+          message: `Successfully loaded ${newLayers.length} layers`,
+          type: "success",
+          duration: 5000
+        }));
+      }
+    } catch (err) {
+      console.error("Error uploading file:", err);
     }
-  };
+  }, [dispatch]);
 
   const handlePointerDown = useCallback(
     (
@@ -503,11 +578,23 @@ export const DisperModelManager = () => {
       <SectionHeader title="Dispersion Model"/>
       <div className="card-body">
         <div className="row g-4">
-          <div className="col d-flex">
-            <FileControls
+          <div className="col d-flex gap-5">
+            {/* <FileControls
               onFileSelect={handleFileSelect}
               onDownload={handleDownloadLayers}
-            />
+            /> */}
+            <button 
+              className="btn btn-outline-secondary btn-sm"
+              onClick={handleUploadLayers}
+            >
+              Upload Layers
+            </button>
+            <button 
+              className="btn btn-outline-secondary btn-sm"
+              onClick={handleDownloadLayers}
+            >
+              Download Layers
+            </button>
           </div>
         </div>
         <div className="row mb-4">
