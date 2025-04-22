@@ -50,9 +50,24 @@ export const DisperSettingsSave: React.FC<DisperSettingsSaveProps> = ({
   };
 
   useEffect(() => {
-    if (projectId && projectId!==loadedProjectIdRef.current) {
-        handleLoad();
-        loadedProjectIdRef.current = projectId;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        event.preventDefault();
+        handleSave();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (projectId && projectId !== loadedProjectIdRef.current) {
+      handleLoad();
+      loadedProjectIdRef.current = projectId;
     }
   }, [projectId]);
 
