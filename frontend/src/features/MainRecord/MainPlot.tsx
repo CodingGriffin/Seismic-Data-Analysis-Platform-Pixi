@@ -312,7 +312,7 @@ export default function MainPlot() {
       return;
     }
     
-    const pointsData = points.map(p => `${p.d1.toFixed(6)},${p.d2.toFixed(6)}, ${p.frequency.toFixed(6)}, ${p.d3.toFixed(6)}, ${p.slowness.toFixed(6)}, ${p.d4.toFixed(6)}, ${p.d5.toFixed(6)}`).join('\n');
+    const pointsData = points.map(p => `${p.d1.toFixed(6)} ${p.d2.toFixed(6)} ${p.frequency.toFixed(6)} ${p.d3.toFixed(6)} ${p.slowness.toFixed(6)} ${p.d4.toFixed(6)} ${p.d5.toFixed(6)}`).join('\n');
     const blob = new Blob([pointsData], { type: 'text/plain' });
     
     // Use showSaveFilePicker API for native file save dialog
@@ -378,7 +378,7 @@ export default function MainPlot() {
       const newPoints: PickData[] = [];
       
       for (const line of lines) {
-        const values = line.split(',').map((val:any) => parseFloat(val.trim()));
+        const values = line.split(' ').map((val:any) => parseFloat(val.trim()));
         
         if (values.length >= 7) {
           const point: PickData = {
