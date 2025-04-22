@@ -9,6 +9,8 @@ import { useDisper } from "../../context/DisperContext";
 import { BasePlot } from "../../components/BasePlot/BasePlot";
 import { FileControls } from "../../components/FileControls/FileControls";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
+import { useAppDispatch } from "../../hooks/useAppDispatch";
+import { addToast } from "../../store/slices/toastSlice";
 
 extend({ Graphics, Container });
 
@@ -53,6 +55,7 @@ export const DisperCurveManager = () => {
     setAxesSwapped
   } = useDisper();
 
+  const dispatch = useAppDispatch();
   const [curvePoints, setCurvePoints] = useState<Point[]>([]);
   const [pickPoints, setPickPoints] = useState<Point[]>([]);
   const [tooltipContent, setTooltipContent] = useState<string>("");
@@ -169,34 +172,159 @@ export const DisperCurveManager = () => {
     return Array.from({ length: count }, (_, i) => min + step * i);
   };
 
-  const handleFileSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  // const handleFileSelect = async (
+  //   event: React.ChangeEvent<HTMLInputElement>
+  // ) => {
+  //   const file = event.target.files?.[0];
+  //   if (!file) return;
 
-    const text = await file.text();
-    const rawData: PickData[] = text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .map((line) => {
-        const [d1, d2, frequency, d3, slowness, d4, d5] = line
-          .split(/\s+/)
-          .map((num) => parseFloat(num.trim()));
+  //   const text = await file.text();
+  //   const rawData: PickData[] = text
+  //     .split("\n")
+  //     .map((line) => line.trim())
+  //     .filter((line) => line.length > 0)
+  //     .map((line) => {
+  //       const [d1, d2, frequency, d3, slowness, d4, d5] = line
+  //         .split(/\s+/)
+  //         .map((num) => parseFloat(num.trim()));
 
-        return {
-          d1,
-          d2,
-          frequency,
-          d3,
-          slowness,
-          d4,
-          d5,
-        };
+  //       return {
+  //         d1,
+  //         d2,
+  //         frequency,
+  //         d3,
+  //         slowness,
+  //         d4,
+  //         d5,
+  //       };
+  //     });
+  //   setPickData(rawData);
+  // };
+
+  const handleUploadPoints = useCallback(async () => {
+    try {
+      const [fileHandle] = await (window as unknown as Window & { showOpenFilePicker: Function }).showOpenFilePicker({
+        types: [
+          {
+            description: "Picked Points",
+            accept: {
+              "text/plain": [".pck"],
+            },
+          },
+        ],
+        multiple: false,
       });
-    setPickData(rawData);
-  };
+      
+      const file = await fileHandle.getFile();
+      const content = await file.text();
+      
+      const lines = content.trim().split('\n');
+      const newPoints: PickData[] = [];
+      
+      for (const line of lines) {
+        const values = line.split(' ').map((val:any) => parseFloat(val.trim()));
+        
+        if (values.length >= 7) {
+          const point: PickData = {
+            d1: values[0],
+            d2: values[1],
+            frequency: values[2],
+            d3: values[3],
+            slowness: values[4],
+            d4: values[5],
+            d5: values[6]
+          };
+          newPoints.push(point);
+        }
+      }
+      
+      if (newPoints.length === 0) {
+        dispatch(addToast({
+          message: "No valid points found in file",
+          type: "warning",
+          duration: 5000
+        }));
+        return;
+      }
+      setPickData(newPoints)
+      dispatch(addToast({
+        message: `Successfully loaded ${newPoints.length} points`,
+        type: "success",
+        duration: 5000
+      }));
+      
+    } catch (err) {
+      console.error("Error uploading file:", err);
+      
+      if ((err as Error).name !== 'AbortError') {
+        dispatch(addToast({
+          message: "Failed to upload file. Please try again.",
+          type: "error",
+          duration: 5000
+        }));
+      }
+      
+      try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.pck';
+        
+        input.onchange = async (e) => {
+          const target = e.target as HTMLInputElement;
+          if (!target.files || target.files.length === 0) return;
+          
+          const file = target.files[0];
+          const reader = new FileReader();
+          
+          reader.onload = (event) => {
+            const content = event.target?.result as string;
+            const lines = content.trim().split('\n');
+            const newPoints: PickData[] = [];
+            
+            for (const line of lines) {
+              const values = line.split(',').map(val => parseFloat(val.trim()));
+              
+              if (values.length >= 7) {
+                const point: PickData = {
+                  d1: values[0],
+                  d2: values[1],
+                  frequency: values[2],
+                  d3: values[3],
+                  slowness: values[4],
+                  d4: values[5],
+                  d5: values[6]
+                };
+                newPoints.push(point);
+              }
+            }
+            
+            if (newPoints.length === 0) {
+              dispatch(addToast({
+                message: "No valid points found in file",
+                type: "warning",
+                duration: 5000
+              }));
+              return;
+            }
+            
+            setPickData(newPoints)
+            dispatch(addToast({
+              message: `Successfully loaded ${newPoints.length} points`,
+              type: "success",
+              duration: 5000
+            }));
+          };
+          
+          reader.readAsText(file);
+        };
+        
+        input.click();
+      } catch (fallbackErr) {
+        console.error("Fallback upload method failed:", fallbackErr);
+      }
+    }
+  }, [dispatch]);
+  
 
   const handleUnitChange = (type: "velocity" | "period", newUnit: string) => {
     const currentUnit = type === "velocity" ? velocityUnit : periodUnit;
@@ -622,11 +750,12 @@ export const DisperCurveManager = () => {
       <div className="card-body">
         <div className="row g-4">
           <div className="col-md-6 d-flex">
-            <FileControls
-              onFileSelect={handleFileSelect}
-              showDownload={false}
-              accept=".pck"
-            />
+            <button 
+              className="btn btn-outline-secondary btn-sm"
+              onClick={handleUploadPoints}
+            >
+              Upload Picks
+            </button>
           </div>
           <div className="col-md-6">
             <div className="d-flex">
