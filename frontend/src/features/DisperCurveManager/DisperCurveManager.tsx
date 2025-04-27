@@ -363,6 +363,7 @@ export const DisperCurveManager = () => {
         newLimits.xmax = Math.max(newLimits.xmin + minDelta, numValue);
       }
 
+      console.log("newCurveLimits:", newLimits);
       setCurveAxisLimits(newLimits);
     } else {
       // Velocity/Slowness limits
@@ -383,6 +384,7 @@ export const DisperCurveManager = () => {
         newLimits.ymax = Math.max(newLimits.ymin + minDelta, valueInMeters);
       }
 
+      console.log("newCurveLimits:", newLimits);
       setCurveAxisLimits(newLimits);
     }
   };
@@ -555,10 +557,15 @@ export const DisperCurveManager = () => {
 
   useEffect(() => {
     // Generate points that exactly match the axis limits
+    // Get min and max frequency based on curveAxisLimits
+    const minForP = axesSwapped ? curveAxisLimits.ymin : curveAxisLimits.xmin;
+    const maxForP = axesSwapped ? curveAxisLimits.ymax : curveAxisLimits.xmax;
+    const minFrequency = periodUnit == "frequency" ? minForP : 1 / maxForP;
+    const maxFrequency = periodUnit == "frequency" ? maxForP : 1 / minForP;
     const xValues = generateEvenlySpacedPoints(
-      1 / dataLimits.minFrequency,
-      1 / dataLimits.minFrequency,
-      numPoints + 1
+      1 / minFrequency,
+      1 / maxFrequency,
+      Math.max(2, numPoints)
     );
     // Convert periods based on current unit before calculation
     const calcPeriods = (
@@ -648,13 +655,18 @@ export const DisperCurveManager = () => {
       setVs30(calculatedVs30);
       setSiteClass(calculatedSiteClass);
 
+      // Get min and max slowness from curveAxisLimits
+      const minVorS = axesSwapped ? curveAxisLimits.xmin : curveAxisLimits.ymin;
+      const maxVorS = axesSwapped ? curveAxisLimits.xmax : curveAxisLimits.ymax;
+      const minSlowness = velocityUnit === "slowness" ? minVorS : 1 / maxVorS;
+      const maxSlowness = velocityUnit === "slowness" ? maxVorS : 1 / minVorS;
       const newVelocities = CalcCurve(
         newPeriods,
         num_layers,
         layer_thicknesses,
         vels_shear,
-        1 / dataLimits.maxSlowness * 0.9,
-        1 / dataLimits.minSlowness * 1.1,
+        1 / maxSlowness * 0.9,
+        1 / minSlowness * 1.1,
         2.0,
         densities
       );
