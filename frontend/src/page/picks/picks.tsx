@@ -11,7 +11,7 @@ const PicksPage: React.FC = () => {
 
   return (
     <>
-      <div className="responsive-container">
+      <div className="container-fluid py-4">
         <div className="row mb-4">
             <div className="col-12">
                 <SectionHeader title="Picks Analysis">

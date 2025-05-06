@@ -13,7 +13,6 @@ import { Layer } from "../../types/data";
 import { useDisper } from "../../context/DisperContext";
 import { Window } from "../../types";
 import { BasePlot } from "../../components/BasePlot/BasePlot";
-import { FileControls } from "../../components/FileControls/FileControls";
 import SectionHeader from "../../components/SectionHeader/SectionHeader";
 import { useParams } from "react-router";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
@@ -42,11 +41,6 @@ export const DisperModelManager = () => {
   } = useDisper();
 
   const dispatch = useAppDispatch();
-  // Add projectId from URL params
-  const { projectId } = useParams();
-  
-  // Add state for saving status
-  const [isSaving, setIsSaving] = useState(false);
 
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [tooltipContent, setTooltipContent] = useState<string>("");
